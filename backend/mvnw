@@ -1,0 +1,34 @@
+#!/bin/sh
+# ────────────────────────────────────────────────────────────────────────────
+# Maven Wrapper Script
+# ────────────────────────────────────────────────────────────────────────────
+# Licensed to the Apache Software Foundation (ASF) under one or more
+# contributor license agreements. See the NOTICE file distributed with this
+# work for additional information regarding copyright ownership.
+
+if [ -z "$JAVA_HOME" ]; then
+  javaExecutable="`which java`"
+  if [ -n "$javaExecutable" ] && ! [ "`ls -l $javaExecutable | grep -c ' -> '`" -gt 0 ]; then
+    JAVA_HOME="`dirname $javaExecutable`/.."
+  fi
+fi
+
+MAVEN_OPTS="$MAVEN_OPTS -Dmaven.multiModuleProjectDirectory=$MAVEN_PROJECTBASEDIR"
+MAVEN_WRAPPER_JAR=".mvn/wrapper/maven-wrapper.jar"
+WRAPPER_PROPERTIES=".mvn/wrapper/maven-wrapper.properties"
+
+# Download wrapper if needed
+if [ ! -f "$MAVEN_WRAPPER_JAR" ]; then
+  wrapperUrl=$(grep "wrapperUrl" "$WRAPPER_PROPERTIES" | cut -d= -f2-)
+  echo "Downloading maven wrapper from $wrapperUrl"
+  if command -v curl > /dev/null; then
+    curl -o "$MAVEN_WRAPPER_JAR" "$wrapperUrl" -f
+  elif command -v wget > /dev/null; then
+    wget "$wrapperUrl" -O "$MAVEN_WRAPPER_JAR"
+  fi
+fi
+
+exec "$JAVA_HOME/bin/java" \
+  $JAVA_OPTS \
+  -jar "$MAVEN_WRAPPER_JAR" \
+  "$@"

@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>KAVACH AI Agent</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #0A0F1E;
+      color: #fff;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      user-select: none;
+    }
+    .logo {
+      font-size: 28px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      color: #3b82f6;
+      margin-bottom: 8px;
+    }
+    .subtitle {
+      font-size: 12px;
+      color: #6b7280;
+      margin-bottom: 32px;
+      text-align: center;
+    }
+    .card {
+      background: #1a2035;
+      border: 1px solid #2a3555;
+      border-radius: 12px;
+      padding: 24px;
+      width: 100%;
+      max-width: 320px;
+    }
+    label {
+      display: block;
+      font-size: 12px;
+      color: #9ca3af;
+      margin-bottom: 6px;
+      letter-spacing: 0.5px;
+    }
+    input {
+      width: 100%;
+      padding: 10px 14px;
+      background: #0d1326;
+      border: 1px solid #2a3555;
+      border-radius: 8px;
+      color: #fff;
+      font-size: 20px;
+      letter-spacing: 6px;
+      text-align: center;
+      text-transform: uppercase;
+      outline: none;
+      margin-bottom: 16px;
+    }
+    input:focus { border-color: #3b82f6; }
+    button {
+      width: 100%;
+      padding: 12px;
+      background: #3b82f6;
+      border: none;
+      border-radius: 8px;
+      color: #fff;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    button:hover { background: #2563eb; }
+    button:disabled { background: #374151; cursor: not-allowed; }
+    .status {
+      margin-top: 12px;
+      font-size: 12px;
+      text-align: center;
+      color: #6b7280;
+      min-height: 18px;
+    }
+    .status.error { color: #ef4444; }
+    .status.success { color: #22c55e; }
+  </style>
+</head>
+<body>
+  <div class="logo">🛡️ KAVACH AI</div>
+  <p class="subtitle">Student Safety & Discipline Monitor</p>
+
+  <div class="card">
+    <label>ENTER DEVICE LINK CODE</label>
+    <input
+      id="codeInput"
+      type="text"
+      maxlength="6"
+      placeholder="XXXXXX"
+      autocomplete="off"
+    />
+    <button id="linkBtn" onclick="linkDevice()">Link This Device</button>
+    <div class="status" id="statusMsg"></div>
+  </div>
+
+  <script>
+    const { ipcRenderer } = require('electron');
+
+    async function linkDevice() {
+      const code = document.getElementById('codeInput').value.trim().toUpperCase();
+      const btn = document.getElementById('linkBtn');
+      const msg = document.getElementById('statusMsg');
+
+      if (code.length !== 6) {
+        msg.textContent = 'Please enter a valid 6-character code';
+        msg.className = 'status error';
+        return;
+      }
+
+      btn.disabled = true;
+      btn.textContent = 'Linking...';
+      msg.textContent = '';
+      msg.className = 'status';
+
+      try {
+        const result = await ipcRenderer.invoke('link-device', code);
+        if (result.success) {
+          msg.textContent = '✓ Device linked! Monitoring started.';
+          msg.className = 'status success';
+          setTimeout(() => window.close(), 2000);
+        }
+      } catch (err) {
+        msg.textContent = 'Failed to link device. Try again.';
+        msg.className = 'status error';
+        btn.disabled = false;
+        btn.textContent = 'Link This Device';
+      }
+    }
+
+    document.getElementById('codeInput').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') linkDevice();
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,41 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: kavach_postgres
+    environment:
+      POSTGRES_DB: kavach_db
+      POSTGRES_USER: kavach
+      POSTGRES_PASSWORD: kavach123
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kavach"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: ../backend
+      dockerfile: ../docker/backend/Dockerfile
+    container_name: kavach_backend
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/kavach_db
+      SPRING_DATASOURCE_USERNAME: kavach
+      SPRING_DATASOURCE_PASSWORD: kavach123
+      JWT_SECRET: kavach-super-secret-key-change-in-production-2024-must-be-at-least-256-bits
+      JWT_EXPIRATION: 86400000
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  postgres_data:

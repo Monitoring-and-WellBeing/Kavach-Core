@@ -1,0 +1,48 @@
+import { StudentProfile, AlertSeverity } from "@kavach/shared-types";
+
+export const mockStudents: StudentProfile[] = [
+  {
+    id: "stu-001",
+    name: "Rahul Sharma",
+    age: 15,
+    grade: "10th",
+    parentId: "user-parent-001",
+    deviceIds: ["dev-001"],
+    focusScore: 62,
+    streak: 3,
+    riskLevel: AlertSeverity.HIGH,
+  },
+  {
+    id: "stu-002",
+    name: "Priya Verma",
+    age: 14,
+    grade: "9th",
+    parentId: "user-parent-002",
+    deviceIds: ["dev-002"],
+    focusScore: 85,
+    streak: 12,
+    riskLevel: AlertSeverity.LOW,
+  },
+  {
+    id: "stu-003",
+    name: "Arjun Singh",
+    age: 16,
+    grade: "11th",
+    parentId: "user-parent-003",
+    deviceIds: ["dev-003"],
+    focusScore: 45,
+    streak: 0,
+    riskLevel: AlertSeverity.HIGH,
+  },
+  {
+    id: "stu-004",
+    name: "Sneha Patel",
+    age: 13,
+    grade: "8th",
+    parentId: "user-parent-004",
+    deviceIds: ["dev-004"],
+    focusScore: 73,
+    streak: 5,
+    riskLevel: AlertSeverity.MODERATE,
+  },
+];
