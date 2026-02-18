@@ -1,77 +1,41 @@
-"use client";
+'use client'
+const badges = [
+  { id: 1, icon: '🔥', label: '12-Day Streak', desc: 'Focus for 12 consecutive days', earned: true, earnedDate: 'Feb 15, 2026' },
+  { id: 2, icon: '⏱️', label: 'Focus Master', desc: 'Complete 50 focus sessions', earned: true, earnedDate: 'Feb 10, 2026' },
+  { id: 3, icon: '📚', label: 'Study Champion', desc: '100 hours of study time', earned: true, earnedDate: 'Feb 1, 2026' },
+  { id: 4, icon: '🌙', label: 'Healthy Sleep', desc: 'No late-night usage for 7 days', earned: true, earnedDate: 'Jan 28, 2026' },
+  { id: 5, icon: '🎯', label: 'Goal Crusher', desc: 'Complete all weekly goals', earned: false, progress: 72 },
+  { id: 6, icon: '🏆', label: 'Top Performer', desc: 'Maintain 90%+ focus score for a week', earned: false, progress: 45 },
+  { id: 7, icon: '📵', label: 'Distraction Free', desc: 'Zero blocked app attempts for 5 days', earned: false, progress: 60 },
+  { id: 8, icon: '⚡', label: 'Speed Learner', desc: 'Complete 3 learning modules in a day', earned: false, progress: 33 },
+]
 
-import { BadgeCard } from "@/components/student/BadgeCard";
-import { GoalProgress } from "@/components/student/GoalProgress";
-import { Card, CardContent, CardHeader } from "@/components/ui/Card";
-import { Badge, BadgeType } from "@kavach/shared-types";
-import { useUIStore } from "@/store/uiStore";
-
-const badges: (Badge & { earned: boolean })[] = [
-  { id: "b1", type: BadgeType.FOCUS_STREAK, label: "Focus Streak", description: "Complete 3 focus sessions in a row", earnedAt: new Date().toISOString(), icon: "🔥", earned: true },
-  { id: "b2", type: BadgeType.REDUCED_SCREEN_TIME, label: "Screen Reducer", description: "Reduce screen time by 20% in a week", earnedAt: new Date().toISOString(), icon: "📉", earned: true },
-  { id: "b3", type: BadgeType.HEALTHY_SLEEP, label: "Sleep Champion", description: "No device activity after 10PM for 7 days", earnedAt: "", icon: "🌙", earned: false },
-  { id: "b4", type: BadgeType.SEVEN_DAY_STREAK, label: "7-Day Streak", description: "Maintain daily focus goals for 7 consecutive days", earnedAt: "", icon: "⚡", earned: false },
-  { id: "b5", type: BadgeType.CONTROLLED_USAGE, label: "Self Control", description: "Stay under gaming limit for 14 days straight", earnedAt: "", icon: "🎯", earned: false },
-];
-
-export default function AchievementsPage() {
-  const addToast = useUIStore((s) => s.addToast);
-
-  const handleShare = (badge: Badge) => {
-    addToast({ title: "Copied!", description: `Badge "${badge.label}" link copied.`, type: "success" });
-  };
-
+export default function Achievements() {
   return (
-    <div className="flex flex-col gap-6">
-      <div className="text-center">
-        <h2 className="text-2xl font-bold text-white">Your Achievements 🏆</h2>
-        <p className="text-[#64748B] text-sm mt-1">Keep improving to earn more badges!</p>
-      </div>
-
-      {/* Earned Badges */}
-      <div>
-        <p className="text-sm font-medium text-[#94A3B8] mb-3 uppercase tracking-wide">
-          Earned ({badges.filter(b => b.earned).length})
-        </p>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-          {badges.filter(b => b.earned).map((b) => (
-            <div key={b.id} className="relative group">
-              <BadgeCard badge={b} earned />
-              <button
-                onClick={() => handleShare(b)}
-                className="absolute bottom-2 right-2 text-xs text-[#64748B] opacity-0 group-hover:opacity-100 transition-opacity bg-[#0A0F1E] px-2 py-1 rounded-lg border border-[#1E2A45]"
-              >
-                Share
-              </button>
+    <div className="p-6 fade-up">
+      <div className="max-w-4xl mx-auto">
+        <div className="flex items-center justify-between mb-6">
+          <div><h2 className="text-gray-900 font-bold text-xl">Achievements</h2><p className="text-gray-500 text-sm">4 of 8 badges earned</p></div>
+          <div className="h-2 w-48 bg-gray-100 rounded-full overflow-hidden"><div className="h-full bg-purple-500 rounded-full" style={{ width: '50%' }} /></div>
+        </div>
+        <div className="grid grid-cols-4 gap-4">
+          {badges.map(b => (
+            <div key={b.id} className={`bg-white rounded-2xl p-5 shadow-sm text-center transition-all ${b.earned ? 'opacity-100' : 'opacity-60'}`}>
+              <div className={`text-4xl mb-3 ${!b.earned ? 'grayscale' : ''}`}>{b.icon}</div>
+              <div className="font-semibold text-gray-800 text-sm mb-1">{b.label}</div>
+              <div className="text-gray-400 text-xs mb-3">{b.desc}</div>
+              {b.earned ? (
+                <div className="text-xs text-green-600 font-medium bg-green-50 rounded-full px-2 py-0.5">✓ Earned {b.earnedDate}</div>
+              ) : (
+                <div>
+                  <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden mb-1"><div className="h-full bg-purple-400 rounded-full" style={{ width: `${b.progress}%` }} /></div>
+                  <div className="text-xs text-gray-400">{b.progress}% complete</div>
+                </div>
+              )}
             </div>
           ))}
         </div>
       </div>
-
-      {/* Locked Badges */}
-      <div>
-        <p className="text-sm font-medium text-[#94A3B8] mb-3 uppercase tracking-wide">
-          Locked ({badges.filter(b => !b.earned).length})
-        </p>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-          {badges.filter(b => !b.earned).map((b) => (
-            <BadgeCard key={b.id} badge={b} earned={false} />
-          ))}
-        </div>
-      </div>
-
-      {/* Progress toward next badge */}
-      <Card>
-        <CardHeader>
-          <h3 className="font-semibold text-white">Progress to Next Badge</h3>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-col gap-4">
-            <GoalProgress label="7-Day Streak (3/7 days done)" current={3} target={7} unit="days" color="#f59e0b" />
-            <GoalProgress label="Healthy Sleep (4/7 nights clean)" current={4} target={7} unit="nights" color="#8b5cf6" />
-          </div>
-        </CardContent>
-      </Card>
     </div>
-  );
+  )
 }

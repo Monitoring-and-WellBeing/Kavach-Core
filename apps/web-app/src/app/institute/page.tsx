@@ -1,116 +1,161 @@
-"use client";
+'use client'
+import { Monitor, Users, Bell, Shield, AlertTriangle } from 'lucide-react'
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts'
+import { mockDevices } from '@/mock/devices'
+import { mockCategoryBreakdown } from '@/mock/activity'
+import { mockAlerts } from '@/mock/alerts'
+import { DeviceStatus } from '@kavach/shared-types'
 
-import { Card, CardContent, CardHeader } from "@/components/ui/Card";
-import { AlertItem } from "@/components/alerts/AlertItem";
-import { CategoryPieChart } from "@/components/charts/CategoryPieChart";
-import { useAlerts } from "@/hooks/useAlerts";
-import { useDevices } from "@/hooks/useDevices";
-import { mockCategoryBreakdown } from "@/mock/activity";
-import { DeviceStatus } from "@kavach/shared-types";
-import { Monitor, Users, Bell, Shield } from "lucide-react";
-import { clsx } from "clsx";
+const statusColors: Record<DeviceStatus, string> = {
+  ONLINE: '#22C55E',
+  OFFLINE: '#6B7280',
+  PAUSED: '#F59E0B',
+  FOCUS_MODE: '#3B82F6',
+}
 
-const statusColors: Record<string, string> = {
-  ONLINE: "bg-green-500",
-  OFFLINE: "bg-gray-600",
-  PAUSED: "bg-yellow-500",
-  FOCUS_MODE: "bg-blue-500",
-};
+const categoryColors: Record<string, string> = {
+  Education: '#3B82F6',
+  Gaming: '#EF4444',
+  Entertainment: '#F59E0B',
+  'Social Media': '#8B5CF6',
+  Productivity: '#22C55E',
+  Other: '#6B7280',
+}
 
 export default function InstituteDashboard() {
-  const { devices } = useDevices();
-  const { alerts, markRead } = useAlerts();
+  const totalDevices = mockDevices.length
+  const onlineDevices = mockDevices.filter(d => d.status === DeviceStatus.ONLINE || d.status === DeviceStatus.FOCUS_MODE).length
+  const alertsToday = mockAlerts.filter(a => new Date(a.timestamp).toDateString() === new Date().toDateString()).length
+  const complianceScore = 78
 
-  const onlineCount = devices.filter(d => d.status === DeviceStatus.ONLINE || d.status === DeviceStatus.FOCUS_MODE).length;
-  const criticalAlerts = alerts.filter(a => a.severity === "HIGH" && !a.read);
-  const complianceScore = 78;
+  const criticalAlerts = mockAlerts.filter(a => a.severity === 'HIGH').slice(0, 5)
 
-  const stats = [
-    { label: "Total Devices", value: "48", icon: <Monitor className="w-5 h-5" />, color: "text-blue-400", bg: "bg-blue-500/10" },
-    { label: "Online Now", value: `${onlineCount}`, icon: <Monitor className="w-5 h-5" />, color: "text-green-400", bg: "bg-green-500/10" },
-    { label: "Alerts Today", value: "12", icon: <Bell className="w-5 h-5" />, color: "text-red-400", bg: "bg-red-500/10" },
-    { label: "Compliance", value: `${complianceScore}%`, icon: <Shield className="w-5 h-5" />, color: "text-purple-400", bg: "bg-purple-500/10" },
-  ];
+  // Generate device heatmap
+  const deviceGrid = Array.from({ length: 48 }, (_, i) => {
+    const statuses: DeviceStatus[] = ['ONLINE', 'ONLINE', 'ONLINE', 'FOCUS_MODE', 'OFFLINE', 'PAUSED']
+    return statuses[Math.floor(Math.random() * statuses.length)]
+  })
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="p-6 space-y-5 fade-up">
       {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {stats.map((stat) => (
-          <Card key={stat.label}>
-            <CardContent className="py-5">
-              <div className="flex items-center gap-3">
-                <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${stat.bg} ${stat.color}`}>
-                  {stat.icon}
-                </div>
-                <div>
-                  <p className="text-xs text-[#64748B]">{stat.label}</p>
-                  <p className="text-2xl font-bold text-white">{stat.value}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+      <div className="grid grid-cols-4 gap-4">
+        <div className="bg-white rounded-2xl p-5 shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: '#EFF6FF' }}>
+              <Monitor size={20} style={{ color: '#3B82F6' }} />
+            </div>
+            <div>
+              <div className="text-gray-400 text-xs">Total Devices</div>
+              <div className="text-gray-900 text-2xl font-bold">{totalDevices}</div>
+            </div>
+          </div>
+        </div>
+        <div className="bg-white rounded-2xl p-5 shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: '#F0FDF4' }}>
+              <Monitor size={20} style={{ color: '#22C55E' }} />
+            </div>
+            <div>
+              <div className="text-gray-400 text-xs">Online Now</div>
+              <div className="text-gray-900 text-2xl font-bold">{onlineDevices}</div>
+            </div>
+          </div>
+        </div>
+        <div className="bg-white rounded-2xl p-5 shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: '#FEF2F2' }}>
+              <Bell size={20} style={{ color: '#EF4444' }} />
+            </div>
+            <div>
+              <div className="text-gray-400 text-xs">Alerts Today</div>
+              <div className="text-gray-900 text-2xl font-bold">{alertsToday}</div>
+            </div>
+          </div>
+        </div>
+        <div className="bg-white rounded-2xl p-5 shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: '#F5F3FF' }}>
+              <Shield size={20} style={{ color: '#8B5CF6' }} />
+            </div>
+            <div>
+              <div className="text-gray-400 text-xs">Compliance Score</div>
+              <div className="text-gray-900 text-2xl font-bold">{complianceScore}%</div>
+            </div>
+          </div>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* Charts Row */}
+      <div className="grid grid-cols-2 gap-5">
         {/* Device Status Heatmap */}
-        <Card>
-          <CardHeader>
-            <h3 className="font-semibold text-white">Lab Device Status</h3>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-8 gap-1.5">
-              {Array.from({ length: 48 }, (_, i) => {
-                const statuses = ["ONLINE", "ONLINE", "ONLINE", "FOCUS_MODE", "OFFLINE", "PAUSED"];
-                const status = statuses[Math.floor(Math.random() * statuses.length)];
-                return (
-                  <div
-                    key={i}
-                    title={`PC ${i + 1} — ${status}`}
-                    className={clsx(
-                      "w-6 h-6 rounded-sm cursor-pointer hover:opacity-80 transition-opacity",
-                      statusColors[status]
-                    )}
-                  />
-                );
-              })}
-            </div>
-            <div className="flex items-center gap-4 mt-4">
-              {Object.entries(statusColors).map(([status, color]) => (
-                <div key={status} className="flex items-center gap-1.5">
-                  <div className={`w-3 h-3 rounded-sm ${color}`} />
-                  <span className="text-xs text-[#64748B] capitalize">{status.toLowerCase().replace("_", " ")}</span>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+        <div className="bg-white rounded-2xl p-6 shadow-sm">
+          <h3 className="font-semibold text-gray-900 mb-4">Lab Device Status</h3>
+          <div className="grid grid-cols-8 gap-1.5 mb-4">
+            {deviceGrid.map((status, i) => (
+              <div
+                key={i}
+                title={`PC ${i + 1} — ${status}`}
+                className="w-6 h-6 rounded-sm cursor-pointer hover:opacity-80 transition-opacity"
+                style={{ background: statusColors[status] }}
+              />
+            ))}
+          </div>
+          <div className="flex items-center gap-4 flex-wrap">
+            {Object.entries(statusColors).map(([status, color]) => (
+              <div key={status} className="flex items-center gap-1.5">
+                <div className="w-3 h-3 rounded-sm" style={{ background: color }} />
+                <span className="text-xs text-gray-500 capitalize">{status.toLowerCase().replace('_', ' ')}</span>
+              </div>
+            ))}
+          </div>
+        </div>
 
         {/* Category Breakdown */}
-        <Card>
-          <CardHeader>
-            <h3 className="font-semibold text-white">Institute-wide App Usage</h3>
-          </CardHeader>
-          <CardContent>
-            <CategoryPieChart data={mockCategoryBreakdown} />
-          </CardContent>
-        </Card>
+        <div className="bg-white rounded-2xl p-6 shadow-sm">
+          <h3 className="font-semibold text-gray-900 mb-4">Institute-wide App Usage</h3>
+          <ResponsiveContainer width="100%" height={200}>
+            <PieChart>
+              <Pie
+                data={mockCategoryBreakdown}
+                cx="50%"
+                cy="50%"
+                labelLine={false}
+                label={({ name, value }) => `${name}: ${value}%`}
+                outerRadius={70}
+                fill="#8884d8"
+                dataKey="value"
+              >
+                {mockCategoryBreakdown.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={categoryColors[entry.name] || '#6B7280'} />
+                ))}
+              </Pie>
+              <Tooltip />
+            </PieChart>
+          </ResponsiveContainer>
+        </div>
       </div>
 
       {/* Critical Alerts */}
-      <Card>
-        <CardHeader>
-          <h3 className="font-semibold text-white">Critical Alerts</h3>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-col gap-3">
-            {alerts.filter(a => a.severity === "HIGH").slice(0, 5).map((a) => (
-              <AlertItem key={a.id} alert={a} onMarkRead={markRead} />
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+      <div className="bg-white rounded-2xl p-6 shadow-sm">
+        <div className="flex items-center gap-2 mb-4">
+          <AlertTriangle size={18} className="text-red-500" />
+          <h3 className="font-semibold text-gray-900">Critical Alerts</h3>
+        </div>
+        <div className="space-y-3">
+          {criticalAlerts.map(alert => (
+            <div key={alert.id} className="flex items-start justify-between p-4 bg-red-50 border-l-4 border-red-500 rounded-xl">
+              <div>
+                <div className="font-medium text-gray-900">{alert.message}</div>
+                <div className="text-xs text-gray-500 mt-1">{new Date(alert.timestamp).toLocaleString()}</div>
+              </div>
+              <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700">
+                {alert.severity}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
-  );
+  )
 }

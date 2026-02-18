@@ -1,132 +1,147 @@
-"use client";
+'use client'
+import { useState } from 'react'
+import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, PieChart, Pie, Cell, Tooltip } from 'recharts'
+import { Download, Calendar } from 'lucide-react'
+import { useToast, Toast } from '@/components/ui/Toast'
+import { mockWeeklyData, mockCategoryBreakdown, mockAppUsage } from '@/mock/activity'
+import { formatMinutes } from '@kavach/shared-utils'
 
-import { useState } from "react";
-import { Card, CardContent, CardHeader } from "@/components/ui/Card";
-import { Button } from "@/components/ui/Button";
-import { ScreenTimeBarChart } from "@/components/charts/ScreenTimeBarChart";
-import { CategoryPieChart } from "@/components/charts/CategoryPieChart";
-import { WeeklyTrendLine } from "@/components/charts/WeeklyTrendLine";
-import { useUIStore } from "@/store/uiStore";
-import { mockWeeklyData, mockCategoryBreakdown, mockAppUsage } from "@/mock/activity";
-import { formatMinutes } from "@kavach/shared-utils";
-import { Download, TrendingUp, Clock } from "lucide-react";
-import { clsx } from "clsx";
+const topApps = mockAppUsage
+  .sort((a, b) => b.durationMinutes - a.durationMinutes)
+  .slice(0, 10)
+  .map((app, i) => ({ ...app, rank: i + 1 }))
 
-type Period = "weekly" | "monthly";
+const categoryColors: Record<string, string> = {
+  Education: '#3B82F6',
+  Gaming: '#EF4444',
+  Entertainment: '#F59E0B',
+  'Social Media': '#8B5CF6',
+  Productivity: '#22C55E',
+  Other: '#6B7280',
+}
 
 export default function ReportsPage() {
-  const [period, setPeriod] = useState<Period>("weekly");
-  const addToast = useUIStore((s) => s.addToast);
+  const [period, setPeriod] = useState<'Day' | 'Week' | 'Month'>('Week')
+  const { toast, showToast, hideToast } = useToast()
 
   const handleExport = () => {
-    addToast({ title: "Report exported!", description: "PDF saved to your downloads.", type: "success" });
-  };
+    showToast('Report exported!', 'success')
+  }
+
+  const CustomTooltip = ({ active, payload }: any) => {
+    if (active && payload?.length) {
+      return (
+        <div className="bg-white border border-gray-100 rounded-xl px-3 py-2 shadow-lg">
+          <p className="font-medium text-gray-800">{payload[0].payload.day || payload[0].payload.name}</p>
+          <p className="text-gray-500 text-sm">Time: {payload[0].value} min</p>
+        </div>
+      )
+    }
+    return null
+  }
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="p-6 space-y-5 fade-up">
+      {toast && <Toast message={toast.message} type={toast.type} onClose={hideToast} />}
+
       {/* Header */}
-      <div className="flex items-center justify-between flex-wrap gap-4">
-        <div className="flex gap-2">
-          {(["weekly", "monthly"] as Period[]).map((p) => (
-            <button
-              key={p}
-              onClick={() => setPeriod(p)}
-              className={clsx(
-                "px-4 py-1.5 rounded-lg text-sm font-medium border transition-colors capitalize",
-                period === p
-                  ? "bg-blue-600 border-blue-600 text-white"
-                  : "border-[#1E2A45] text-[#64748B] hover:text-white"
-              )}
-            >
-              {p}
-            </button>
-          ))}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-gray-900 font-bold text-xl">Usage Reports</h2>
+          <p className="text-gray-500 text-sm">Aarav's device usage breakdown</p>
         </div>
-        <Button variant="outline" onClick={handleExport}>
-          <Download className="w-4 h-4" />
-          Export PDF
-        </Button>
+        <div className="flex items-center gap-3">
+          <div className="flex bg-gray-100 rounded-xl p-1">
+            {(['Day', 'Week', 'Month'] as const).map(p => (
+              <button
+                key={p}
+                onClick={() => setPeriod(p)}
+                className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                  period === p ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500'
+                }`}
+              >
+                {p}
+              </button>
+            ))}
+          </div>
+          <button onClick={handleExport} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-gray-200 hover:bg-gray-50 text-sm font-medium text-gray-700 transition-colors">
+            <Download size={16} /> Export PDF
+          </button>
+        </div>
       </div>
 
-      {/* Charts Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader>
-            <h3 className="font-semibold text-white flex items-center gap-2">
-              <TrendingUp className="w-4 h-4 text-blue-400" />
-              Screen Time — {period === "weekly" ? "Last 7 Days" : "Last 30 Days"}
-            </h3>
-          </CardHeader>
-          <CardContent>
-            <ScreenTimeBarChart data={mockWeeklyData} stacked />
-          </CardContent>
-        </Card>
+      {/* Charts */}
+      <div className="grid grid-cols-2 gap-5">
+        {/* Screen Time Line Chart */}
+        <div className="bg-white rounded-2xl p-6 shadow-sm">
+          <h3 className="font-semibold text-gray-900 mb-5">Screen Time per Day</h3>
+          <ResponsiveContainer width="100%" height={200}>
+            <BarChart data={mockWeeklyData}>
+              <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fill: '#9CA3AF', fontSize: 11 }} />
+              <YAxis axisLine={false} tickLine={false} tick={{ fill: '#9CA3AF', fontSize: 11 }} />
+              <Tooltip content={<CustomTooltip />} />
+              <Bar dataKey="screenTime" radius={[6, 6, 0, 0]} fill="#3B82F6" />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
 
-        <Card>
-          <CardHeader>
-            <h3 className="font-semibold text-white">Category Breakdown</h3>
-          </CardHeader>
-          <CardContent>
-            <CategoryPieChart data={mockCategoryBreakdown} />
-          </CardContent>
-        </Card>
+        {/* Category Pie Chart */}
+        <div className="bg-white rounded-2xl p-6 shadow-sm">
+          <h3 className="font-semibold text-gray-900 mb-5">App Categories</h3>
+          <ResponsiveContainer width="100%" height={200}>
+            <PieChart>
+              <Pie
+                data={mockCategoryBreakdown}
+                cx="50%"
+                cy="50%"
+                labelLine={false}
+                label={({ name, value }) => `${name}: ${value}%`}
+                outerRadius={70}
+                fill="#8884d8"
+                dataKey="value"
+              >
+                {mockCategoryBreakdown.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={categoryColors[entry.name] || '#6B7280'} />
+                ))}
+              </Pie>
+              <Tooltip />
+            </PieChart>
+          </ResponsiveContainer>
+        </div>
       </div>
-
-      {/* Weekly Trend */}
-      <Card>
-        <CardHeader>
-          <h3 className="font-semibold text-white flex items-center gap-2">
-            <Clock className="w-4 h-4 text-blue-400" />
-            Activity Trend
-          </h3>
-        </CardHeader>
-        <CardContent>
-          <WeeklyTrendLine data={mockWeeklyData} />
-        </CardContent>
-      </Card>
 
       {/* Top Apps Table */}
-      <Card>
-        <CardHeader>
-          <h3 className="font-semibold text-white">Top Apps</h3>
-        </CardHeader>
-        <CardContent>
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="text-left text-xs text-[#64748B] border-b border-[#1E2A45]">
-                <th className="pb-3">#</th>
-                <th className="pb-3">App Name</th>
-                <th className="pb-3">Category</th>
-                <th className="pb-3">Time Spent</th>
-                <th className="pb-3">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {mockAppUsage
-                .sort((a, b) => b.durationMinutes - a.durationMinutes)
-                .map((log, i) => (
-                  <tr key={log.id} className="border-b border-[#1E2A45]/50 hover:bg-[#0F1629]/50">
-                    <td className="py-3 text-[#64748B]">{i + 1}</td>
-                    <td className="py-3 text-white font-medium">{log.appName}</td>
-                    <td className="py-3">
-                      <span className="text-xs text-[#64748B] bg-[#1E2A45] px-2 py-0.5 rounded-md">
-                        {log.category}
-                      </span>
-                    </td>
-                    <td className="py-3 text-[#94A3B8]">{formatMinutes(log.durationMinutes)}</td>
-                    <td className="py-3">
-                      {log.isBlocked ? (
-                        <span className="text-xs text-red-400 bg-red-500/10 px-2 py-0.5 rounded-full border border-red-500/20">Blocked</span>
-                      ) : (
-                        <span className="text-xs text-green-400 bg-green-500/10 px-2 py-0.5 rounded-full border border-green-500/20">Allowed</span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-            </tbody>
-          </table>
-        </CardContent>
-      </Card>
+      <div className="bg-white rounded-2xl p-6 shadow-sm">
+        <h3 className="font-semibold text-gray-900 mb-4">Top 10 Apps</h3>
+        <div className="space-y-2">
+          {topApps.map(app => (
+            <div key={app.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+              <div className="flex items-center gap-3">
+                <span className="text-sm font-semibold text-gray-400 w-6">{app.rank}</span>
+                <div className="w-8 h-8 rounded-lg bg-gray-200 flex items-center justify-center text-xs font-bold text-gray-600">
+                  {app.appName.charAt(0)}
+                </div>
+                <div>
+                  <div className="text-sm font-medium text-gray-800">{app.appName}</div>
+                  <div className="text-xs text-gray-400">{app.category}</div>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="text-sm font-semibold text-gray-700">{formatMinutes(app.durationMinutes)}</span>
+                {app.isBlocked ? (
+                  <span className="w-5 h-5 rounded-full bg-red-500 flex items-center justify-center">
+                    <span className="text-white text-xs">🔒</span>
+                  </span>
+                ) : (
+                  <span className="w-5 h-5 rounded-full bg-green-500 flex items-center justify-center">
+                    <span className="text-white text-xs">✓</span>
+                  </span>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
-  );
+  )
 }

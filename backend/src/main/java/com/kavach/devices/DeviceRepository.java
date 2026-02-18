@@ -9,4 +9,6 @@ import java.util.UUID;
 public interface DeviceRepository extends JpaRepository<Device, UUID> {
     List<Device> findByTenantId(UUID tenantId);
     Optional<Device> findByDeviceCode(String deviceCode);
+    long countByTenantId(UUID tenantId);
+    long countByTenantIdAndStatus(UUID tenantId, String status);
 }
