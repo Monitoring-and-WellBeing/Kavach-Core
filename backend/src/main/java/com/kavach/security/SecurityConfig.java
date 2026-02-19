@@ -1,7 +1,6 @@
 package com.kavach.security;
 
 import com.kavach.auth.JwtFilter;
-import com.kavach.users.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
