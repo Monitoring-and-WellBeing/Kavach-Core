@@ -1,8 +1,7 @@
 package com.kavach.dashboard;
 
-import com.kavach.activity.ActivityRepository;
 import com.kavach.alerts.AlertRepository;
-import com.kavach.devices.DeviceRepository;
+import com.kavach.devices.repository.DeviceRepository;
 import com.kavach.focus.FocusRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -16,7 +15,6 @@ import java.util.*;
 public class DashboardService {
 
     private final DeviceRepository deviceRepository;
-    private final ActivityRepository activityRepository;
     private final AlertRepository alertRepository;
     private final FocusRepository focusRepository;
 
