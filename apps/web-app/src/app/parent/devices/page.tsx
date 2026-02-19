@@ -105,17 +105,17 @@ export default function DevicesPage() {
           />
         </div>
         <div className="flex gap-2">
-          {(['ALL', DeviceStatus.ONLINE, DeviceStatus.OFFLINE, DeviceStatus.PAUSED, DeviceStatus.FOCUS_MODE] as const).map(s => (
+          {(['ALL', 'ONLINE', 'OFFLINE', 'PAUSED', 'FOCUS_MODE'] as (DeviceStatus | 'ALL')[]).map(s => (
             <button
               key={s}
-              onClick={() => setFilter(s as DeviceStatus | 'ALL')}
+              onClick={() => setFilter(s)}
               className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
                 filter === s
                   ? 'bg-blue-500 text-white'
                   : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
               }`}
-              >
-                {s === 'ALL' ? 'All' : statusLabels[s as DeviceStatus]}
+            >
+              {s === 'ALL' ? 'All' : statusLabels[s]}
             </button>
           ))}
         </div>
