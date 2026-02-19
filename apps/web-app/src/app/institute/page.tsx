@@ -31,8 +31,15 @@ export default function InstituteDashboard() {
   const criticalAlerts = mockAlerts.filter(a => a.severity === 'HIGH').slice(0, 5)
 
   // Generate device heatmap
-  const deviceGrid = Array.from({ length: 48 }, (_, i) => {
-    const statuses: DeviceStatus[] = ['ONLINE', 'ONLINE', 'ONLINE', 'FOCUS_MODE', 'OFFLINE', 'PAUSED']
+  const deviceGrid = Array.from({ length: 48 }, () => {
+    const statuses: DeviceStatus[] = [
+      DeviceStatus.ONLINE,
+      DeviceStatus.ONLINE,
+      DeviceStatus.ONLINE,
+      DeviceStatus.FOCUS_MODE,
+      DeviceStatus.OFFLINE,
+      DeviceStatus.PAUSED,
+    ]
     return statuses[Math.floor(Math.random() * statuses.length)]
   })
 

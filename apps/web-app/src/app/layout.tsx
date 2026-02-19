@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
-import './globals.css'
+import '@/styles/globals.css'
 import { AuthProvider } from '@/context/AuthContext'
 import { RouteGuard } from '@/components/auth/RouteGuard'
 import { QueryProvider } from '@/lib/query-client'

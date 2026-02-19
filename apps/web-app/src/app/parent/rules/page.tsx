@@ -11,11 +11,11 @@ export default function RulesPage() {
   const [createOpen, setCreateOpen] = useState(false)
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [step, setStep] = useState(1)
-  const [newRule, setNewRule] = useState<Partial<Rule>>({ type: 'APP_LIMIT', status: 'ACTIVE', autoBlock: true })
+  const [newRule, setNewRule] = useState<Partial<Rule>>({ type: RuleType.APP_LIMIT, status: RuleStatus.ACTIVE, autoBlock: true })
   const { toast, showToast, hideToast } = useToast()
 
   const toggleRule = (id: string) => {
-    setRules(prev => prev.map(r => r.id === id ? { ...r, status: r.status === 'ACTIVE' ? 'PAUSED' : 'ACTIVE' } as Rule : r))
+    setRules(prev => prev.map(r => r.id === id ? { ...r, status: r.status === RuleStatus.ACTIVE ? RuleStatus.PAUSED : RuleStatus.ACTIVE } as Rule : r))
     showToast('Rule updated', 'success')
   }
 
@@ -35,7 +35,7 @@ export default function RulesPage() {
     } as Rule])
     setCreateOpen(false)
     setStep(1)
-    setNewRule({ type: 'APP_LIMIT', status: 'ACTIVE', autoBlock: true })
+    setNewRule({ type: RuleType.APP_LIMIT, status: RuleStatus.ACTIVE, autoBlock: true })
     showToast('Rule created!', 'success')
   }
 
@@ -62,7 +62,7 @@ export default function RulesPage() {
                 <div className="flex items-center gap-3 mb-2">
                   <h3 className="font-semibold text-gray-900">{rule.name}</h3>
                   <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                    rule.status === 'ACTIVE' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'
+                    rule.status === RuleStatus.ACTIVE ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'
                   }`}>
                     {rule.status}
                   </span>
@@ -75,7 +75,7 @@ export default function RulesPage() {
               </div>
               <div className="flex items-center gap-3">
                 <button onClick={() => toggleRule(rule.id)} className="text-gray-400 hover:text-gray-600">
-                  {rule.status === 'ACTIVE' ? <ToggleRight size={24} className="text-green-500" /> : <ToggleLeft size={24} />}
+                  {rule.status === RuleStatus.ACTIVE ? <ToggleRight size={24} className="text-green-500" /> : <ToggleLeft size={24} />}
                 </button>
                 <button onClick={() => setDeleteId(rule.id)} className="text-red-400 hover:text-red-600">
                   <Trash2 size={18} />
@@ -91,7 +91,7 @@ export default function RulesPage() {
         {step === 1 && (
           <div className="space-y-3">
             <p className="text-gray-600 text-sm mb-4">Select rule type</p>
-            {(['APP_LIMIT', 'SCHEDULE_BLOCK', 'CATEGORY_BLOCK', 'WEBSITE_BLOCK'] as RuleType[]).map(type => (
+            {([RuleType.APP_LIMIT, RuleType.SCHEDULE_BLOCK, RuleType.CATEGORY_BLOCK, RuleType.WEBSITE_BLOCK] as RuleType[]).map(type => (
               <button
                 key={type}
                 onClick={() => { setNewRule(prev => ({ ...prev, type })); setStep(2) }}
@@ -120,11 +120,11 @@ export default function RulesPage() {
               <input
                 value={newRule.target || ''}
                 onChange={e => setNewRule(prev => ({ ...prev, target: e.target.value }))}
-                placeholder={newRule.type === 'APP_LIMIT' ? 'App name' : newRule.type === 'WEBSITE_BLOCK' ? 'Domain' : 'Category'}
+                placeholder={newRule.type === RuleType.APP_LIMIT ? 'App name' : newRule.type === RuleType.WEBSITE_BLOCK ? 'Domain' : 'Category'}
                 className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
-            {newRule.type === 'APP_LIMIT' && (
+            {newRule.type === RuleType.APP_LIMIT && (
               <div>
                 <label className="text-sm font-medium text-gray-700 mb-2 block">Time Limit (minutes)</label>
                 <input

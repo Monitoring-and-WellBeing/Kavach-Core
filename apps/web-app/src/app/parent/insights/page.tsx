@@ -57,7 +57,7 @@ export default function InsightsPage() {
         {(['All', 'HIGH', 'MODERATE', 'LOW'] as const).map(level => (
           <button
             key={level}
-            onClick={() => setFilter(level)}
+            onClick={() => setFilter(level as AlertSeverity | 'All')}
             className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${
               filter === level
                 ? 'bg-blue-500 text-white'
