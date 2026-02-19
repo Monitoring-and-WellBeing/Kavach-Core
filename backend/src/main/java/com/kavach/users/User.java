@@ -38,8 +38,17 @@ public class User implements UserDetails {
     @Column(nullable = false)
     private Role role;
 
+    @Column(name = "is_active")
+    private boolean active = true;
+
+    @Column(name = "email_verified")
+    private boolean emailVerified = false;
+
     @Column(name = "created_at")
     private Instant createdAt;
+
+    @Column(name = "updated_at")
+    private Instant updatedAt;
 
     // UserDetails implementation
     @Override
@@ -67,5 +76,5 @@ public class User implements UserDetails {
     public boolean isCredentialsNonExpired() { return true; }
 
     @Override
-    public boolean isEnabled() { return true; }
+    public boolean isEnabled() { return active; }
 }

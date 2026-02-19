@@ -28,7 +28,9 @@ if [ ! -f "$MAVEN_WRAPPER_JAR" ]; then
   fi
 fi
 
+# Use Maven Wrapper main class (avoids needing a Main-Class manifest entry)
 exec "$JAVA_HOME/bin/java" \
   $JAVA_OPTS \
-  -jar "$MAVEN_WRAPPER_JAR" \
+  -classpath "$MAVEN_WRAPPER_JAR" \
+  org.apache.maven.wrapper.MavenWrapperMain \
   "$@"
