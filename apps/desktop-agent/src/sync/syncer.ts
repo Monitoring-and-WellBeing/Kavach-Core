@@ -1,54 +1,100 @@
-import { ActiveWindowLog } from "../tracking/tracker";
-import { loadConfig } from "../auth/config";
+import { UsageSession } from '../tracking/tracker'
+import { bufferSessions, readBuffer, clearBuffer } from '../offline-buffer/buffer'
+import { loadConfig } from '../auth/config'
 
-const API_BASE = process.env.API_URL || "http://localhost:8080/api/v1";
+export interface ActivityLogPayload {
+  deviceId: string
+  logs: Array<{
+    appName: string
+    processName: string
+    windowTitle: string
+    category: string
+    durationSeconds: number
+    startedAt: string
+    endedAt: string
+    isBlocked: boolean
+  }>
+}
 
-export async function syncToServer(logs: ActiveWindowLog[]): Promise<void> {
-  if (logs.length === 0) return;
+export async function syncSessions(sessions: UsageSession[]): Promise<boolean> {
+  const config = await loadConfig()
 
-  const config = await loadConfig();
-  if (!config.deviceLinked || !config.authToken) return;
+  if (!config.deviceLinked || !config.deviceId) {
+    console.log('[syncer] Device not linked, skipping sync')
+    return false
+  }
+
+  if (sessions.length === 0) return true
+
+  const payload: ActivityLogPayload = {
+    deviceId: config.deviceId,
+    logs: sessions.map(s => ({
+      appName: s.appName,
+      processName: s.processName,
+      windowTitle: s.windowTitle || '',
+      category: s.category,
+      durationSeconds: s.durationSeconds,
+      startedAt: s.startedAt.toISOString(),
+      endedAt: s.endedAt.toISOString(),
+      isBlocked: false, // rule engine will set this in Feature 08
+    })),
+  }
 
   try {
-    await fetch(`${API_BASE}/devices/${config.deviceId}/activity`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${config.authToken}`,
-      },
-      body: JSON.stringify({ logs, deviceId: config.deviceId }),
-    });
-  } catch {
-    // Buffer offline — write to local file
-    await bufferOffline(logs);
+    const response = await fetch(
+      `${config.apiUrl}/api/v1/activity`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(10000),
+      }
+    )
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`)
+    }
+
+    // After successful sync, flush the offline buffer too
+    await flushOfflineBuffer(config.deviceId, config.apiUrl)
+
+    return true
+  } catch (err) {
+    console.error('[syncer] Sync failed, buffering:', err)
+    await bufferSessions(config.deviceId, sessions)
+    return false
   }
 }
 
-export async function bufferOffline(logs: ActiveWindowLog[]): Promise<void> {
-  const fs = await import("fs/promises");
-  const path = await import("path");
-  const bufferPath = path.join(process.env.APPDATA || ".", "kavach-buffer.json");
+async function flushOfflineBuffer(deviceId: string, apiUrl: string): Promise<void> {
+  const buffered = await readBuffer()
+  if (buffered.length === 0) return
 
-  let existing: ActiveWindowLog[] = [];
+  console.log(`[syncer] Flushing ${buffered.length} buffered logs`)
+
+  const payload: ActivityLogPayload = {
+    deviceId,
+    logs: buffered.map(b => ({
+      appName: b.session.appName,
+      processName: b.session.processName,
+      windowTitle: b.session.windowTitle || '',
+      category: b.session.category,
+      durationSeconds: b.session.durationSeconds,
+      startedAt: new Date(b.session.startedAt).toISOString(),
+      endedAt: new Date(b.session.endedAt).toISOString(),
+      isBlocked: false,
+    })),
+  }
+
   try {
-    const data = await fs.readFile(bufferPath, "utf-8");
-    existing = JSON.parse(data);
-  } catch {}
-
-  await fs.writeFile(bufferPath, JSON.stringify([...existing, ...logs]));
-}
-
-export async function flushOfflineBuffer(): Promise<void> {
-  const fs = await import("fs/promises");
-  const path = await import("path");
-  const bufferPath = path.join(process.env.APPDATA || ".", "kavach-buffer.json");
-
-  try {
-    const data = await fs.readFile(bufferPath, "utf-8");
-    const logs: ActiveWindowLog[] = JSON.parse(data);
-    if (logs.length > 0) {
-      await syncToServer(logs);
-      await fs.writeFile(bufferPath, "[]");
-    }
-  } catch {}
+    const response = await fetch(`${apiUrl}/api/v1/activity`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(15000),
+    })
+    if (response.ok) await clearBuffer()
+  } catch {
+    // Leave buffer intact — try again next cycle
+  }
 }

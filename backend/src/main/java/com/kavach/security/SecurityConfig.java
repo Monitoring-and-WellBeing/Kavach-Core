@@ -1,7 +1,6 @@
 package com.kavach.security;
 
 import com.kavach.auth.JwtFilter;
-import com.kavach.users.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -40,7 +39,14 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
                                 "/api/v1/auth/**",
+                                "/api/v1/activity",
                                 "/api/v1/subscriptions/plans",
+                                "/api/v1/devices/generate-code",
+                                "/api/v1/devices/check-linked",
+                                "/api/v1/devices/*/heartbeat",
+                                "/api/v1/blocking/rules/*/agent",
+                                "/api/v1/blocking/violations",
+                                "/api/v1/focus/agent/**",
                                 "/swagger-ui/**",
                                 "/swagger-ui.html",
                                 "/api-docs/**",

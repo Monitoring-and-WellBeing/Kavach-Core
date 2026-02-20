@@ -1,7 +1,6 @@
 package com.kavach.auth;
 
 import io.jsonwebtoken.*;
-import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -22,7 +21,7 @@ public class JwtService {
 
     public String generateAccessToken(String email, String role, String userId, String tenantId) {
         return Jwts.builder()
-                .setClaims(Map.of("role", role, "userId", userId, "tenantId", tenantId))
+                .setClaims(Map.of("role", role, "userId", userId, "tenantId", tenantId != null ? tenantId : ""))
                 .setSubject(email)
                 .setIssuedAt(new Date())
                 .setExpiration(new Date(System.currentTimeMillis() + accessTokenExpiry))
@@ -44,9 +43,8 @@ public class JwtService {
 
     public boolean isTokenValid(String token) {
         try {
-            extractAllClaims(token);
             return !isTokenExpired(token);
-        } catch (JwtException e) {
+        } catch (JwtException | IllegalArgumentException e) {
             return false;
         }
     }

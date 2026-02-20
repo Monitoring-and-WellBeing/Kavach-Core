@@ -5,8 +5,6 @@ import com.kavach.auth.entity.RefreshToken;
 import com.kavach.auth.repository.RefreshTokenRepository;
 import com.kavach.tenants.Tenant;
 import com.kavach.tenants.TenantRepository;
-import com.kavach.tenants.Tenant;
-import com.kavach.tenants.TenantRepository;
 import com.kavach.users.Role;
 import com.kavach.users.User;
 import com.kavach.users.UserRepository;
