@@ -1,295 +1,363 @@
-"use client";
+'use client'
+import { useState, useEffect, useCallback } from 'react'
+import { Target, Flame, Clock, BookOpen, Gamepad2,
+         Play, Square, ChevronRight, TrendingUp } from 'lucide-react'
+import Link from 'next/link'
+import { BarChart, Bar, XAxis, ResponsiveContainer, Cell } from 'recharts'
+import { studentDashboardApi, StudentDashboard, ActiveFocusSession } from '@/lib/studentDashboard'
+import { focusApi } from '@/lib/focus'
 
-import { useState } from "react";
-import {
-  Zap,
-  Clock,
-  CheckCircle,
-  Flame,
-  TrendingUp,
-  ArrowRight,
-} from "lucide-react";
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  ResponsiveContainer,
-  Cell,
-} from "recharts";
-import Link from "next/link";
+// ── Category colors ───────────────────────────────────────────────────────────
+const CAT_COLORS: Record<string, string> = {
+  EDUCATION:     '#3B82F6',
+  GAMING:        '#EF4444',
+  ENTERTAINMENT: '#F59E0B',
+  SOCIAL_MEDIA:  '#8B5CF6',
+  PRODUCTIVITY:  '#22C55E',
+  COMMUNICATION: '#06B6D4',
+  OTHER:         '#9CA3AF',
+}
 
-const weeklyData = [
-  { day: "Mon", hours: 3.2 },
-  { day: "Tue", hours: 4.1 },
-  { day: "Wed", hours: 2.8 },
-  { day: "Thu", hours: 4.8 },
-  { day: "Fri", hours: 4.3 },
-  { day: "Sat", hours: 6.1 },
-  { day: "Sun", hours: 5.8 },
-];
+const CAT_LABELS: Record<string, string> = {
+  EDUCATION: 'Education', GAMING: 'Gaming',
+  ENTERTAINMENT: 'Entertainment', SOCIAL_MEDIA: 'Social',
+  PRODUCTIVITY: 'Productivity', COMMUNICATION: 'Communication', OTHER: 'Other',
+}
 
-const subjects = [
-  { name: "Math", hours: 8.5, color: "#3B82F6", pct: 90 },
-  { name: "Science", hours: 6.2, color: "#22C55E", pct: 72 },
-  { name: "English", hours: 4.8, color: "#F59E0B", pct: 55 },
-  { name: "Coding", hours: 5.5, color: "#8B5CF6", pct: 65 },
-];
+// ── Focus Score ring ──────────────────────────────────────────────────────────
+function FocusScoreRing({ score }: { score: number }) {
+  const r = 42
+  const circ = 2 * Math.PI * r
+  const offset = circ - (score / 100) * circ
 
-const tasks = [
-  { id: 1, label: "Complete Math Chapter 5", time: "10:00 AM", done: true },
-  { id: 2, label: "Science Lab Report", time: "2:00 PM", done: true },
-  { id: 3, label: "English Essay Draft", time: "4:00 PM", done: false },
-  { id: 4, label: "Coding Practice — Arrays", time: "6:00 PM", done: false },
-];
-
-export default function StudentDashboard() {
-  const [taskDone, setTaskDone] = useState<Record<number, boolean>>({
-    1: true,
-    2: true,
-  });
+  const color = score >= 70 ? '#22C55E' : score >= 40 ? '#F59E0B' : '#EF4444'
+  const label = score >= 70 ? 'Great! 🎉' : score >= 40 ? 'Good 👍' : 'Keep going 💪'
 
   return (
-    <div className="p-6 space-y-6 fade-up">
-      <div className="grid grid-cols-4 gap-4">
-        <div
-          className="rounded-2xl p-5 text-white relative overflow-hidden"
-          style={{
-            background: "linear-gradient(135deg, #3B82F6, #2563EB)",
-          }}
-        >
-          <div className="flex items-start justify-between mb-3">
-            <div className="w-9 h-9 bg-white/20 rounded-xl flex items-center justify-center">
-              <Zap size={18} className="text-white" />
+    <div className="flex flex-col items-center">
+      <div className="relative w-28 h-28">
+        <svg width="112" height="112" className="-rotate-90">
+          <circle cx="56" cy="56" r={r} fill="none" stroke="#F1F5F9" strokeWidth="10" />
+          <circle cx="56" cy="56" r={r} fill="none" stroke={color} strokeWidth="10"
+            strokeLinecap="round"
+            strokeDasharray={circ}
+            strokeDashoffset={offset}
+            className="transition-all duration-1000" />
+        </svg>
+        <div className="absolute inset-0 flex flex-col items-center justify-center">
+          <span className="text-3xl font-bold text-gray-900">{score}</span>
+          <span className="text-gray-400 text-xs">/ 100</span>
+        </div>
+      </div>
+      <span className="text-sm font-medium text-gray-600 mt-2">{label}</span>
+      <span className="text-gray-400 text-xs">Focus Score</span>
+    </div>
+  )
+}
+
+// ── Active focus timer banner ─────────────────────────────────────────────────
+function ActiveFocusBanner({
+  session, onStop
+}: {
+  session: ActiveFocusSession
+  onStop: () => void
+}) {
+  const [timeLeft, setTimeLeft] = useState(session.remainingSeconds)
+
+  useEffect(() => {
+    const t = setInterval(() => setTimeLeft(s => Math.max(0, s - 1)), 1000)
+    return () => clearInterval(t)
+  }, [])
+
+  const mins = Math.floor(timeLeft / 60)
+  const secs = timeLeft % 60
+
+  return (
+    <div className="bg-gradient-to-r from-blue-600 to-violet-600 rounded-2xl p-4 text-white flex items-center gap-4">
+      <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
+        <Target size={20} className="text-white" />
+      </div>
+      <div className="flex-1">
+        <div className="font-semibold text-sm">{session.title}</div>
+        <div className="text-blue-200 text-xs">Focus mode active</div>
+      </div>
+      <div className="text-2xl font-bold tabular-nums">
+        {mins}:{secs.toString().padStart(2, '0')}
+      </div>
+      <button onClick={onStop}
+        className="p-2 bg-white/20 hover:bg-white/30 rounded-xl transition-colors">
+        <Square size={16} />
+      </button>
+    </div>
+  )
+}
+
+// ── Mini bar chart ────────────────────────────────────────────────────────────
+function WeeklyMiniChart({ data }: { data: StudentDashboard['weeklyData'] }) {
+  const max = Math.max(...data.map(d => d.screenTimeSeconds), 1)
+  const today = new Date().toISOString().slice(0, 10)
+
+  return (
+    <ResponsiveContainer width="100%" height={80}>
+      <BarChart data={data} barSize={24} margin={{ top: 5, right: 0, left: 0, bottom: 0 }}>
+        <XAxis dataKey="dayLabel" axisLine={false} tickLine={false}
+          tick={{ fill: '#9CA3AF', fontSize: 11 }} />
+        <Bar dataKey="screenTimeSeconds" radius={[4, 4, 0, 0]}>
+          {data.map((d, i) => (
+            <Cell key={i} fill={d.date === today ? '#3B82F6' : '#DBEAFE'} />
+          ))}
+        </Bar>
+      </BarChart>
+    </ResponsiveContainer>
+  )
+}
+
+// ── Main page ─────────────────────────────────────────────────────────────────
+export default function StudentDashboard() {
+  const [data, setData] = useState<StudentDashboard | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  const load = useCallback(async () => {
+    try {
+      const d = await studentDashboardApi.get()
+      setData(d)
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    load()
+    const interval = setInterval(load, 60000) // refresh every 60s
+    return () => clearInterval(interval)
+  }, [load])
+
+  const handleStopFocus = async () => {
+    if (!data?.activeFocusSession) return
+    await focusApi.stop(data.activeFocusSession.sessionId)
+    load()
+  }
+
+  const handleStartFocus = async () => {
+    if (!data?.deviceId) return
+    await focusApi.selfStart(data.deviceId, 25, 'Pomodoro')
+    load()
+  }
+
+  if (loading) {
+    return (
+      <div className="p-6 space-y-4 animate-pulse">
+        <div className="h-32 bg-white rounded-2xl shadow-sm" />
+        <div className="grid grid-cols-3 gap-4">
+          {[1,2,3].map(i => <div key={i} className="h-28 bg-white rounded-2xl shadow-sm" />)}
+        </div>
+        <div className="h-48 bg-white rounded-2xl shadow-sm" />
+      </div>
+    )
+  }
+
+  if (!data || !data.deviceLinked) {
+    return (
+      <div className="p-6 flex flex-col items-center justify-center h-64 text-center">
+        <div className="text-4xl mb-3">💻</div>
+        <h2 className="text-gray-700 font-semibold">No device linked yet</h2>
+        <p className="text-gray-400 text-sm mt-1">Ask your parent or institute to link a device to your account.</p>
+      </div>
+    )
+  }
+
+  const totalCatSecs = data.categories.reduce((s, c) => s + c.durationSeconds, 0)
+
+  return (
+    <div className="p-6 space-y-4 fade-up">
+
+      {/* ── Active focus banner (shows only when focus is active) ── */}
+      {data.activeFocusSession && (
+        <ActiveFocusBanner session={data.activeFocusSession} onStop={handleStopFocus} />
+      )}
+
+      {/* ── Top row: score + stats + streak ── */}
+      <div className="grid grid-cols-3 gap-4">
+
+        {/* Focus Score */}
+        <div className="bg-white rounded-2xl p-5 shadow-sm flex items-center justify-center">
+          <FocusScoreRing score={data.focusScore} />
+        </div>
+
+        {/* Today's stats */}
+        <div className="bg-white rounded-2xl p-5 shadow-sm">
+          <h3 className="text-gray-400 text-xs font-medium mb-3">Today</h3>
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 bg-blue-50 rounded-lg flex items-center justify-center">
+                <Clock size={13} className="text-blue-500" />
+              </div>
+              <div>
+                <div className="text-gray-800 text-sm font-bold">
+                  {data.stats.screenTimeFormatted}
+                </div>
+                <div className="text-gray-400 text-xs">Screen time</div>
+              </div>
             </div>
-            <span className="text-xs bg-white/20 rounded-full px-2 py-0.5 font-medium">
-              Today
-            </span>
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 bg-purple-50 rounded-lg flex items-center justify-center">
+                <Target size={13} className="text-purple-500" />
           </div>
-          <div className="text-4xl font-bold mb-1">78</div>
-          <div className="text-blue-100 text-sm mb-3">Focus Score</div>
-          <div className="flex items-center gap-1 text-xs text-blue-100">
-            <TrendingUp size={12} />
-            +12% from yesterday
+              <div>
+                <div className="text-gray-800 text-sm font-bold">
+                  {data.stats.focusMinutesToday}m
+          </div>
+                <div className="text-gray-400 text-xs">Focus time</div>
+        </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 bg-green-50 rounded-lg flex items-center justify-center">
+                <BookOpen size={13} className="text-green-500" />
+          </div>
+              <div>
+                <div className="text-gray-800 text-sm font-bold">
+                  {data.stats.focusSessionsToday}
+          </div>
+                <div className="text-gray-400 text-xs">Sessions done</div>
+        </div>
+            </div>
           </div>
         </div>
 
-        <div
-          className="rounded-2xl p-5 text-white relative overflow-hidden"
-          style={{
-            background: "linear-gradient(135deg, #7C3AED, #6D28D9)",
-          }}
-        >
-          <div className="flex items-start justify-between mb-3">
-            <div className="w-9 h-9 bg-white/20 rounded-xl flex items-center justify-center">
-              <Clock size={18} className="text-white" />
-            </div>
-            <span className="text-xs bg-white/20 rounded-full px-2 py-0.5 font-medium">
-              Today
-            </span>
+        {/* Streak */}
+        <div className="bg-white rounded-2xl p-5 shadow-sm flex flex-col items-center justify-center">
+          <div className="text-4xl mb-1">🔥</div>
+          <div className="text-4xl font-bold text-gray-900">{data.streak}</div>
+          <div className="text-gray-500 text-sm font-medium">Day Streak</div>
+          <div className="text-gray-400 text-xs mt-1">
+            {data.streak === 0
+              ? 'Start today!'
+              : data.streak === 1
+              ? 'Keep it up!'
+              : `${data.streak} days in a row!`}
           </div>
-          <div className="text-4xl font-bold mb-1">3h 24m</div>
-          <div className="text-purple-100 text-sm mb-3">Focused Time</div>
-          <div className="h-1.5 bg-white/20 rounded-full overflow-hidden">
-            <div
-              className="h-full bg-white/70 rounded-full"
-              style={{ width: "68%" }}
-            />
-          </div>
-        </div>
-
-        <div
-          className="rounded-2xl p-5 text-white relative overflow-hidden"
-          style={{
-            background: "linear-gradient(135deg, #16A34A, #15803D)",
-          }}
-        >
-          <div className="flex items-start justify-between mb-3">
-            <div className="w-9 h-9 bg-white/20 rounded-xl flex items-center justify-center">
-              <CheckCircle size={18} className="text-white" />
-            </div>
-            <span className="text-xs bg-white/20 rounded-full px-2 py-0.5 font-medium">
-              5/8
-            </span>
-          </div>
-          <div className="text-4xl font-bold mb-1">62.5%</div>
-          <div className="text-green-100 text-sm mb-3">Task Completion</div>
-          <div className="text-green-100 text-xs">3 tasks remaining</div>
-        </div>
-
-        <div
-          className="rounded-2xl p-5 text-white relative overflow-hidden"
-          style={{
-            background: "linear-gradient(135deg, #EA580C, #C2410C)",
-          }}
-        >
-          <div className="flex items-start justify-between mb-3">
-            <div className="w-9 h-9 bg-white/20 rounded-xl flex items-center justify-center">
-              <Flame size={18} className="text-white" />
-            </div>
-            <span className="text-xs bg-white/20 rounded-full px-2 py-0.5 font-medium">
-              Streak
-            </span>
-          </div>
-          <div className="text-4xl font-bold mb-1">12 Days</div>
-          <div className="text-orange-100 text-sm mb-3">Current Streak</div>
-          <div className="flex items-center gap-1 text-xs text-orange-100">
-            🏆 Best: 18 days
-          </div>
+          {!data.activeFocusSession && (
+            <button onClick={handleStartFocus}
+              className="mt-3 flex items-center gap-1.5 px-4 py-2 rounded-xl text-white text-xs font-medium"
+              style={{ background: 'linear-gradient(135deg, #7C3AED, #2563EB)' }}>
+              <Play size={11} fill="white" /> Start Focus
+            </button>
+          )}
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-4">
-        <div className="col-span-2 bg-white rounded-2xl p-6 shadow-sm">
-          <div className="flex items-start justify-between mb-4">
+      {/* ── Middle row: weekly chart + category breakdown ── */}
+      <div className="grid grid-cols-2 gap-4">
+
+        {/* Weekly chart */}
+        <div className="bg-white rounded-2xl p-5 shadow-sm">
+          <div className="flex items-center justify-between mb-4">
             <div>
-              <h3 className="font-semibold text-gray-900">Weekly Focus Trend</h3>
-              <p className="text-gray-400 text-sm">Last 7 days performance</p>
+              <h3 className="font-semibold text-gray-800 text-sm">This Week</h3>
+              <p className="text-gray-400 text-xs">Daily screen time</p>
             </div>
-            <div className="text-right">
-              <div className="text-2xl font-bold text-gray-900">32.1h</div>
-              <div className="text-gray-400 text-xs">Total this week</div>
-            </div>
+            <TrendingUp size={16} className="text-gray-300" />
           </div>
-          <ResponsiveContainer width="100%" height={200}>
-            <BarChart data={weeklyData} barSize={32}>
-              <XAxis
-                dataKey="day"
-                axisLine={false}
-                tickLine={false}
-                tick={{ fill: "#9CA3AF", fontSize: 12 }}
-              />
-              <YAxis
-                axisLine={false}
-                tickLine={false}
-                tick={{ fill: "#9CA3AF", fontSize: 11 }}
-              />
-              <Bar dataKey="hours" radius={[6, 6, 0, 0]}>
-                {weeklyData.map((_, i) => (
-                  <Cell key={i} fill={i === 5 ? "#7C3AED" : "#A78BFA"} />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
+          <WeeklyMiniChart data={data.weeklyData} />
         </div>
 
-        <div className="bg-white rounded-2xl p-6 shadow-sm">
-          <h3 className="font-semibold text-gray-900 mb-4">
-            Subject Time Distribution
-          </h3>
-          <div className="space-y-4">
-            {subjects.map((s) => (
-              <div key={s.name}>
-                <div className="flex items-center justify-between mb-1.5">
-                  <span className="text-gray-700 text-sm font-medium">
-                    {s.name}
-                  </span>
-                  <span className="text-gray-500 text-sm font-semibold">
-                    {s.hours}h
-                  </span>
+        {/* Category breakdown */}
+        <div className="bg-white rounded-2xl p-5 shadow-sm">
+          <h3 className="font-semibold text-gray-800 text-sm mb-4">Today's Breakdown</h3>
+          {data.categories.length === 0 ? (
+            <div className="flex items-center justify-center h-20 text-gray-300 text-sm">
+              No activity yet today
+            </div>
+          ) : (
+            <div className="space-y-2.5">
+              {data.categories.slice(0, 5).map(cat => {
+                const pct = totalCatSecs > 0
+                  ? Math.round((cat.durationSeconds / totalCatSecs) * 100) : 0
+                const mins = Math.floor(cat.durationSeconds / 60)
+                return (
+                  <div key={cat.category}>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-gray-600 text-xs">{CAT_LABELS[cat.category] || cat.category}</span>
+                      <span className="text-gray-500 text-xs">{mins}m · {pct}%</span>
                 </div>
-                <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                  <div
-                    className="h-full rounded-full transition-all duration-700"
-                    style={{
-                      width: `${s.pct}%`,
-                      background: s.color,
-                    }}
-                  />
+                    <div className="w-full bg-gray-100 rounded-full h-1.5">
+                      <div className="h-1.5 rounded-full transition-all"
+                        style={{ width: `${pct}%`, background: CAT_COLORS[cat.category] || '#9CA3AF' }} />
                 </div>
               </div>
-            ))}
+                )
+              })}
           </div>
-          <button className="w-full mt-5 py-2.5 text-sm font-medium text-gray-600 bg-gray-50 hover:bg-gray-100 rounded-xl transition-colors">
-            View Learning Hub
-          </button>
+          )}
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-4">
-        <div className="col-span-2 bg-white rounded-2xl p-6 shadow-sm">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-semibold text-gray-900">Today&apos;s Tasks</h3>
-            <Link
-              href="/student/schedule"
-              className="text-blue-500 text-sm font-medium hover:text-blue-600 flex items-center gap-1"
-            >
-              View All <ArrowRight size={14} />
-            </Link>
+      {/* ── Bottom: top apps + quick links ── */}
+      <div className="grid grid-cols-2 gap-4">
+
+        {/* Top apps */}
+        <div className="bg-white rounded-2xl shadow-sm">
+          <div className="p-4 border-b border-gray-50 flex items-center justify-between">
+            <h3 className="font-semibold text-gray-800 text-sm">Top Apps Today</h3>
           </div>
-          <div className="space-y-2">
-            {tasks.map((task) => (
-              <button
-                key={task.id}
-                onClick={() =>
-                  setTaskDone((prev) => ({
-                    ...prev,
-                    [task.id]: !prev[task.id],
-                  }))
-                }
-                className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 transition-colors text-left"
-              >
-                <div
-                  className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 transition-colors ${
-                    taskDone[task.id]
-                      ? "bg-green-500"
-                      : "border-2 border-gray-200"
-                  }`}
-                >
-                  {taskDone[task.id] && (
-                    <CheckCircle size={14} className="text-white" />
-                  )}
+          {data.topApps.length === 0 ? (
+            <div className="p-8 text-center text-gray-300 text-sm">No app data yet</div>
+          ) : (
+            <div className="divide-y divide-gray-50">
+              {data.topApps.map((app, i) => {
+                const mins = Math.floor(app.durationSeconds / 60)
+                return (
+                  <div key={app.appName} className="flex items-center gap-3 px-4 py-2.5">
+                    <span className="text-gray-300 text-xs w-4">{i + 1}</span>
+                    <div className="w-2 h-2 rounded-full flex-shrink-0"
+                      style={{ background: CAT_COLORS[app.category] || '#9CA3AF' }} />
+                    <span className="flex-1 text-gray-700 text-sm truncate">{app.appName}</span>
+                    <span className="text-gray-400 text-xs">{mins}m</span>
                 </div>
-                <span
-                  className={`flex-1 text-sm font-medium ${
-                    taskDone[task.id]
-                      ? "line-through text-gray-400"
-                      : "text-gray-700"
-                  }`}
-                >
-                  {task.label}
-                </span>
-                <span className="text-gray-400 text-xs">{task.time}</span>
-              </button>
-            ))}
+                )
+              })}
           </div>
+          )}
         </div>
 
-        <div className="bg-white rounded-2xl p-6 shadow-sm space-y-3">
-          <h3 className="font-semibold text-gray-900">Quick Actions</h3>
-          <Link
-            href="/student/focus"
-            className="block rounded-2xl p-4 text-white"
-            style={{
-              background: "linear-gradient(135deg, #3B82F6, #7C3AED)",
-            }}
-          >
-            <div className="flex items-center gap-2 mb-1">
-              <Zap size={16} />
-              <span className="font-semibold">Start Focus Mode</span>
+        {/* Quick links */}
+        <div className="space-y-3">
+          <Link href="/student/focus"
+            className="flex items-center gap-3 bg-gradient-to-r from-blue-600 to-violet-600 rounded-2xl p-4 text-white hover:opacity-95 transition-opacity">
+            <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
+              <Target size={20} />
             </div>
-            <p className="text-blue-100 text-xs">Block distractions</p>
+            <div>
+              <div className="font-semibold text-sm">Start Focus Session</div>
+              <div className="text-blue-200 text-xs">Pomodoro, study blocks & more</div>
+            </div>
+            <ChevronRight size={16} className="ml-auto opacity-70" />
           </Link>
-          <Link
-            href="/student/progress"
-            className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 hover:bg-gray-100 transition-colors"
-          >
-            <TrendingUp size={16} className="text-gray-500" />
-            <span className="text-sm font-medium text-gray-700">
-              View Progress
-            </span>
-          </Link>
-          <Link
-            href="/student/achievements"
-            className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 hover:bg-gray-100 transition-colors"
-          >
-            <span className="text-sm">🏆</span>
-            <span className="text-sm font-medium text-gray-700">
-              Achievements
-            </span>
-          </Link>
+
+          <div className="bg-white rounded-2xl p-4 shadow-sm">
+            <h3 className="text-gray-500 text-xs font-medium mb-3">Your Progress</h3>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="bg-amber-50 rounded-xl p-3 text-center">
+                <div className="text-2xl font-bold text-amber-600">{data.streak}</div>
+                <div className="text-amber-500 text-xs mt-0.5">Day Streak 🔥</div>
+              </div>
+              <div className="bg-blue-50 rounded-xl p-3 text-center">
+                <div className="text-2xl font-bold text-blue-600">{data.focusScore}</div>
+                <div className="text-blue-500 text-xs mt-0.5">Focus Score</div>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-2xl p-4 shadow-sm">
+            <h3 className="text-gray-500 text-xs font-medium mb-2">Device</h3>
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+              <span className="text-gray-700 text-sm">{data.deviceName}</span>
+            </div>
+            <p className="text-gray-400 text-xs mt-1">KAVACH agent active</p>
+          </div>
         </div>
       </div>
     </div>
-  );
+  )
 }

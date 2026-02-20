@@ -1,5 +1,6 @@
 package com.kavach.dashboard;
 
+import com.kavach.activity.entity.ActivityLog;
 import com.kavach.activity.repository.ActivityLogRepository;
 import com.kavach.alerts.repository.AlertRepository;
 import com.kavach.users.UserRepository;
@@ -16,6 +17,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 
 @RestController
@@ -143,6 +145,177 @@ public class DashboardController {
         response.put("recentAlerts", recentAlerts);
 
         return ResponseEntity.ok(response);
+    }
+
+    // GET /api/v1/dashboard/student
+    @GetMapping("/student")
+    public ResponseEntity<Map<String, Object>> getStudentDashboard(
+            @AuthenticationPrincipal String email) {
+
+        var user = userRepo.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        // For student, we need their device
+        // Students are linked to a device via the tenant + assignedTo field
+        // Find the device assigned to this student
+        List<Device> tenantDevices = deviceRepo.findByTenantIdAndActiveTrue(user.getTenantId());
+        Device studentDevice = tenantDevices.stream()
+                .filter(d -> user.getName() != null &&
+                        user.getName().equalsIgnoreCase(d.getAssignedTo()))
+                .findFirst()
+                .orElse(tenantDevices.isEmpty() ? null : tenantDevices.get(0));
+
+        LocalDateTime startOfDay = LocalDate.now().atStartOfDay();
+        LocalDateTime startOfWeek = LocalDate.now()
+                .with(java.time.DayOfWeek.MONDAY).atStartOfDay();
+
+        if (studentDevice == null) {
+            return ResponseEntity.ok(Map.of(
+                    "deviceLinked", false,
+                    "message", "No device linked to your account yet."
+            ));
+        }
+
+        UUID deviceId = studentDevice.getId();
+
+        // ── Today's stats ─────────────────────────────────────────────────────────
+        long screenSecsToday = activityRepo.totalDurationSince(deviceId, startOfDay);
+        long focusMinutesToday = focusRepo.totalFocusMinutesSince(deviceId, startOfDay);
+        long focusSessionsToday = focusRepo.countCompletedSince(deviceId, startOfDay);
+
+        // ── Focus score (0-100) ───────────────────────────────────────────────────
+        // Score formula:
+        //   Base: 50 if any screen time today
+        //   +20 if completed at least 1 focus session
+        //   +10 per additional focus session (max +20)
+        //   +10 if education > 30% of screen time
+        //   -20 if gaming > 2 hours
+        int focusScore = calculateFocusScore(deviceId, screenSecsToday, focusMinutesToday,
+                focusSessionsToday, startOfDay);
+
+        // ── Streak (consecutive days with ≥1 focus session) ──────────────────────
+        int streak = calculateStreak(deviceId);
+
+        // ── Top apps today ────────────────────────────────────────────────────────
+        var topApps = activityRepo.topAppsSince(deviceId, startOfDay)
+                .stream().limit(5)
+                .map(row -> Map.of(
+                        "appName", row[0],
+                        "category", row[1].toString(),
+                        "durationSeconds", row[2]
+                ))
+                .toList();
+
+        // ── Category breakdown today ──────────────────────────────────────────────
+        var categories = activityRepo.categoryBreakdown(deviceId, startOfDay)
+                .stream()
+                .map(row -> Map.of(
+                        "category", row[0].toString(),
+                        "durationSeconds", row[1]
+                ))
+                .toList();
+
+        // ── Weekly screen time (7 days) ───────────────────────────────────────────
+        List<Map<String, Object>> weeklyData = new ArrayList<>();
+        for (int i = 6; i >= 0; i--) {
+            LocalDate date = LocalDate.now().minusDays(i);
+            LocalDateTime dayStart = date.atStartOfDay();
+            LocalDateTime dayEnd = date.plusDays(1).atStartOfDay();
+            
+            // Get logs for this specific day
+            long daySecs = activityRepo.findByDeviceIdAndStartedAtBetweenOrderByStartedAtDesc(
+                    deviceId, dayStart, dayEnd)
+                    .stream()
+                    .mapToLong(a -> a.getDurationSeconds())
+                    .sum();
+            
+            weeklyData.add(Map.of(
+                    "date", date.toString(),
+                    "dayLabel", date.getDayOfWeek().toString().substring(0, 3),
+                    "screenTimeSeconds", daySecs
+            ));
+        }
+
+        // ── Active focus session ──────────────────────────────────────────────────
+        var activeFocus = focusRepo.findByDeviceIdAndStatus(deviceId, "ACTIVE")
+                .map(s -> Map.of(
+                        "sessionId", s.getId().toString(),
+                        "title", s.getTitle(),
+                        "remainingSeconds",
+                        (int) Math.max(ChronoUnit.SECONDS
+                                .between(LocalDateTime.now(), s.getEndsAt()), 0)
+                ))
+                .orElse(null);
+
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("deviceLinked", true);
+        response.put("deviceId", deviceId.toString());
+        response.put("deviceName", studentDevice.getName());
+        response.put("focusScore", focusScore);
+        response.put("streak", streak);
+        response.put("stats", Map.of(
+                "screenTimeSeconds",    screenSecsToday,
+                "screenTimeFormatted",  formatSeconds(screenSecsToday),
+                "focusMinutesToday",    focusMinutesToday,
+                "focusSessionsToday",   focusSessionsToday
+        ));
+        response.put("topApps", topApps);
+        response.put("categories", categories);
+        response.put("weeklyData", weeklyData);
+        response.put("activeFocusSession", activeFocus);
+
+        return ResponseEntity.ok(response);
+    }
+
+    private int calculateFocusScore(UUID deviceId, long screenSecs,
+                                    long focusMinutes, long focusSessions,
+                                    LocalDateTime startOfDay) {
+        if (screenSecs == 0) return 0;
+        int score = 50;
+
+        // Focus session bonus
+        if (focusSessions >= 1) score += 20;
+        score += Math.min((int)(focusSessions - 1) * 10, 20);
+
+        // Education ratio bonus
+        long educationSecs = activityRepo.categoryBreakdown(deviceId, startOfDay)
+                .stream()
+                .filter(row -> "EDUCATION".equals(row[0].toString()))
+                .mapToLong(row -> ((Number) row[1]).longValue())
+                .sum();
+        if (screenSecs > 0 && (educationSecs * 100 / screenSecs) >= 30) score += 10;
+
+        // Gaming penalty
+        long gamingSecs = activityRepo.categoryBreakdown(deviceId, startOfDay)
+                .stream()
+                .filter(row -> "GAMING".equals(row[0].toString()))
+                .mapToLong(row -> ((Number) row[1]).longValue())
+                .sum();
+        if (gamingSecs > 7200) score -= 20; // > 2 hours gaming
+
+        return Math.max(0, Math.min(100, score));
+    }
+
+    private int calculateStreak(UUID deviceId) {
+        int streak = 0;
+        LocalDate date = LocalDate.now();
+        while (streak < 365) {
+            LocalDateTime dayStart = date.atStartOfDay();
+            long sessions = focusRepo.countCompletedSince(deviceId, dayStart);
+            // For today, we count if there are any sessions
+            // For past days, we need to check if there were sessions on that specific day
+            // Since countCompletedSince counts from dayStart onwards, we need to subtract next day's count
+            if (!date.equals(LocalDate.now())) {
+                LocalDateTime nextDayStart = date.plusDays(1).atStartOfDay();
+                long nextDaySessions = focusRepo.countCompletedSince(deviceId, nextDayStart);
+                sessions = sessions - nextDaySessions;
+            }
+            // Check only up to end of that day
+            if (sessions == 0 && !date.equals(LocalDate.now())) break;
+            if (sessions > 0) streak++;
+            date = date.minusDays(1);
+        }
+        return streak;
     }
 
     private String formatSeconds(long seconds) {
