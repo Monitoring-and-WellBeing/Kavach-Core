@@ -326,6 +326,109 @@ public class DashboardController {
         return m > 0 ? m + "m" : "< 1m";
     }
 
+    // GET /api/v1/dashboard/institute
+    @GetMapping("/institute")
+    public ResponseEntity<Map<String, Object>> getInstituteDashboard(
+            @AuthenticationPrincipal String email) {
+
+        UUID tenantId = userRepo.findByEmail(email)
+            .map(u -> u.getTenantId())
+            .orElseThrow(() -> new RuntimeException("User not found"));
+
+        List<Device> devices = deviceRepo.findByTenantIdAndActiveTrue(tenantId);
+        LocalDateTime startOfDay = LocalDate.now().atStartOfDay();
+
+        // ── Device status counts ──────────────────────────────────────────────────
+        long onlineCount  = devices.stream().filter(d -> d.getStatus() == DeviceStatus.ONLINE).count();
+        long offlineCount = devices.stream().filter(d -> d.getStatus() == DeviceStatus.OFFLINE).count();
+        long pausedCount  = devices.stream().filter(d -> d.getStatus() == DeviceStatus.PAUSED).count();
+        long focusCount   = devices.stream()
+            .filter(d -> focusRepo.findByDeviceIdAndStatus(d.getId(), "ACTIVE").isPresent()).count();
+
+        // ── Institute-wide screen time ────────────────────────────────────────────
+        long totalScreenSecs = devices.stream()
+            .mapToLong(d -> activityRepo.totalDurationSince(d.getId(), startOfDay))
+            .sum();
+
+        // ── Blocked attempts today ────────────────────────────────────────────────
+        long blockedToday = violationRepo.countByTenantIdAndAttemptedAtAfter(tenantId, startOfDay);
+
+        // ── Compliance score ──────────────────────────────────────────────────────
+        // Formula: % of active devices that are online or in focus mode
+        // High compliance = devices are being actively used + monitored
+        int complianceScore = devices.isEmpty() ? 0 :
+            (int) ((onlineCount + focusCount) * 100 / devices.size());
+
+        // ── Top apps institute-wide ───────────────────────────────────────────────
+        Map<String, Long> appTotals = new HashMap<>();
+        Map<String, String> appCategories = new HashMap<>();
+        for (Device d : devices) {
+            activityRepo.topAppsSince(d.getId(), startOfDay).forEach(row -> {
+                String app = (String) row[0];
+                long secs = ((Number) row[2]).longValue();
+                appTotals.merge(app, secs, Long::sum);
+                appCategories.put(app, row[1].toString());
+            });
+        }
+
+        List<Map<String, Object>> topApps = appTotals.entrySet().stream()
+            .sorted(Map.Entry.<String, Long>comparingByValue().reversed())
+            .limit(8)
+            .map(e -> Map.of(
+                "appName", (Object) e.getKey(),
+                "category", appCategories.getOrDefault(e.getKey(), "OTHER"),
+                "durationSeconds", e.getValue()
+            ))
+            .toList();
+
+        // ── Per-device details ────────────────────────────────────────────────────
+        List<Map<String, Object>> deviceDetails = new ArrayList<>();
+        for (Device d : devices) {
+            long screenSecs = activityRepo.totalDurationSince(d.getId(), startOfDay);
+            long blockedCount = violationRepo.countByDeviceIdAndAttemptedAtAfter(d.getId(), startOfDay);
+            boolean inFocus = focusRepo.findByDeviceIdAndStatus(d.getId(), "ACTIVE").isPresent();
+
+            String topApp = activityRepo.topAppsSince(d.getId(), startOfDay)
+                .stream().findFirst().map(r -> (String) r[0]).orElse(null);
+
+            Map<String, Object> detail = new LinkedHashMap<>();
+            detail.put("id", d.getId());
+            detail.put("name", d.getName());
+            detail.put("assignedTo", d.getAssignedTo());
+            detail.put("status", d.getStatus().name());
+            detail.put("lastSeen", d.getLastSeen());
+            detail.put("screenTimeSeconds", screenSecs);
+            detail.put("screenTimeFormatted", formatSeconds(screenSecs));
+            detail.put("topApp", topApp);
+            detail.put("blockedAttempts", blockedCount);
+            detail.put("inFocus", inFocus);
+            detail.put("osVersion", d.getOsVersion());
+            detail.put("agentVersion", d.getAgentVersion());
+            deviceDetails.add(detail);
+        }
+
+        // ── Unread alerts ─────────────────────────────────────────────────────────
+        long unreadAlerts = alertRepo.countByTenantIdAndReadFalseAndDismissedFalse(tenantId);
+
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("stats", Map.of(
+            "totalDevices",           devices.size(),
+            "onlineDevices",          onlineCount,
+            "offlineDevices",         offlineCount,
+            "pausedDevices",          pausedCount,
+            "focusDevices",           focusCount,
+            "totalScreenTimeSeconds", totalScreenSecs,
+            "totalScreenTimeFormatted", formatSeconds(totalScreenSecs),
+            "blockedAttemptsToday",   blockedToday,
+            "complianceScore",        complianceScore,
+            "unreadAlerts",           unreadAlerts
+        ));
+        response.put("devices", deviceDetails);
+        response.put("topApps", topApps);
+
+        return ResponseEntity.ok(response);
+    }
+
     @GetMapping("/institute/{tenantId}")
     public ResponseEntity<Map<String, Object>> getInstituteDashboard(@PathVariable java.util.UUID tenantId) {
         return ResponseEntity.ok(dashboardService.getInstituteDashboard(tenantId));

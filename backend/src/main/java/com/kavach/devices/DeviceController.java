@@ -3,6 +3,8 @@ package com.kavach.devices;
 import com.kavach.devices.dto.*;
 import com.kavach.devices.service.DeviceService;
 import com.kavach.users.UserRepository;
+import com.kavach.focus.dto.StartFocusRequest;
+import com.kavach.focus.service.FocusService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -21,6 +23,7 @@ public class DeviceController {
 
     private final DeviceService deviceService;
     private final UserRepository userRepo;
+    private final FocusService focusService;
 
     // ── POST /api/v1/devices/generate-code
     // Called by desktop agent before linking — no auth required
@@ -119,6 +122,54 @@ public class DeviceController {
                     return ResponseEntity.ok(result);
                 })
                 .orElse(ResponseEntity.ok(Map.of("linked", false)));
+    }
+
+    // ── POST /api/v1/devices/bulk-action
+    @PostMapping("/bulk-action")
+    public ResponseEntity<Map<String, Object>> bulkAction(
+            @AuthenticationPrincipal String email,
+            @RequestBody Map<String, Object> body) {
+
+        UUID tenantId = getTenantId(email);
+
+        String action = (String) body.get("action"); // PAUSE | RESUME | FOCUS
+        @SuppressWarnings("unchecked")
+        List<String> deviceIds = (List<String>) body.get("deviceIds");
+        Integer focusDuration = body.containsKey("focusDuration")
+            ? (Integer) body.get("focusDuration") : 25;
+
+        if (deviceIds == null || deviceIds.isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "No device IDs provided"));
+        }
+
+        int success = 0;
+        for (String idStr : deviceIds) {
+            try {
+                UUID deviceId = UUID.fromString(idStr);
+                switch (action) {
+                    case "PAUSE"  -> deviceService.pauseDevice(deviceId, tenantId);
+                    case "RESUME" -> deviceService.resumeDevice(deviceId, tenantId);
+                    case "FOCUS"  -> {
+                        StartFocusRequest req = new StartFocusRequest();
+                        req.setDeviceId(deviceId);
+                        req.setDurationMinutes(focusDuration);
+                        req.setTitle("Institute Focus Session");
+                        focusService.startSession(tenantId,
+                            userRepo.findByEmail(email).get().getId(),
+                            "INSTITUTE_ADMIN", req);
+                    }
+                }
+                success++;
+            } catch (Exception e) {
+                // log and continue
+            }
+        }
+
+        return ResponseEntity.ok(Map.of(
+            "action", action,
+            "requested", deviceIds.size(),
+            "succeeded", success
+        ));
     }
 
     private UUID getTenantId(String email) {
