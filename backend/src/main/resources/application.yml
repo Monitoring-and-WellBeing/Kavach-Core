@@ -47,3 +47,10 @@ logging:
 anthropic:
   api:
     key: ${ANTHROPIC_API_KEY:}
+
+razorpay:
+  key:
+    id: ${RAZORPAY_KEY_ID:rzp_test_XXXXXXXXXXXXXXXX}
+    secret: ${RAZORPAY_KEY_SECRET:XXXXXXXXXXXXXXXXXXXXXXXX}
+  webhook:
+    secret: ${RAZORPAY_WEBHOOK_SECRET:YOUR_WEBHOOK_SECRET_HERE}

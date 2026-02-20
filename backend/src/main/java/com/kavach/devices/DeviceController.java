@@ -35,11 +35,20 @@ public class DeviceController {
     // ── POST /api/v1/devices/link
     // Called by web dashboard when parent enters the code
     @PostMapping("/link")
-    public ResponseEntity<DeviceDto> linkDevice(
+    public ResponseEntity<?> linkDevice(
             @AuthenticationPrincipal String email,
             @Valid @RequestBody LinkDeviceRequest req) {
         UUID tenantId = getTenantId(email);
-        return ResponseEntity.status(201).body(deviceService.linkDevice(tenantId, req));
+        try {
+            return ResponseEntity.status(201).body(deviceService.linkDevice(tenantId, req));
+        } catch (IllegalArgumentException e) {
+            if (e.getMessage().contains("Device limit reached")) {
+                return ResponseEntity.status(403).body(Map.of(
+                    "error", "Device limit reached for your plan. Please upgrade to add more devices."
+                ));
+            }
+            throw e;
+        }
     }
 
     // ── GET /api/v1/devices

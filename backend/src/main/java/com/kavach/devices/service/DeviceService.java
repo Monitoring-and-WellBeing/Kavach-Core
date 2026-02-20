@@ -3,6 +3,7 @@ package com.kavach.devices.service;
 import com.kavach.devices.dto.*;
 import com.kavach.devices.entity.*;
 import com.kavach.devices.repository.*;
+import com.kavach.subscription.service.SubscriptionService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -18,6 +19,7 @@ public class DeviceService {
 
     private final DeviceRepository deviceRepo;
     private final DeviceLinkCodeRepository codeRepo;
+    private final SubscriptionService subscriptionService;
 
     // ── Generate a new 6-char linking code (called by desktop agent) ──────────
     @Transactional
@@ -46,6 +48,11 @@ public class DeviceService {
     // ── Link device to tenant using the code ──────────────────────────────────
     @Transactional
     public DeviceDto linkDevice(UUID tenantId, LinkDeviceRequest req) {
+        // Check device limit before linking
+        if (!subscriptionService.canAddDevice(tenantId)) {
+            throw new IllegalArgumentException("Device limit reached for your plan. Please upgrade to add more devices.");
+        }
+
         DeviceLinkCode linkCode = codeRepo.findByCodeAndUsedFalse(req.getCode().toUpperCase())
                 .orElseThrow(() -> new IllegalArgumentException("Invalid or expired code: " + req.getCode()));
 
