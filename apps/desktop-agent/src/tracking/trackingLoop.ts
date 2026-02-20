@@ -4,6 +4,7 @@ import { sendHeartbeat } from '../sync/deviceRegistration'
 import { shouldBlock, refreshBlockRules } from '../blocking/blockingEngine'
 import { killProcess, showBlockNotification } from '../blocking/processKiller'
 import { reportViolation } from '../blocking/violationReporter'
+import { pollFocusStatus, isFocusBlocked, getCurrentFocusStatus } from '../focus/focusEnforcer'
 
 const POLL_INTERVAL_MS   = 5000
 const SYNC_INTERVAL_MS   = 30000
@@ -12,6 +13,7 @@ const RULES_REFRESH_MS   = 60000  // refresh block rules every 60 seconds
 let pollTimer: NodeJS.Timeout | null = null
 let syncTimer: NodeJS.Timeout | null = null
 let rulesTimer: NodeJS.Timeout | null = null
+let focusTimer: NodeJS.Timeout | null = null
 let sessionQueue: UsageSession[] = []
 let isTracking = false
 
@@ -26,6 +28,11 @@ export function startTrackingLoop(): void {
 
   // Initial rule fetch
   refreshBlockRules()
+
+  // Poll focus status every 15 seconds
+  focusTimer = setInterval(pollFocusStatus, 15000)
+  // Also poll immediately on start:
+  pollFocusStatus()
 
   // Poll active window every 5 seconds
   pollTimer = setInterval(async () => {
@@ -67,6 +74,19 @@ export function startTrackingLoop(): void {
         }
       }
       // ── END BLOCKING CHECK ──────────────────────────────────────────────────
+
+      // ── FOCUS MODE ENFORCEMENT ────────────────────────────────────────────────
+      if (window && isFocusBlocked(window.processName)) {
+        const status = getCurrentFocusStatus()
+        console.log(`[focus] Blocking non-whitelisted app during focus: ${window.processName}`)
+        await killProcess(window.processName)
+        await showBlockNotification(
+          window.appName,
+          `Focus mode is active (${Math.floor((status.remainingSeconds || 0) / 60)} min remaining). Only study apps are allowed.`
+        )
+        return // Don't record this session
+      }
+      // ── END FOCUS ENFORCEMENT ─────────────────────────────────────────────────
     }
 
     // Normal session recording (only if not blocked)
@@ -96,6 +116,7 @@ export function stopTrackingLoop(): void {
   if (pollTimer)  { clearInterval(pollTimer);  pollTimer  = null }
   if (syncTimer)  { clearInterval(syncTimer);  syncTimer  = null }
   if (rulesTimer) { clearInterval(rulesTimer); rulesTimer = null }
+  if (focusTimer) { clearInterval(focusTimer); focusTimer = null }
   isTracking = false
 
   const partial = flushCurrentSession()

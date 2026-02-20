@@ -7,6 +7,7 @@ import { Device } from '@/lib/devices'
 import { devicesApi } from '@/lib/devices'
 import { Modal } from '@/components/ui/Modal'
 import { Toast, useToast } from '@/components/ui/Toast'
+import { FocusControl } from '@/components/FocusControl'
 
 // ── Status badge ──────────────────────────────────────────────────────────────
 function StatusBadge({ status }: { status: Device['status'] }) {
@@ -90,6 +91,7 @@ function DeviceCard({
 
       {/* Actions */}
       <div className="flex items-center gap-2 pt-3 border-t border-gray-50">
+        <FocusControl deviceId={device.id} deviceName={device.name} />
         <button onClick={handlePauseResume} disabled={actionLoading || device.status === 'OFFLINE'}
           className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-medium transition-colors bg-gray-50 hover:bg-gray-100 text-gray-600 disabled:opacity-40">
           {actionLoading ? <RefreshCw size={12} className="animate-spin" /> :

@@ -46,6 +46,7 @@ public class SecurityConfig {
                                 "/api/v1/devices/*/heartbeat",
                                 "/api/v1/blocking/rules/*/agent",
                                 "/api/v1/blocking/violations",
+                                "/api/v1/focus/agent/**",
                                 "/swagger-ui/**",
                                 "/swagger-ui.html",
                                 "/api-docs/**",
