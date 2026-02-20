@@ -44,6 +44,8 @@ public class SecurityConfig {
                                 "/api/v1/devices/generate-code",
                                 "/api/v1/devices/check-linked",
                                 "/api/v1/devices/*/heartbeat",
+                                "/api/v1/blocking/rules/*/agent",
+                                "/api/v1/blocking/violations",
                                 "/swagger-ui/**",
                                 "/swagger-ui.html",
                                 "/api-docs/**",
