@@ -5,6 +5,7 @@ import com.kavach.focus.dto.*;
 import com.kavach.focus.entity.FocusSession;
 import com.kavach.focus.repository.FocusSessionRepository;
 import com.kavach.focus.repository.FocusWhitelistRepository;
+import com.kavach.gamification.service.BadgeEvaluationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -16,7 +17,9 @@ import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.NoSuchElementException;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -26,6 +29,7 @@ public class FocusService {
     private final FocusSessionRepository sessionRepo;
     private final FocusWhitelistRepository whitelistRepo;
     private final DeviceRepository deviceRepo;
+    private final BadgeEvaluationService badgeEvaluationService;
 
     // ── Start a focus session ─────────────────────────────────────────────────
     @Transactional
@@ -145,8 +149,42 @@ public class FocusService {
     @Scheduled(fixedDelay = 30000)
     @Transactional
     public void expireElapsedSessions() {
-        int expired = sessionRepo.expireElapsedSessions(LocalDateTime.now());
-        if (expired > 0) log.info("[focus] Expired {} sessions", expired);
+        LocalDateTime now = LocalDateTime.now();
+        
+        // Find sessions that should be expired
+        List<FocusSession> expiredSessions = sessionRepo.findExpiredSessions(now);
+        
+        if (expiredSessions.isEmpty()) {
+            return;
+        }
+        
+        // Mark as COMPLETED (for badge purposes) and collect device IDs
+        Set<UUID> affectedDevices = expiredSessions.stream()
+            .map(s -> {
+                s.setStatus("COMPLETED");
+                s.setEndReason("COMPLETED");
+                s.setEndedAt(now);
+                return s.getDeviceId();
+            })
+            .collect(Collectors.toSet());
+        
+        sessionRepo.saveAll(expiredSessions);
+        log.info("[focus] Completed {} sessions", expiredSessions.size());
+        
+        // Trigger badge evaluation for affected devices
+        for (UUID deviceId : affectedDevices) {
+            try {
+                FocusSession firstSession = expiredSessions.stream()
+                    .filter(s -> s.getDeviceId().equals(deviceId))
+                    .findFirst()
+                    .orElse(null);
+                if (firstSession != null) {
+                    badgeEvaluationService.evaluateAndAwardBadges(deviceId, firstSession.getTenantId());
+                }
+            } catch (Exception e) {
+                log.warn("[focus] Failed to evaluate badges for device {}: {}", deviceId, e.getMessage());
+            }
+        }
     }
 
     // ── Mapper ────────────────────────────────────────────────────────────────

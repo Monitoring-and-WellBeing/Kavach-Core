@@ -22,6 +22,10 @@ public interface FocusSessionRepository extends JpaRepository<FocusSession, UUID
     // Session history for a tenant
     List<FocusSession> findByTenantIdOrderByStartedAtDesc(UUID tenantId);
 
+    // Find active sessions that have elapsed
+    @Query("SELECT s FROM FocusSession s WHERE s.status = 'ACTIVE' AND s.endsAt < :now")
+    List<FocusSession> findExpiredSessions(@Param("now") LocalDateTime now);
+
     // Expire sessions whose ends_at has passed
     @Modifying
     @Query("UPDATE FocusSession s SET s.status = 'EXPIRED', s.endReason = 'EXPIRED', " +
