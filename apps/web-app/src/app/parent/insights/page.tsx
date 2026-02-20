@@ -1,134 +1,276 @@
 'use client'
-import { useState } from 'react'
-import { X, AlertCircle, Info, TrendingUp, Shield } from 'lucide-react'
-import { useToast, Toast } from '@/components/ui/Toast'
-import { mockInsights } from '@/mock/insights'
-import { AlertSeverity } from '@kavach/shared-types'
+import { useState, useEffect, useCallback } from 'react'
+import { Sparkles, RefreshCw, ChevronDown, AlertTriangle,
+         CheckCircle, Lightbulb, TrendingUp, Shield, Clock } from 'lucide-react'
+import { insightsApi, DeviceInsight, InsightCard, RiskLevel } from '@/lib/insights'
+import { devicesApi, Device } from '@/lib/devices'
+import { Toast, useToast } from '@/components/ui/Toast'
 
-const severityColors: Record<AlertSeverity, { border: string; bg: string; text: string }> = {
-  HIGH: { border: 'border-red-500', bg: 'bg-red-50', text: 'text-red-700' },
-  MODERATE: { border: 'border-amber-500', bg: 'bg-amber-50', text: 'text-amber-700' },
-  LOW: { border: 'border-green-500', bg: 'bg-green-50', text: 'text-green-700' },
+// ── Config maps ───────────────────────────────────────────────────────────────
+const RISK_CONFIG: Record<RiskLevel, { label: string; color: string; bg: string; border: string }> = {
+  LOW:      { label: 'Low Risk',      color: 'text-green-700',  bg: 'bg-green-50',  border: 'border-green-200' },
+  MEDIUM:   { label: 'Medium Risk',   color: 'text-amber-700',  bg: 'bg-amber-50',  border: 'border-amber-200' },
+  HIGH:     { label: 'High Risk',     color: 'text-orange-700', bg: 'bg-orange-50', border: 'border-orange-200' },
+  CRITICAL: { label: 'Critical Risk', color: 'text-red-700',    bg: 'bg-red-50',    border: 'border-red-200' },
 }
 
-const severityLabels: Record<AlertSeverity, string> = {
-  HIGH: 'Critical',
-  MODERATE: 'Attention',
-  LOW: 'Info',
+const TYPE_CONFIG: Record<string, { icon: React.ReactNode; bg: string; border: string }> = {
+  SPIKE:    { icon: <TrendingUp size={16} className="text-red-500" />,    bg: 'bg-red-50',    border: 'border-red-100' },
+  WARNING:  { icon: <AlertTriangle size={16} className="text-amber-500" />, bg: 'bg-amber-50',  border: 'border-amber-100' },
+  POSITIVE: { icon: <CheckCircle size={16} className="text-green-500" />,  bg: 'bg-green-50',  border: 'border-green-100' },
+  TIP:      { icon: <Lightbulb size={16} className="text-blue-500" />,     bg: 'bg-blue-50',   border: 'border-blue-100' },
 }
 
+const TAG_LABELS: Record<string, string> = {
+  late_night_usage:       '🌙 Late Night',
+  excessive_gaming:       '🎮 Gaming Overuse',
+  social_media_overuse:   '📱 Social Media',
+  low_productivity:       '📉 Low Productivity',
+  declining_focus:        '😴 Declining Focus',
+  screen_time_spike:      '📈 Usage Spike',
+  blocked_app_attempts:   '🚫 Block Attempts',
+  study_streak:           '📚 Study Streak',
+  focus_sessions_completed: '🎯 Focus Done',
+  education_dominant:     '🏫 Study-Focused',
+  improving_pattern:      '✨ Improving',
+  healthy_screen_time:    '✅ Healthy Usage',
+  consistent_schedule:    '🗓️ Consistent',
+  data_collected:         '📊 Monitoring Active',
+}
+
+// ── Insight card component ─────────────────────────────────────────────────────
+function InsightCardView({ card }: { card: InsightCard }) {
+  const cfg = TYPE_CONFIG[card.type] || TYPE_CONFIG.TIP
+  return (
+    <div className={`rounded-2xl p-4 border ${cfg.bg} ${cfg.border}`}>
+      <div className="flex items-start gap-3">
+        <div className="flex-shrink-0 mt-0.5">{cfg.icon}</div>
+        <div className="flex-1">
+          <div className="flex items-center gap-2">
+            <span className="text-xl">{card.icon}</span>
+            <span className="font-semibold text-gray-800 text-sm">{card.title}</span>
+          </div>
+          <p className="text-gray-600 text-sm mt-1 leading-relaxed">{card.body}</p>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Loading skeleton ───────────────────────────────────────────────────────────
+function InsightSkeleton() {
+  return (
+    <div className="space-y-4 animate-pulse">
+      <div className="bg-white rounded-2xl p-5 shadow-sm">
+        <div className="h-4 bg-gray-100 rounded w-1/3 mb-3" />
+        <div className="space-y-2">
+          <div className="h-3 bg-gray-100 rounded" />
+          <div className="h-3 bg-gray-100 rounded w-4/5" />
+          <div className="h-3 bg-gray-100 rounded w-3/5" />
+        </div>
+      </div>
+      {[1,2,3].map(i => (
+        <div key={i} className="bg-gray-50 rounded-2xl p-4 border border-gray-100">
+          <div className="h-4 bg-gray-200 rounded w-2/5 mb-2" />
+          <div className="h-3 bg-gray-100 rounded" />
+          <div className="h-3 bg-gray-100 rounded w-4/5 mt-1" />
+        </div>
+      ))}
+    </div>
+  )
+}
+
+// ── Main page ─────────────────────────────────────────────────────────────────
 export default function InsightsPage() {
-  const [insights, setInsights] = useState(mockInsights)
-  const [filter, setFilter] = useState<AlertSeverity | 'All'>('All')
-  const [dismissed, setDismissed] = useState<Set<string>>(new Set())
+  const [devices, setDevices] = useState<Device[]>([])
+  const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(null)
+  const [insight, setInsight] = useState<DeviceInsight | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [generating, setGenerating] = useState(false)
   const { toast, showToast, hideToast } = useToast()
 
-  const filtered = insights.filter(i => {
-    if (dismissed.has(i.id)) return false
-    return filter === 'All' || i.riskLevel === filter
-  })
-
-  const handleDismiss = (id: string) => {
-    setDismissed(prev => new Set(prev).add(id))
-    showToast('Insight dismissed', 'info')
-  }
-
-  const handleUndo = (id: string) => {
-    setDismissed(prev => {
-      const next = new Set(prev)
-      next.delete(id)
-      return next
+  // Load devices on mount
+  useEffect(() => {
+    devicesApi.list().then(list => {
+      setDevices(list)
+      if (list.length > 0) setSelectedDeviceId(list[0].id)
     })
-    showToast('Insight restored', 'success')
+  }, [])
+
+  // Load insights when device selected
+  const loadInsights = useCallback(async (deviceId: string) => {
+    setLoading(true)
+    setInsight(null)
+    try {
+      const data = await insightsApi.get(deviceId)
+      setInsight(data)
+    } catch {
+      showToast('Failed to load insights', 'error')
+    } finally {
+      setLoading(false)
+    }
+  }, [showToast])
+
+  useEffect(() => {
+    if (selectedDeviceId) loadInsights(selectedDeviceId)
+  }, [selectedDeviceId, loadInsights])
+
+  const handleRefresh = async () => {
+    if (!selectedDeviceId) return
+    setGenerating(true)
+    try {
+      showToast('Generating fresh AI insights... this may take 10–15 seconds', 'info')
+      const data = await insightsApi.refresh(selectedDeviceId)
+      setInsight(data)
+      showToast('AI insights updated!', 'success')
+    } catch {
+      showToast('Failed to generate insights', 'error')
+    } finally {
+      setGenerating(false)
+    }
   }
+
+  const selectedDevice = devices.find(d => d.id === selectedDeviceId)
+  const riskCfg = insight ? RISK_CONFIG[insight.riskLevel] : RISK_CONFIG.LOW
 
   return (
-    <div className="p-6 space-y-5 fade-up">
+    <div className="p-6 fade-up">
       {toast && <Toast message={toast.message} type={toast.type} onClose={hideToast} />}
 
-      {/* Header */}
-      <div>
-        <h2 className="text-gray-900 font-bold text-xl">AI Insights</h2>
-        <p className="text-gray-500 text-sm">Smart insights powered by AI</p>
-      </div>
+      {/* ── Header ── */}
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-gray-900 font-bold text-xl flex items-center gap-2">
+            <Sparkles size={20} className="text-purple-500" />
+            AI Insights
+          </h1>
+          <p className="text-gray-400 text-sm mt-0.5">
+            Powered by Claude · Analyzes last 7 days of usage
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          {/* Device selector */}
+          <div className="relative">
+            <select value={selectedDeviceId || ''}
+              onChange={e => setSelectedDeviceId(e.target.value)}
+              className="appearance-none bg-white border border-gray-200 rounded-xl px-4 py-2.5 pr-8 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-purple-500 cursor-pointer">
+              {devices.map(d => (
+                <option key={d.id} value={d.id}>{d.assignedTo || d.name}</option>
+              ))}
+            </select>
+            <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+          </div>
 
-      {/* Filters */}
-      <div className="flex gap-2">
-        {(['All', 'HIGH', 'MODERATE', 'LOW'] as const).map(level => (
-          <button
-            key={level}
-            onClick={() => setFilter(level as AlertSeverity | 'All')}
-            className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-              filter === level
-                ? 'bg-blue-500 text-white'
-                : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
-            }`}
-          >
-            {level === 'All' ? 'All' : severityLabels[level]}
+          <button onClick={handleRefresh} disabled={generating || loading}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-white text-sm font-medium disabled:opacity-60"
+            style={{ background: 'linear-gradient(135deg, #7C3AED, #2563EB)' }}>
+            <RefreshCw size={15} className={generating ? 'animate-spin' : ''} />
+            {generating ? 'Generating...' : 'Refresh AI'}
           </button>
-        ))}
+        </div>
       </div>
 
-      {/* Insights Grid */}
-      <div className="space-y-4">
-        {filtered.map(insight => {
-          const colors = severityColors[insight.riskLevel]
-          return (
-            <div key={insight.id} className={`bg-white rounded-2xl p-6 shadow-sm border-l-4 ${colors.border}`}>
-              <div className="flex items-start justify-between mb-3">
-                <div className="flex items-center gap-3">
-                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${colors.bg}`}>
-                    {insight.riskLevel === 'HIGH' ? (
-                      <AlertCircle size={20} className={colors.text} />
-                    ) : insight.riskLevel === 'MODERATE' ? (
-                      <TrendingUp size={20} className={colors.text} />
-                    ) : (
-                      <Info size={20} className={colors.text} />
-                    )}
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <h3 className="font-semibold text-gray-900">{insight.title}</h3>
-                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${colors.bg} ${colors.text}`}>
-                        {severityLabels[insight.riskLevel]}
-                      </span>
-                    </div>
-                    <p className="text-gray-500 text-xs mt-0.5">{new Date(insight.generatedAt).toLocaleDateString()}</p>
+      {!selectedDeviceId && (
+        <div className="flex flex-col items-center justify-center py-24">
+          <span className="text-5xl mb-3">🤖</span>
+          <p className="text-gray-500 font-medium">Select a device to view AI insights</p>
+        </div>
+      )}
+
+      {selectedDeviceId && loading && <InsightSkeleton />}
+
+      {selectedDeviceId && !loading && insight && (
+        <div className="grid grid-cols-3 gap-5">
+
+          {/* ── Left: summary + risk ── */}
+          <div className="col-span-1 space-y-4">
+
+            {/* Risk level card */}
+            <div className={`rounded-2xl p-5 border ${riskCfg.bg} ${riskCfg.border}`}>
+              <div className="flex items-center gap-3 mb-3">
+                {insight.riskLevel === 'LOW'
+                  ? <Shield size={20} className="text-green-600" />
+                  : <AlertTriangle size={20} className={
+                      insight.riskLevel === 'CRITICAL' ? 'text-red-600' : 'text-amber-600'
+                    } />}
+                <div>
+                  <div className={`font-bold text-sm ${riskCfg.color}`}>{riskCfg.label}</div>
+                  <div className="text-gray-500 text-xs">
+                    {selectedDevice?.assignedTo || selectedDevice?.name}
                   </div>
                 </div>
-                <button
-                  onClick={() => handleDismiss(insight.id)}
-                  className="text-gray-400 hover:text-gray-600 transition-colors"
-                >
-                  <X size={18} />
-                </button>
               </div>
-              <p className="text-gray-600 text-sm mb-3">{insight.description}</p>
-              {insight.actionSuggested && (
-                <div className="bg-blue-50 border border-blue-200 rounded-xl p-3">
-                  <p className="text-sm font-medium text-blue-900 mb-1">💡 Suggested Action</p>
-                  <p className="text-sm text-blue-700">{insight.actionSuggested}</p>
+              <p className="text-gray-700 text-sm leading-relaxed">{insight.weeklySummary}</p>
+            </div>
+
+            {/* Risk tags */}
+            {insight.riskTags.length > 0 && (
+              <div className="bg-white rounded-2xl p-4 shadow-sm">
+                <h3 className="text-gray-500 text-xs font-medium mb-2 flex items-center gap-1.5">
+                  <AlertTriangle size={12} className="text-red-400" /> Concerns
+                </h3>
+                <div className="flex flex-wrap gap-2">
+                  {insight.riskTags.map(tag => (
+                    <span key={tag}
+                      className="text-xs bg-red-50 text-red-600 border border-red-100 px-2.5 py-1 rounded-full font-medium">
+                      {TAG_LABELS[tag] || tag}
+                    </span>
+                  ))}
                 </div>
+              </div>
+            )}
+
+            {/* Positive tags */}
+            {insight.positiveTags.length > 0 && (
+              <div className="bg-white rounded-2xl p-4 shadow-sm">
+                <h3 className="text-gray-500 text-xs font-medium mb-2 flex items-center gap-1.5">
+                  <CheckCircle size={12} className="text-green-500" /> Positives
+                </h3>
+                <div className="flex flex-wrap gap-2">
+                  {insight.positiveTags.map(tag => (
+                    <span key={tag}
+                      className="text-xs bg-green-50 text-green-700 border border-green-100 px-2.5 py-1 rounded-full font-medium">
+                      {TAG_LABELS[tag] || tag}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Generated at */}
+            <div className="flex items-center gap-2 text-gray-400 text-xs px-1">
+              <Clock size={12} />
+              Last generated: {new Date(insight.generatedAt).toLocaleString('en-IN', {
+                month: 'short', day: 'numeric',
+                hour: '2-digit', minute: '2-digit'
+              })}
+              {!insight.fresh && (
+                <span className="text-amber-500 ml-1">(cached)</span>
               )}
             </div>
-          )
-        })}
-
-        {/* Dismissed insights (collapsed) */}
-        {insights.filter(i => dismissed.has(i.id)).length > 0 && (
-          <div className="pt-4 border-t border-gray-200">
-            <p className="text-xs text-gray-400 mb-2">Dismissed insights</p>
-            {insights.filter(i => dismissed.has(i.id)).map(insight => (
-              <div key={insight.id} className="flex items-center justify-between p-2 bg-gray-50 rounded-lg mb-1">
-                <span className="text-xs text-gray-500 line-through">{insight.title}</span>
-                <button onClick={() => handleUndo(insight.id)} className="text-xs text-blue-500 hover:text-blue-600">
-                  Undo
-                </button>
-              </div>
-            ))}
           </div>
-        )}
-      </div>
+
+          {/* ── Right: insight cards ── */}
+          <div className="col-span-2 space-y-3">
+            <h2 className="font-semibold text-gray-700 text-sm mb-1">
+              {insight.insights.length} AI-Generated Insights
+            </h2>
+            {insight.insights
+              .sort((a, b) => (a.priority || 99) - (b.priority || 99))
+              .map((card, i) => (
+                <InsightCardView key={i} card={card} />
+              ))}
+
+            {insight.insights.length === 0 && (
+              <div className="flex flex-col items-center justify-center py-16 text-center">
+                <span className="text-4xl mb-3">🤔</span>
+                <p className="text-gray-500 font-medium">No insights generated yet</p>
+                <p className="text-gray-400 text-sm mt-1">Click "Refresh AI" to generate insights</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
