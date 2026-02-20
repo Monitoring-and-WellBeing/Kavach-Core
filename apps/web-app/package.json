@@ -10,8 +10,8 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
-    "@kavach/shared-types": "workspace:*",
     "@kavach/shared-constants": "workspace:*",
+    "@kavach/shared-types": "workspace:*",
     "@kavach/shared-utils": "workspace:*",
     "@radix-ui/react-dialog": "^1.0.5",
     "@radix-ui/react-dropdown-menu": "^2.0.6",
@@ -20,9 +20,10 @@
     "@radix-ui/react-tabs": "^1.0.4",
     "@radix-ui/react-toast": "^1.1.5",
     "@tanstack/react-query": "^5.28.0",
-    "axios": "^1.6.8",
+    "axios": "^1.13.5",
     "clsx": "^2.1.0",
     "date-fns": "^3.6.0",
+    "js-cookie": "^3.0.5",
     "lucide-react": "^0.363.0",
     "next": "^14.1.4",
     "next-pwa": "^5.6.0",
@@ -33,6 +34,7 @@
     "zustand": "^4.5.2"
   },
   "devDependencies": {
+    "@types/js-cookie": "^3.0.6",
     "@types/node": "^20.12.3",
     "@types/react": "^18.2.74",
     "@types/react-dom": "^18.2.23",

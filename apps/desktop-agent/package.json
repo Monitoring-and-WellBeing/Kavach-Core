@@ -1,18 +1,21 @@
 {
   "name": "desktop-agent",
   "version": "0.1.0",
+  "description": "KAVACH AI Desktop Monitoring Agent",
+  "author": "KAVACH AI",
   "main": "dist/main.js",
   "scripts": {
     "dev": "ts-node src/main.ts",
-    "build": "tsc && electron-builder",
-    "pack": "electron-builder --dir"
+    "build": "tsc",
+    "pack": "electron-builder",
+    "build:full": "tsc && electron-builder"
   },
   "dependencies": {
-    "@kavach/shared-types": "workspace:*",
-    "electron": "^30.0.0"
+    "@kavach/shared-types": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^20.12.3",
+    "electron": "^30.0.0",
     "electron-builder": "^24.13.3",
     "ts-node": "^10.9.2",
     "typescript": "^5.4.3"

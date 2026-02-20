@@ -1,9 +1,17 @@
 package com.kavach.devices;
 
+import com.kavach.devices.dto.*;
+import com.kavach.devices.service.DeviceService;
+import com.kavach.users.UserRepository;
+import com.kavach.focus.dto.StartFocusRequest;
+import com.kavach.focus.service.FocusService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -14,47 +22,159 @@ import java.util.UUID;
 public class DeviceController {
 
     private final DeviceService deviceService;
+    private final UserRepository userRepo;
+    private final FocusService focusService;
 
+    // ── POST /api/v1/devices/generate-code
+    // Called by desktop agent before linking — no auth required
+    @PostMapping("/generate-code")
+    public ResponseEntity<GenerateCodeResponse> generateCode() {
+        return ResponseEntity.ok(deviceService.generateCode());
+    }
+
+    // ── POST /api/v1/devices/link
+    // Called by web dashboard when parent enters the code
     @PostMapping("/link")
-    public ResponseEntity<Device> linkDevice(@RequestBody Map<String, String> body) {
-        String code = body.get("code");
-        String agentVersion = body.getOrDefault("agentVersion", "unknown");
-        String osVersion = body.getOrDefault("osVersion", "unknown");
-        return ResponseEntity.ok(deviceService.linkDevice(code, agentVersion, osVersion));
+    public ResponseEntity<DeviceDto> linkDevice(
+            @AuthenticationPrincipal String email,
+            @Valid @RequestBody LinkDeviceRequest req) {
+        UUID tenantId = getTenantId(email);
+        return ResponseEntity.status(201).body(deviceService.linkDevice(tenantId, req));
     }
 
+    // ── GET /api/v1/devices
+    // List all devices for the authenticated user's tenant
     @GetMapping
-    public ResponseEntity<List<Device>> getDevices(@RequestParam UUID tenantId) {
-        return ResponseEntity.ok(deviceService.findByTenantId(tenantId));
+    public ResponseEntity<List<DeviceDto>> listDevices(@AuthenticationPrincipal String email) {
+        UUID tenantId = getTenantId(email);
+        return ResponseEntity.ok(deviceService.getDevicesByTenant(tenantId));
     }
 
+    // ── GET /api/v1/devices/{id}
     @GetMapping("/{id}")
-    public ResponseEntity<Device> getDevice(@PathVariable UUID id) {
-        return ResponseEntity.ok(deviceService.findById(id));
+    public ResponseEntity<DeviceDto> getDevice(
+            @AuthenticationPrincipal String email,
+            @PathVariable UUID id) {
+        UUID tenantId = getTenantId(email);
+        return ResponseEntity.ok(deviceService.getDevice(id, tenantId));
     }
 
-    @PutMapping("/{id}/pause")
-    public ResponseEntity<Device> pause(@PathVariable UUID id) {
-        return ResponseEntity.ok(deviceService.pause(id));
+    // ── PUT /api/v1/devices/{id}
+    @PutMapping("/{id}")
+    public ResponseEntity<DeviceDto> updateDevice(
+            @AuthenticationPrincipal String email,
+            @PathVariable UUID id,
+            @RequestBody UpdateDeviceRequest req) {
+        UUID tenantId = getTenantId(email);
+        return ResponseEntity.ok(deviceService.updateDevice(id, tenantId, req));
     }
 
-    @PutMapping("/{id}/resume")
-    public ResponseEntity<Device> resume(@PathVariable UUID id) {
-        return ResponseEntity.ok(deviceService.resume(id));
+    // ── POST /api/v1/devices/{id}/pause
+    @PostMapping("/{id}/pause")
+    public ResponseEntity<DeviceDto> pause(
+            @AuthenticationPrincipal String email,
+            @PathVariable UUID id) {
+        return ResponseEntity.ok(deviceService.pauseDevice(id, getTenantId(email)));
     }
 
-    @PutMapping("/{id}/focus")
-    public ResponseEntity<Device> focus(@PathVariable UUID id) {
-        return ResponseEntity.ok(deviceService.setFocusMode(id));
+    // ── POST /api/v1/devices/{id}/resume
+    @PostMapping("/{id}/resume")
+    public ResponseEntity<DeviceDto> resume(
+            @AuthenticationPrincipal String email,
+            @PathVariable UUID id) {
+        return ResponseEntity.ok(deviceService.resumeDevice(id, getTenantId(email)));
     }
 
+    // ── DELETE /api/v1/devices/{id}
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> remove(
+            @AuthenticationPrincipal String email,
+            @PathVariable UUID id) {
+        deviceService.removeDevice(id, getTenantId(email));
+        return ResponseEntity.noContent().build();
+    }
+
+    // ── POST /api/v1/devices/{id}/heartbeat
+    // Called every 30s by desktop agent to signal it's alive
     @PostMapping("/{id}/heartbeat")
-    public ResponseEntity<Device> heartbeat(@PathVariable UUID id) {
-        return ResponseEntity.ok(deviceService.heartbeat(id));
+    public ResponseEntity<Void> heartbeat(
+            @PathVariable UUID id,
+            @RequestBody(required = false) HeartbeatRequest req) {
+        deviceService.heartbeat(id,
+            req != null ? req.getAgentVersion() : null,
+            req != null ? req.getOsVersion() : null,
+            req != null ? req.getHostname() : null);
+        return ResponseEntity.ok().build();
     }
 
-    @PostMapping
-    public ResponseEntity<Device> create(@RequestBody Device device) {
-        return ResponseEntity.ok(deviceService.create(device));
+    // ── GET /api/v1/devices/check-linked?code=KV3X9A
+    // Called by desktop agent to poll if someone linked it via web
+    @GetMapping("/check-linked")
+    public ResponseEntity<Map<String, Object>> checkLinked(@RequestParam String code) {
+        return deviceService.checkLinked(code)
+                .map(c -> {
+                    Map<String, Object> result = new HashMap<>();
+                    result.put("linked", c.isUsed() && c.getDevice() != null);
+                    if (c.isUsed() && c.getDevice() != null) {
+                        result.put("deviceId", c.getDevice().getId());
+                        result.put("tenantId", c.getTenantId());
+                    }
+                    return ResponseEntity.ok(result);
+                })
+                .orElse(ResponseEntity.ok(Map.of("linked", false)));
+    }
+
+    // ── POST /api/v1/devices/bulk-action
+    @PostMapping("/bulk-action")
+    public ResponseEntity<Map<String, Object>> bulkAction(
+            @AuthenticationPrincipal String email,
+            @RequestBody Map<String, Object> body) {
+
+        UUID tenantId = getTenantId(email);
+
+        String action = (String) body.get("action"); // PAUSE | RESUME | FOCUS
+        @SuppressWarnings("unchecked")
+        List<String> deviceIds = (List<String>) body.get("deviceIds");
+        Integer focusDuration = body.containsKey("focusDuration")
+            ? (Integer) body.get("focusDuration") : 25;
+
+        if (deviceIds == null || deviceIds.isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "No device IDs provided"));
+        }
+
+        int success = 0;
+        for (String idStr : deviceIds) {
+            try {
+                UUID deviceId = UUID.fromString(idStr);
+                switch (action) {
+                    case "PAUSE"  -> deviceService.pauseDevice(deviceId, tenantId);
+                    case "RESUME" -> deviceService.resumeDevice(deviceId, tenantId);
+                    case "FOCUS"  -> {
+                        StartFocusRequest req = new StartFocusRequest();
+                        req.setDeviceId(deviceId);
+                        req.setDurationMinutes(focusDuration);
+                        req.setTitle("Institute Focus Session");
+                        focusService.startSession(tenantId,
+                            userRepo.findByEmail(email).get().getId(),
+                            "INSTITUTE_ADMIN", req);
+                    }
+                }
+                success++;
+            } catch (Exception e) {
+                // log and continue
+            }
+        }
+
+        return ResponseEntity.ok(Map.of(
+            "action", action,
+            "requested", deviceIds.size(),
+            "succeeded", success
+        ));
+    }
+
+    private UUID getTenantId(String email) {
+        return userRepo.findByEmail(email)
+                .map(u -> u.getTenantId())
+                .orElseThrow(() -> new RuntimeException("User not found"));
     }
 }

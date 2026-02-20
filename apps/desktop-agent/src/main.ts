@@ -1,12 +1,24 @@
 import { app, BrowserWindow, ipcMain, Tray, Menu } from "electron";
 import path from "path";
-import { startTracking, stopTracking } from "./tracking/tracker";
-import { syncToServer } from "./sync/syncer";
+import { startTrackingLoop, stopTrackingLoop, isTrackingActive } from "./tracking/trackingLoop";
 import { loadConfig, saveConfig } from "./auth/config";
 
 let mainWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
-let trackingInterval: NodeJS.Timeout | null = null;
+
+// After device is confirmed linked, start tracking:
+async function initializeAgent() {
+  const config = await loadConfig();
+
+  if (config.deviceLinked && config.deviceId) {
+    console.log('[main] Device already linked, starting tracking');
+    startTrackingLoop();
+    mainWindow?.hide(); // hide window — runs in tray
+  } else {
+    console.log('[main] Device not linked, showing link screen');
+    mainWindow?.show();
+  }
+}
 
 app.whenReady().then(async () => {
   const config = await loadConfig();
@@ -42,10 +54,8 @@ app.whenReady().then(async () => {
   tray.setContextMenu(contextMenu);
   tray.setToolTip("KAVACH AI — Monitoring Active");
 
-  // Start tracking if device is linked
-  if (config.deviceLinked) {
-    startTrackingLoop();
-  }
+  // Initialize agent
+  await initializeAgent();
 
   // IPC handlers
   ipcMain.handle("link-device", async (_, code: string) => {
@@ -56,25 +66,33 @@ app.whenReady().then(async () => {
     return { success: true };
   });
 
+  // IPC: called after successful linking from renderer
+  ipcMain.handle("device-linked", async () => {
+    startTrackingLoop();
+    mainWindow?.hide();
+    return { success: true };
+  });
+
+  // IPC: status check
   ipcMain.handle("get-status", () => ({
     linked: config.deviceLinked,
-    tracking: !!trackingInterval,
+    tracking: isTrackingActive(),
+    version: "1.2.4",
+  }));
+
+  // Legacy handler for backward compatibility
+  ipcMain.handle("get-tracking-status", () => ({
+    linked: config.deviceLinked,
+    tracking: isTrackingActive(),
     version: "1.2.4",
   }));
 });
 
-function startTrackingLoop() {
-  if (trackingInterval) return;
-
-  trackingInterval = setInterval(async () => {
-    const logs = await startTracking();
-    await syncToServer(logs);
-  }, 30000); // every 30 seconds
-}
+// Graceful shutdown
+app.on("before-quit", () => {
+  stopTrackingLoop();
+});
 
 app.on("window-all-closed", (e: Event) => {
   e.preventDefault(); // Keep running in tray
 });
-
-// Suppress unused warning
-void stopTracking;

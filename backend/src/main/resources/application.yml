@@ -22,8 +22,14 @@ server:
 
 kavach:
   jwt:
-    secret: ${JWT_SECRET:kavach-super-secret-key-change-in-production-2024-must-be-at-least-256-bits}
-    expiration: ${JWT_EXPIRATION:86400000}
+    secret: ${JWT_SECRET:kavach-jwt-secret-key-minimum-256-bits-long-change-in-production-2024}
+    access-token-expiry: ${JWT_ACCESS_EXPIRY:900000}        # 15 minutes in ms
+    refresh-token-expiry: ${JWT_REFRESH_EXPIRY:604800000}    # 7 days in ms
+
+spring:
+  security:
+    cors:
+      allowed-origins: ${CORS_ORIGINS:http://localhost:3000,http://localhost:3001}
 
 springdoc:
   api-docs:
@@ -37,3 +43,7 @@ logging:
   level:
     com.kavach: DEBUG
     org.springframework.security: INFO
+
+anthropic:
+  api:
+    key: ${ANTHROPIC_API_KEY:}

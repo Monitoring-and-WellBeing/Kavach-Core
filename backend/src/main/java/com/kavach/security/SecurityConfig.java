@@ -1,7 +1,6 @@
 package com.kavach.security;
 
 import com.kavach.auth.JwtFilter;
-import com.kavach.users.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -31,7 +30,6 @@ import java.util.List;
 public class SecurityConfig {
 
     private final JwtFilter jwtFilter;
-    private final UserService userService;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -41,18 +39,25 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
                                 "/api/v1/auth/**",
+                                "/api/v1/activity",
                                 "/api/v1/subscriptions/plans",
+                                "/api/v1/devices/generate-code",
+                                "/api/v1/devices/check-linked",
+                                "/api/v1/devices/*/heartbeat",
+                                "/api/v1/blocking/rules/*/agent",
+                                "/api/v1/blocking/violations",
+                                "/api/v1/focus/agent/**",
                                 "/swagger-ui/**",
                                 "/swagger-ui.html",
                                 "/api-docs/**",
-                                "/v3/api-docs/**"
+                                "/v3/api-docs/**",
+                                "/actuator/health"
                         ).permitAll()
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
-                .authenticationProvider(authenticationProvider())
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
                 .build();
     }
@@ -60,27 +65,19 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOriginPatterns(List.of("*"));
-        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        config.setAllowedOrigins(List.of(
+            "http://localhost:3000",
+            "http://localhost:3001",
+            "capacitor://localhost",
+            "ionic://localhost"
+        ));
+        config.setAllowedMethods(List.of("GET","POST","PUT","DELETE","PATCH","OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
         config.setAllowCredentials(true);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);
         return source;
-    }
-
-    @Bean
-    public AuthenticationProvider authenticationProvider() {
-        DaoAuthenticationProvider provider = new DaoAuthenticationProvider();
-        provider.setUserDetailsService(userService);
-        provider.setPasswordEncoder(passwordEncoder());
-        return provider;
-    }
-
-    @Bean
-    public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
-        return config.getAuthenticationManager();
     }
 
     @Bean

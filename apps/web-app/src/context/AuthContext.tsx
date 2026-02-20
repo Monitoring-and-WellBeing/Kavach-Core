@@ -1,86 +1,95 @@
-"use client";
+'use client'
+import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react'
+import { api } from '@/lib/axios'
+import { useRouter } from 'next/navigation'
 
-import {
-  createContext,
-  useContext,
-  useState,
-  type ReactNode,
-} from "react";
-
-type Role = "student" | "parent" | "institute";
-
-interface User {
-  id: string;
-  name: string;
-  email: string;
-  role: Role;
-  avatar: string;
-  subtitle: string;
-  tenantId: string;
+interface AuthUser {
+  id: string
+  name: string
+  email: string
+  role: 'INSTITUTE_ADMIN' | 'IT_HEAD' | 'PRINCIPAL' | 'PARENT' | 'STUDENT' | 'SUPER_ADMIN'
+  tenantId: string
+  phone: string
 }
 
 interface AuthContextType {
-  user: User | null;
-  role: Role;
-  setRole: (r: Role) => void;
-  login: (email: string, password: string) => boolean;
-  logout: () => void;
+  user: AuthUser | null
+  loading: boolean
+  login: (email: string, password: string) => Promise<void>
+  signup: (data: SignupData) => Promise<void>
+  logout: () => Promise<void>
+  isAuthenticated: boolean
 }
 
-const mockUsers: Record<string, User> = {
-  "student@demo.com": {
-    id: "u-001",
-    name: "Rahul Sharma",
-    email: "student@demo.com",
-    role: "student",
-    avatar: "RS",
-    subtitle: "Student Portal",
-    tenantId: "t-001",
-  },
-  "parent@demo.com": {
-    id: "u-002",
-    name: "Meena Singh",
-    email: "parent@demo.com",
-    role: "parent",
-    avatar: "MS",
-    subtitle: "Parent Dashboard",
-    tenantId: "t-001",
-  },
-  "admin@demo.com": {
-    id: "u-003",
-    name: "Aarav Singh",
-    email: "admin@demo.com",
-    role: "institute",
-    avatar: "AS",
-    subtitle: "Institute Admin",
-    tenantId: "t-001",
-  },
-};
+interface SignupData {
+  name: string
+  email: string
+  password: string
+  phone?: string
+  instituteName: string
+  instituteType: string
+  city?: string
+  state?: string
+}
 
-const AuthContext = createContext<AuthContextType>({} as AuthContextType);
+const AuthContext = createContext<AuthContextType>({} as AuthContextType)
+
+const ROLE_ROUTES: Record<string, string> = {
+  INSTITUTE_ADMIN: '/institute',
+  IT_HEAD: '/institute',
+  PRINCIPAL: '/institute',
+  PARENT: '/parent',
+  STUDENT: '/student',
+  SUPER_ADMIN: '/institute',
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [role, setRole] = useState<Role>("student");
+  const [user, setUser] = useState<AuthUser | null>(null)
+  const [loading, setLoading] = useState(true)
+  const router = useRouter()
 
-  const login = (email: string, password: string): boolean => {
-    const found = mockUsers[email];
-    if (found && password === "demo123") {
-      setUser(found);
-      setRole(found.role);
-      return true;
+  // Restore session on mount
+  useEffect(() => {
+    const token = localStorage.getItem('kavach_access_token')
+    if (token) {
+      api.get('/auth/me')
+        .then(res => setUser(res.data))
+        .catch(() => localStorage.clear())
+        .finally(() => setLoading(false))
+    } else {
+      setLoading(false)
     }
-    return false;
-  };
+  }, [])
 
-  const logout = () => setUser(null);
+  const login = useCallback(async (email: string, password: string) => {
+    const { data } = await api.post('/auth/login', { email, password })
+    localStorage.setItem('kavach_access_token', data.accessToken)
+    localStorage.setItem('kavach_refresh_token', data.refreshToken)
+    setUser(data.user)
+    router.push(ROLE_ROUTES[data.user.role] || '/')
+  }, [router])
+
+  const signup = useCallback(async (signupData: SignupData) => {
+    const { data } = await api.post('/auth/signup', signupData)
+    localStorage.setItem('kavach_access_token', data.accessToken)
+    localStorage.setItem('kavach_refresh_token', data.refreshToken)
+    setUser(data.user)
+    router.push('/institute')
+  }, [router])
+
+  const logout = useCallback(async () => {
+    try { await api.post('/auth/logout') } catch {}
+    localStorage.removeItem('kavach_access_token')
+    localStorage.removeItem('kavach_refresh_token')
+    setUser(null)
+    router.push('/')
+  }, [router])
 
   return (
-    <AuthContext.Provider value={{ user, role, setRole, login, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, signup, logout, isAuthenticated: !!user }}>
       {children}
     </AuthContext.Provider>
-  );
+  )
 }
 
-export const useAuth = () => useContext(AuthContext);
-
+export const useAuth = () => useContext(AuthContext)

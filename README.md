@@ -34,3 +34,8 @@ pnpm dev:backend  # API at localhost:8080
 - Enterprise: Custom
 
 Built for Indian schools and coaching institutes 🇮🇳
+
+
+
+The web app will use apps/web-app/.env.local. The backend uses application.yml defaults, which are fine for local development.
+You’re set. The web app will connect to http://localhost:8080 when you run pnpm dev in apps/web-app.
