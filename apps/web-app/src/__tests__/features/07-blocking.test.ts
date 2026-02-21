@@ -22,9 +22,16 @@ describe('Feature 06 — App & Website Blocking', () => {
         })
       )
       const rule = await blockingApi.createRule({
-        type: 'CATEGORY',
+        name: 'Block Gaming',
+        ruleType: 'CATEGORY',
         target: 'GAMING',
+        appliesTo: 'SPECIFIC_DEVICE',
         deviceId: 'device-001',
+        scheduleEnabled: false,
+        scheduleDays: '',
+        showMessage: true,
+        blockMessage: 'This app is blocked',
+        active: true,
       })
       expect(rule.active).toBe(true)
       expect(captured.target).toBe('GAMING')
@@ -44,13 +51,13 @@ describe('Feature 06 — App & Website Blocking', () => {
 
     it('toggleRule() updates active status', async () => {
       server.use(
-        rest.put(`${BASE}/blocking/rules/:id`, async (req, res, ctx) => {
-          const body = await req.json() as any
-          return res(ctx.json({ id: 'block-001', active: body.active }))
+        rest.patch(`${BASE}/blocking/rules/:id/toggle`, (req, res, ctx) => {
+          return res(ctx.json({ id: 'block-001', active: false }))
         })
       )
-      const result = await blockingApi.updateRule('block-001', { active: false })
-      expect(result.active).toBe(false)
+      const result = await blockingApi.toggleRule('block-001')
+      expect(result).toBeDefined()
+      expect(result.id).toBe('block-001')
     })
   })
 })

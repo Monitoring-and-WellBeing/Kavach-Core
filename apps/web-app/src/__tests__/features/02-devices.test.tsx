@@ -56,6 +56,7 @@ describe('Feature 02/03 — Devices & Activity Tracking', () => {
       )
       await devicesApi.link({ deviceCode: 'ABC123', deviceName: 'Test Device' })
       expect(capturedBody.deviceCode).toBe('ABC123')
+      expect(capturedBody.deviceName).toBe('Test Device')
     })
 
     it('handles network error gracefully', async () => {

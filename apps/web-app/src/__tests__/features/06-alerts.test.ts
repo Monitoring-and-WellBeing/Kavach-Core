@@ -31,10 +31,16 @@ describe('Feature 05 — Alerts & Rules', () => {
       )
       const newRule = {
         name: 'Gaming Alert',
-        type: 'APP_USAGE',
-        threshold: 60,
-        severity: 'HIGH',
+        ruleType: 'APP_USAGE',
+        config: { threshold: 60 },
+        appliesTo: 'SPECIFIC_DEVICE',
         deviceId: 'device-001',
+        severity: 'HIGH',
+        active: true,
+        notifyPush: true,
+        notifyEmail: false,
+        notifySms: false,
+        cooldownMinutes: 30,
       }
       const result = await alertsApi.createRule(newRule)
       expect(result.name).toBe('Gaming Alert')
@@ -53,9 +59,15 @@ describe('Feature 05 — Alerts & Rules', () => {
       expect(deletedId).toBe('rule-001')
     })
 
-    it('updateRule() sends PUT request', async () => {
-      const updated = await alertsApi.updateRule('rule-001', { active: false })
+    it('toggleRule() toggles rule active status', async () => {
+      server.use(
+        rest.patch(`${BASE}/alerts/rules/:id/toggle`, (req, res, ctx) => {
+          return res(ctx.json({ id: 'rule-001', active: false }))
+        })
+      )
+      const updated = await alertsApi.toggleRule('rule-001')
       expect(updated).toBeDefined()
+      expect(updated.id).toBe('rule-001')
     })
   })
 })

@@ -23,19 +23,25 @@ export const reportsHandlers = [
   }),
 
   rest.get(`${BASE}/reports/device/:id/apps`, (req, res, ctx) => {
-    return res(ctx.json([
-      { app: 'Chrome', minutes: 120, percent: 40 },
-      { app: 'YouTube', minutes: 60, percent: 20 },
-      { app: 'VS Code', minutes: 90, percent: 30 },
-    ]))
+    return res(ctx.json({
+      apps: [
+        { rank: 1, appName: 'Chrome', category: 'BROWSER', durationSeconds: 7200, durationFormatted: '2h', percentOfTotal: 40, blocked: false },
+        { rank: 2, appName: 'YouTube', category: 'ENTERTAINMENT', durationSeconds: 3600, durationFormatted: '1h', percentOfTotal: 20, blocked: false },
+        { rank: 3, appName: 'VS Code', category: 'PRODUCTIVITY', durationSeconds: 5400, durationFormatted: '1.5h', percentOfTotal: 30, blocked: false },
+      ],
+      totalSeconds: 16200,
+    }))
   }),
 
   rest.get(`${BASE}/reports/device/:id/categories`, (req, res, ctx) => {
-    return res(ctx.json([
-      { category: 'EDUCATION', minutes: 90, percent: 30 },
-      { category: 'ENTERTAINMENT', minutes: 120, percent: 40 },
-      { category: 'PRODUCTIVITY', minutes: 60, percent: 20 },
-    ]))
+    return res(ctx.json({
+      categories: [
+        { category: 'EDUCATION', durationSeconds: 5400, durationFormatted: '1.5h', percentage: 30, color: '#3B82F6' },
+        { category: 'ENTERTAINMENT', durationSeconds: 7200, durationFormatted: '2h', percentage: 40, color: '#EF4444' },
+        { category: 'PRODUCTIVITY', durationSeconds: 3600, durationFormatted: '1h', percentage: 20, color: '#10B981' },
+      ],
+      totalSeconds: 16200,
+    }))
   }),
 
   rest.get(`${BASE}/reports/device/:id/heatmap`, (req, res, ctx) => {

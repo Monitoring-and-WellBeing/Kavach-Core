@@ -9,7 +9,7 @@ export const badgeHandlers = [
       totalXp: 150,
       badgesEarned: 1,
       badgesTotal: 20,
-      level: 'Explorer',
+      level: 1,
       levelProgress: 45,
       badges: mockBadges,
       recentlyEarned: mockBadges,

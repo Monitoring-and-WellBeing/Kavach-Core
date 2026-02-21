@@ -30,10 +30,11 @@ describe('Feature 13 — Goals System', () => {
         })
       )
       const goal = await goalsApi.create({
-        type: 'SCREEN_TIME_LIMIT',
-        title: 'Reduce screen time',
-        targetValue: 120,
         deviceId: 'device-001',
+        title: 'Reduce screen time',
+        goalType: 'SCREEN_TIME_LIMIT',
+        period: 'DAILY',
+        targetValue: 120,
       })
       expect(goal.progressPercent).toBe(0)
       expect(captured.targetValue).toBe(120)
@@ -51,15 +52,9 @@ describe('Feature 13 — Goals System', () => {
       expect(deletedId).toBe('goal-001')
     })
 
-    it('update() changes goal properties', async () => {
-      server.use(
-        rest.put(`${BASE}/goals/:id`, async (req, res, ctx) => {
-          const body = await req.json() as any
-          return res(ctx.json({ id: 'goal-001', ...body }))
-        })
-      )
-      const updated = await goalsApi.update('goal-001', { active: false })
-      expect(updated.active).toBe(false)
+    it('getForDevice() returns goals for a specific device', async () => {
+      const goals = await goalsApi.getForDevice('device-001')
+      expect(Array.isArray(goals)).toBe(true)
     })
   })
 })

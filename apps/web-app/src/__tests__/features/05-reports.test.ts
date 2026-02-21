@@ -21,19 +21,19 @@ describe('Feature 07 — Reports & Analytics', () => {
       })
     })
 
-    it('getApps() returns app usage with percent', async () => {
-      const apps = await reportsApi.getApps('device-001')
-      expect(apps.length).toBeGreaterThan(0)
-      expect(apps[0]).toHaveProperty('app')
-      expect(apps[0]).toHaveProperty('minutes')
-      expect(apps[0]).toHaveProperty('percent')
+    it('getTopApps() returns app usage with percent', async () => {
+      const data = await reportsApi.getTopApps('device-001')
+      expect(data.apps.length).toBeGreaterThan(0)
+      expect(data.apps[0]).toHaveProperty('appName')
+      expect(data.apps[0]).toHaveProperty('durationSeconds')
+      expect(data.apps[0]).toHaveProperty('percentOfTotal')
     })
 
     it('getCategories() returns category breakdown', async () => {
-      const cats = await reportsApi.getCategories('device-001')
-      expect(cats.length).toBeGreaterThan(0)
-      expect(cats[0]).toHaveProperty('category')
-      expect(cats[0]).toHaveProperty('percent')
+      const data = await reportsApi.getCategories('device-001')
+      expect(data.categories.length).toBeGreaterThan(0)
+      expect(data.categories[0]).toHaveProperty('category')
+      expect(data.categories[0]).toHaveProperty('percentage')
     })
 
     it('handles device with no activity (empty response)', async () => {
