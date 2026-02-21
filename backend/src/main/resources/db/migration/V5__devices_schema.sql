@@ -42,31 +42,31 @@ CREATE INDEX idx_link_code_used     ON device_link_codes(used, expires_at);
 INSERT INTO devices (id, tenant_id, name, type, status, os_version, agent_version, hostname, assigned_to, last_seen)
 VALUES
   ('d1111111-1111-1111-1111-111111111111',
-   '11111111-1111-1111-1111-111111111111',
+   'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
    'Lab PC — Row A1', 'DESKTOP', 'ONLINE',
    'Windows 11 Pro', '1.2.4', 'SUNRISE-PC-01', 'Rahul Sharma',
    NOW()),
 
   ('d2222222-2222-2222-2222-222222222222',
-   '11111111-1111-1111-1111-111111111111',
+   'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
    'Lab PC — Row A2', 'DESKTOP', 'FOCUS_MODE',
    'Windows 10 Pro', '1.2.4', 'SUNRISE-PC-02', 'Priya Verma',
    NOW()),
 
   ('d3333333-3333-3333-3333-333333333333',
-   '11111111-1111-1111-1111-111111111111',
+   'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
    'Lab PC — Row B1', 'LAPTOP', 'OFFLINE',
    'Windows 11 Home', '1.2.3', 'SUNRISE-LAP-01', 'Arjun Singh',
    NOW() - INTERVAL '1 hour'),
 
   ('d4444444-4444-4444-4444-444444444444',
-   '11111111-1111-1111-1111-111111111111',
+   'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
    'Lab PC — Row B2', 'DESKTOP', 'PAUSED',
    'Windows 11 Pro', '1.2.4', 'SUNRISE-PC-04', 'Sneha Patel',
    NOW() - INTERVAL '30 minutes'),
 
   ('d5555555-5555-5555-5555-555555555555',
-   '11111111-1111-1111-1111-111111111111',
+   'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
    'Home Laptop — Rohan', 'LAPTOP', 'ONLINE',
    'Windows 11 Home', '1.2.4', 'ROHAN-HOME-LAP', 'Rohan Gupta',
    NOW());

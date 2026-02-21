@@ -4,7 +4,7 @@ import { Monitor, Wifi, WifiOff, Target, Shield, Bell,
          RefreshCw, ChevronDown, CheckSquare, Square,
          Pause, Play, TrendingUp, AlertTriangle } from 'lucide-react'
 import Link from 'next/link'
-import { instituteDashboardApi, InstituteDashboard, InstituteDevice } from '@/lib/instituteDashboard'
+import { instituteDashboardApi, type InstituteDashboard, type InstituteDevice } from '@/lib/instituteDashboard'
 import { Toast, useToast } from '@/components/ui/Toast'
 
 // ── Category colors ────────────────────────────────────────────────────────────
@@ -162,7 +162,7 @@ export default function InstituteDashboard() {
     if (selected.size === 0) return
     setBulkLoading(true)
     try {
-      const result = await instituteDashboardApi.bulkAction(action, [...selected])
+      const result = await instituteDashboardApi.bulkAction(action, Array.from(selected))
       showToast(`${action}: ${result.succeeded}/${result.requested} devices updated`)
       setSelected(new Set())
       load()

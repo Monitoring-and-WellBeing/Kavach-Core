@@ -2,6 +2,9 @@
 -- KAVACH AI — V7 Migration: Alerts System Schema
 -- ═══════════════════════════════════════════════════════════════
 
+-- Drop old alerts table from V1 so this migration can rebuild it with new schema
+DROP TABLE IF EXISTS alerts CASCADE;
+
 -- ─── ALERT RULES ─────────────────────────────────────────────────────────────
 CREATE TABLE alert_rules (
     id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -58,40 +61,40 @@ CREATE TABLE alerts (
 );
 
 -- ─── INDEXES ─────────────────────────────────────────────────────────────────
-CREATE INDEX idx_rules_tenant      ON alert_rules(tenant_id);
-CREATE INDEX idx_rules_active       ON alert_rules(is_active, tenant_id);
-CREATE INDEX idx_alerts_tenant      ON alerts(tenant_id);
-CREATE INDEX idx_alerts_read        ON alerts(tenant_id, is_read, triggered_at DESC);
-CREATE INDEX idx_alerts_device      ON alerts(device_id, triggered_at DESC);
-CREATE INDEX idx_alerts_triggered  ON alerts(triggered_at DESC);
+CREATE INDEX idx_alert_rules_tenant  ON alert_rules(tenant_id);
+CREATE INDEX idx_alert_rules_active  ON alert_rules(is_active, tenant_id);
+CREATE INDEX idx_alerts_tenant       ON alerts(tenant_id);
+CREATE INDEX idx_alerts_is_read      ON alerts(tenant_id, is_read, triggered_at DESC);
+CREATE INDEX idx_alerts_device_time  ON alerts(device_id, triggered_at DESC);
+CREATE INDEX idx_alerts_triggered    ON alerts(triggered_at DESC);
 
 -- ─── SEED DEMO RULES ─────────────────────────────────────────────────────────
 -- Using actual tenant and user IDs from seed data
 INSERT INTO alert_rules (tenant_id, created_by, name, rule_type, config, severity, notify_push, cooldown_minutes)
 VALUES
   ('a1b2c3d4-e5f6-7890-abcd-ef1234567890',
-   'c1d2e3f4-a5b6-7890-cdef-123456789012',
+   'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
    'Gaming > 1 hour/day',
    'CATEGORY_USAGE_EXCEEDED',
    '{"category":"GAMING","thresholdMinutes":60}',
    'HIGH', TRUE, 120),
 
   ('a1b2c3d4-e5f6-7890-abcd-ef1234567890',
-   'c1d2e3f4-a5b6-7890-cdef-123456789012',
+   'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
    'Total screen time > 4 hours',
    'SCREEN_TIME_EXCEEDED',
    '{"totalMinutes":240}',
    'MEDIUM', TRUE, 180),
 
   ('a1b2c3d4-e5f6-7890-abcd-ef1234567890',
-   'c1d2e3f4-a5b6-7890-cdef-123456789012',
+   'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
    'Late night usage after 10 PM',
    'LATE_NIGHT_USAGE',
    '{"startHour":22,"endHour":6}',
    'HIGH', TRUE, 60),
 
   ('a1b2c3d4-e5f6-7890-abcd-ef1234567890',
-   'c1d2e3f4-a5b6-7890-cdef-123456789012',
+   'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
    'YouTube > 45 minutes/day',
    'APP_USAGE_EXCEEDED',
    '{"appName":"YouTube","thresholdMinutes":45}',
@@ -101,7 +104,7 @@ VALUES
 INSERT INTO alerts (tenant_id, device_id, rule_type, severity, title, message, metadata, is_read, triggered_at)
 VALUES
   ('a1b2c3d4-e5f6-7890-abcd-ef1234567890',
-   'dev00001-0000-0000-0000-000000000001',
+   'd1111111-1111-1111-1111-111111111111',
    'CATEGORY_USAGE_EXCEEDED', 'HIGH',
    'Gaming limit exceeded on Lab PC - Row A1',
    'Rahul Sharma has used gaming apps for 72 minutes today, exceeding the 60 minute limit.',
@@ -110,7 +113,7 @@ VALUES
    NOW() - INTERVAL '2 hours'),
 
   ('a1b2c3d4-e5f6-7890-abcd-ef1234567890',
-   'dev00002-0000-0000-0000-000000000002',
+   'd2222222-2222-2222-2222-222222222222',
    'LATE_NIGHT_USAGE', 'HIGH',
    'Late night usage detected',
    'Device activity detected at 11:30 PM on Lab PC - Row A2. Consider setting a bedtime rule.',
@@ -119,7 +122,7 @@ VALUES
    NOW() - INTERVAL '5 hours'),
 
   ('a1b2c3d4-e5f6-7890-abcd-ef1234567890',
-   'dev00001-0000-0000-0000-000000000001',
+   'd1111111-1111-1111-1111-111111111111',
    'APP_USAGE_EXCEEDED', 'MEDIUM',
    'YouTube usage limit reached',
    'YouTube has been used for 52 minutes today, exceeding the 45 minute daily limit.',

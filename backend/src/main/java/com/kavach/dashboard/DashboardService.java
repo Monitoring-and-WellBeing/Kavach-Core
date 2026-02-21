@@ -1,12 +1,14 @@
 package com.kavach.dashboard;
 
-import com.kavach.alerts.AlertRepository;
+import com.kavach.alerts.repository.AlertRepository;
+import com.kavach.devices.entity.DeviceStatus;
 import com.kavach.devices.repository.DeviceRepository;
-import com.kavach.focus.FocusRepository;
+import com.kavach.focus.repository.FocusSessionRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 
@@ -16,7 +18,7 @@ public class DashboardService {
 
     private final DeviceRepository deviceRepository;
     private final AlertRepository alertRepository;
-    private final FocusRepository focusRepository;
+    private final FocusSessionRepository focusSessionRepository;
 
     public Map<String, Object> getStudentDashboard(UUID studentId) {
         Map<String, Object> dashboard = new HashMap<>();
@@ -50,11 +52,11 @@ public class DashboardService {
     public Map<String, Object> getInstituteDashboard(UUID tenantId) {
         Map<String, Object> dashboard = new HashMap<>();
         
-        long totalDevices = deviceRepository.countByTenantId(tenantId);
-        long onlineDevices = deviceRepository.countByTenantIdAndStatus(tenantId, "ONLINE") +
-                            deviceRepository.countByTenantIdAndStatus(tenantId, "FOCUS_MODE");
-        long alertsToday = alertRepository.countByTimestampAfter(
-            Instant.now().minus(1, ChronoUnit.DAYS)
+        long totalDevices = deviceRepository.countByTenantIdAndActiveTrue(tenantId);
+        long onlineDevices = deviceRepository.countByTenantIdAndStatus(tenantId, DeviceStatus.ONLINE) +
+                            deviceRepository.countByTenantIdAndStatus(tenantId, DeviceStatus.FOCUS_MODE);
+        long alertsToday = alertRepository.countByTriggeredAtAfter(
+            LocalDateTime.now().minusDays(1)
         );
         
         dashboard.put("totalDevices", totalDevices);

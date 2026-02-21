@@ -26,7 +26,8 @@ export default function StudentFocusPage() {
 
   // Needs device ID from user's linked device
   // For student, we use their primary device (first device in their tenant)
-  const deviceId = user?.deviceId || 'd1111111-1111-1111-1111-111111111111'
+  // TODO: Get deviceId from student dashboard data or device list
+  const deviceId = 'd1111111-1111-1111-1111-111111111111'
 
   const loadData = useCallback(async () => {
     const [active, hist, todayStats] = await Promise.all([

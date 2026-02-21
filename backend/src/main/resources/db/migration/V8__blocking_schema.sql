@@ -58,22 +58,22 @@ CREATE INDEX idx_violations_tenant    ON blocking_violations(tenant_id, attempte
 INSERT INTO block_rules (tenant_id, created_by, name, rule_type, target, applies_to, show_message)
 VALUES
   ('a1b2c3d4-e5f6-7890-abcd-ef1234567890',
-   'c1d2e3f4-a5b6-7890-cdef-123456789012',
+   'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
    'Block all gaming apps',
    'CATEGORY', 'GAMING', 'ALL_DEVICES', TRUE),
 
   ('a1b2c3d4-e5f6-7890-abcd-ef1234567890',
-   'c1d2e3f4-a5b6-7890-cdef-123456789012',
+   'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
    'Block Free Fire',
    'APP', 'freefire.exe', 'ALL_DEVICES', TRUE),
 
   ('a1b2c3d4-e5f6-7890-abcd-ef1234567890',
-   'c1d2e3f4-a5b6-7890-cdef-123456789012',
+   'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
    'Block social media during study hours',
    'CATEGORY', 'SOCIAL_MEDIA', 'ALL_DEVICES', TRUE),
 
   ('a1b2c3d4-e5f6-7890-abcd-ef1234567890',
-   'c1d2e3f4-a5b6-7890-cdef-123456789012',
+   'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
    'Block YouTube (scheduled 9AM-5PM)',
    'APP', 'chrome.exe', 'ALL_DEVICES', TRUE);
 

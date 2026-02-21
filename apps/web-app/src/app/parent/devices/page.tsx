@@ -1,10 +1,12 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Monitor, Laptop, Plus, RefreshCw, Pause, Play, Trash2,
-         Wifi, WifiOff, Clock, Search, X, AlertCircle } from 'lucide-react'
+         Wifi, WifiOff, Clock, Search, X, AlertCircle, AlertTriangle } from 'lucide-react'
+import Link from 'next/link'
 import { useDevices } from '@/hooks/useDevices'
 import { Device } from '@/lib/devices'
 import { devicesApi } from '@/lib/devices'
+import { subscriptionApi } from '@/lib/subscription'
 import { Modal } from '@/components/ui/Modal'
 import { Toast, useToast } from '@/components/ui/Toast'
 import { FocusControl } from '@/components/FocusControl'
@@ -115,6 +117,9 @@ export default function DevicesPage() {
   const { devices, loading, error, refetch, pause, resume, link, remove } = useDevices()
   const { toast, showToast, hideToast } = useToast()
 
+  // Subscription warning
+  const [subWarning, setSubWarning] = useState<string | null>(null)
+
   // Link modal state
   const [linkOpen, setLinkOpen] = useState(false)
   const [code, setCode] = useState('')
@@ -135,6 +140,16 @@ export default function DevicesPage() {
   // Filter
   const [filter, setFilter] = useState<'ALL' | Device['status']>('ALL')
   const [search, setSearch] = useState('')
+
+  // Check subscription limits
+  useEffect(() => {
+    subscriptionApi.getCurrent().then(sub => {
+      if (sub.atLimit)
+        setSubWarning(`Device limit reached (${sub.deviceCount}/${sub.maxDevicesLabel}). Upgrade to add more devices.`)
+      else if (sub.nearLimit)
+        setSubWarning(`Approaching device limit (${sub.deviceCount}/${sub.maxDevicesLabel}). Consider upgrading.`)
+    }).catch(() => {})
+  }, [devices.length])
 
   const filtered = devices
     .filter(d => filter === 'ALL' || d.status === filter)
@@ -192,6 +207,18 @@ export default function DevicesPage() {
   return (
     <div className="p-6 fade-up">
       {toast && <Toast message={toast.message} type={toast.type} onClose={hideToast} />}
+
+      {/* Subscription warning banner */}
+      {subWarning && (
+        <div className="flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3 mb-4">
+          <AlertTriangle size={16} className="text-amber-500 flex-shrink-0" />
+          <p className="text-amber-700 text-sm flex-1">{subWarning}</p>
+          <Link href="/parent/subscription"
+            className="text-amber-700 text-sm font-medium underline flex-shrink-0">
+            Upgrade →
+          </Link>
+        </div>
+      )}
 
       {/* Header */}
       <div className="flex items-center justify-between mb-6">

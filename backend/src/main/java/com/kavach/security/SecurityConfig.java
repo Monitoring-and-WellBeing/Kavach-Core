@@ -41,6 +41,7 @@ public class SecurityConfig {
                                 "/api/v1/auth/**",
                                 "/api/v1/activity",
                                 "/api/v1/subscriptions/plans",
+                                "/api/v1/subscription/webhook",
                                 "/api/v1/devices/generate-code",
                                 "/api/v1/devices/check-linked",
                                 "/api/v1/devices/*/heartbeat",

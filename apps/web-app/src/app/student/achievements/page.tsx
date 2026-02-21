@@ -107,8 +107,8 @@ function XPBar({ level, xp, progress }: { level: string; xp: number; progress: n
 
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function AchievementsPage() {
-  const { user } = useAuth()
-  const deviceId = user?.deviceId || 'd1111111-1111-1111-1111-111111111111'
+  // TODO: Get deviceId from student dashboard data or device list
+  const deviceId = 'd1111111-1111-1111-1111-111111111111'
   const [data, setData] = useState<BadgeProgress | null>(null)
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<BadgeCategory | 'ALL'>('ALL')

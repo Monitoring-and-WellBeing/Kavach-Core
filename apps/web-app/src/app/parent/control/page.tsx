@@ -58,7 +58,7 @@ export default function AppControlPage() {
   // Create form state
   const [form, setForm] = useState({
     name: '', ruleType: 'APP' as BlockRule['ruleType'],
-    target: '', appliesTo: 'ALL_DEVICES', deviceId: '',
+    target: '', appliesTo: 'ALL_DEVICES' as BlockRule['appliesTo'], deviceId: '',
     scheduleEnabled: false, scheduleDays: 'MON,TUE,WED,THU,FRI,SAT,SUN',
     scheduleStart: '09:00', scheduleEnd: '17:00',
     showMessage: true, blockMessage: 'This app has been blocked.',
