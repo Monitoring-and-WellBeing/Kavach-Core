@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Role } from "@kavach/shared-types";
-import { getStoredUser } from "@/lib/auth";
+import { useAuth } from "@/context/AuthContext";
 import { Spinner } from "@/components/ui/Spinner";
 
 interface RoleGuardProps {
@@ -13,18 +13,19 @@ interface RoleGuardProps {
 
 export function RoleGuard({ allowedRoles, children }: RoleGuardProps) {
   const router = useRouter();
+  const { user, loading } = useAuth();
   const [checking, setChecking] = useState(true);
 
   useEffect(() => {
-    const user = getStoredUser();
+    if (loading) return;
     if (!user) {
       router.push("/login");
-    } else if (!allowedRoles.includes(user.role)) {
+    } else if (!allowedRoles.includes(user.role as Role)) {
       router.push("/");
     } else {
       setChecking(false);
     }
-  }, [allowedRoles, router]);
+  }, [user, loading, allowedRoles, router]);
 
   if (checking) {
     return (

@@ -40,9 +40,10 @@ export function getStoredUser(): AuthUser | null {
 
 export function logout() {
   if (typeof window === "undefined") return;
+  localStorage.removeItem("kavach_access_token");
+  localStorage.removeItem("kavach_refresh_token");
   sessionStorage.removeItem("kavach_user");
-  localStorage.removeItem("kavach_token");
-  window.location.href = "/";
+  window.location.href = "/login";
 }
 
 export function isAuthenticated(): boolean {
