@@ -34,7 +34,7 @@ function BadgeCard({ badge }: { badge: Badge }) {
   const tierCfg = TIER_CONFIG[badge.tier]
 
   return (
-    <div className={`relative flex flex-col items-center p-4 rounded-2xl transition-all ${
+    <div className={`relative flex flex-col items-center p-3 md:p-4 rounded-2xl transition-all ${
       badge.earned
         ? `${tierCfg.bg} ring-2 ${tierCfg.ring}`
         : 'bg-gray-50 opacity-50 grayscale'
@@ -124,12 +124,12 @@ export default function AchievementsPage() {
 
   if (loading) {
     return (
-      <div className="p-6 animate-pulse space-y-4">
+      <div className="p-4 md:p-6 animate-pulse space-y-4">
         <div className="h-24 bg-white rounded-2xl shadow-sm" />
-        <div className="grid grid-cols-4 gap-4">
-          {[1,2,3,4].map(i => <div key={i} className="h-16 bg-white rounded-2xl shadow-sm" />)}
+        <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
+          {[1,2,3,4,5,6].map(i => <div key={i} className="h-16 bg-white rounded-2xl shadow-sm" />)}
         </div>
-        <div className="grid grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
           {[1,2,3,4,5,6,7,8].map(i => <div key={i} className="h-40 bg-white rounded-2xl" />)}
         </div>
       </div>
@@ -143,9 +143,9 @@ export default function AchievementsPage() {
   )
 
   return (
-    <div className="p-6 space-y-5 fade-up">
+    <div className="p-4 md:p-6 space-y-5 fade-up">
       <div>
-        <h1 className="text-gray-900 font-bold text-xl flex items-center gap-2">
+        <h1 className="text-gray-900 font-bold text-lg md:text-xl flex items-center gap-2">
           <Trophy size={20} className="text-yellow-500" />
           Achievements
         </h1>
@@ -158,16 +158,16 @@ export default function AchievementsPage() {
       <XPBar level={data.level} xp={data.totalXp} progress={data.levelProgress} />
 
       {/* Stats row */}
-      <div className="grid grid-cols-4 gap-3">
+      <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 md:gap-3">
         {(Object.entries(CATEGORY_LABELS) as [BadgeCategory, any][]).map(([cat, cfg]) => {
           const count = data.byCategory[cat] || 0
           return (
             <button key={cat} onClick={() => setFilter(filter === cat ? 'ALL' : cat)}
-              className={`bg-white rounded-xl p-3 shadow-sm text-center transition-all ${
+              className={`bg-white rounded-xl p-2.5 md:p-3 shadow-sm text-center transition-all ${
                 filter === cat ? 'ring-2 ring-blue-500' : ''
               }`}>
-              <div className="text-xl">{cfg.emoji}</div>
-              <div className="text-gray-800 font-bold text-lg">{count}</div>
+              <div className="text-lg md:text-xl">{cfg.emoji}</div>
+              <div className="text-gray-800 font-bold text-base md:text-lg">{count}</div>
               <div className="text-gray-400 text-xs">{cfg.label}</div>
             </button>
           )
@@ -180,7 +180,7 @@ export default function AchievementsPage() {
           <h3 className="text-amber-700 font-semibold text-sm mb-3 flex items-center gap-2">
             <Star size={15} className="text-yellow-500" /> Recently Earned
           </h3>
-          <div className="flex gap-3">
+          <div className="flex flex-wrap gap-2 md:gap-3">
             {data.recentlyEarned.map(b => (
               <div key={b.id} className="flex items-center gap-2 bg-white rounded-xl px-3 py-2 shadow-sm">
                 <span className="text-2xl">{b.icon}</span>
@@ -206,7 +206,7 @@ export default function AchievementsPage() {
               className="text-blue-500 text-xs underline">Show all</button>
           )}
         </div>
-        <div className="grid grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 md:gap-4">
           {filtered.map(badge => (
             <BadgeCard key={badge.id} badge={badge} />
           ))}

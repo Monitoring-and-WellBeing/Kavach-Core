@@ -84,9 +84,9 @@ export default function StudentFocusPage() {
   const circumference = 2 * Math.PI * 54
 
   return (
-    <div className="p-6 max-w-2xl mx-auto fade-up">
-      <div className="text-center mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">Focus Mode</h1>
+    <div className="p-4 md:p-6 max-w-2xl mx-auto fade-up">
+      <div className="text-center mb-6 md:mb-8">
+        <h1 className="text-xl md:text-2xl font-bold text-gray-900">Focus Mode</h1>
         <p className="text-gray-400 text-sm mt-1">
           {stats.sessionsToday} sessions · {stats.focusMinutesToday} min today
         </p>
@@ -95,10 +95,10 @@ export default function StudentFocusPage() {
       {/* ── Idle: preset selector ── */}
       {phase === 'idle' && (
         <div className="space-y-6">
-          <div className="grid grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {PRESETS.map(p => (
               <button key={p.value} onClick={() => setSelected(p.value)}
-                className={`p-4 rounded-2xl border-2 text-center transition-all ${
+                className={`p-3 md:p-4 rounded-2xl border-2 text-center transition-all ${
                   selected === p.value ? 'border-blue-500 bg-blue-50' : 'border-gray-100 bg-white hover:border-gray-200'
                 }`}>
                 <div className="text-2xl mb-1">{p.emoji}</div>

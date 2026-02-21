@@ -8,6 +8,10 @@ const config: Config = {
   ],
   theme: {
     extend: {
+      fontSize: {
+        'display': ['clamp(1.5rem, 4vw, 2rem)', { lineHeight: '1.2' }],
+        'title':   ['clamp(1.125rem, 3vw, 1.5rem)', { lineHeight: '1.3' }],
+      },
       colors: {
         kavach: {
           bg: "#0A0F1E",

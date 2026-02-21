@@ -25,21 +25,21 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="p-6 space-y-5 fade-up">
+    <div className="p-4 md:p-6 space-y-5 fade-up">
       {toast && <Toast message={toast.message} type={toast.type} onClose={hideToast} />}
 
       <div>
-        <h2 className="text-gray-900 font-bold text-xl">Settings</h2>
+        <h2 className="text-gray-900 font-bold text-lg md:text-xl">Settings</h2>
         <p className="text-gray-500 text-sm">Manage your account and preferences</p>
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-2 border-b border-gray-200">
+      <div className="flex gap-1 border-b border-gray-200 overflow-x-auto">
         {tabs.map(tab => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
-            className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 ${
+            className={`flex-shrink-0 px-4 py-2.5 text-sm font-medium transition-colors border-b-2 ${
               activeTab === tab
                 ? 'border-blue-500 text-blue-600'
                 : 'border-transparent text-gray-500 hover:text-gray-700'
@@ -52,7 +52,7 @@ export default function SettingsPage() {
 
       {/* Profile Tab */}
       {activeTab === 'Profile' && (
-        <div className="bg-white rounded-2xl p-6 shadow-sm">
+        <div className="bg-white rounded-2xl p-4 md:p-6 shadow-sm">
           <div className="flex items-center gap-2 mb-4">
             <User size={18} className="text-gray-500" />
             <h3 className="font-semibold text-gray-900">Parent Information</h3>
@@ -82,28 +82,28 @@ export default function SettingsPage() {
       {/* Children Tab */}
       {activeTab === 'Children' && (
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-2">
               <Users size={18} className="text-gray-500" />
               <h3 className="font-semibold text-gray-900">Child Profiles</h3>
             </div>
-            <button className="flex items-center gap-2 px-4 py-2 rounded-xl text-white text-sm font-medium" style={{ background: '#2563EB' }}>
+            <button className="flex items-center gap-2 px-3 py-2 rounded-xl text-white text-sm font-medium flex-shrink-0" style={{ background: '#2563EB' }}>
               <Users size={16} /> + Add Child
             </button>
           </div>
           {mockStudents.map(student => (
-            <div key={student.id} className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-full bg-teal-500 flex items-center justify-center text-white font-bold">
+            <div key={student.id} className="bg-white rounded-2xl p-4 md:p-5 shadow-sm border border-gray-100">
+              <div className="flex items-start sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-11 h-11 flex-shrink-0 rounded-full bg-teal-500 flex items-center justify-center text-white font-bold">
                     {student.name.charAt(0)}
                   </div>
-                  <div>
-                    <div className="font-semibold text-gray-900">{student.name}</div>
+                  <div className="min-w-0">
+                    <div className="font-semibold text-gray-900 truncate">{student.name}</div>
                     <div className="text-sm text-gray-500">Age {student.age} · Class {student.grade}</div>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2 flex-shrink-0">
                   {student.deviceIds.map((_, i) => (
                     <span key={i} className="px-2 py-1 bg-blue-50 text-blue-700 text-xs rounded-lg">Device {i + 1}</span>
                   ))}
@@ -119,7 +119,7 @@ export default function SettingsPage() {
 
       {/* Notifications Tab */}
       {activeTab === 'Notifications' && (
-        <div className="bg-white rounded-2xl p-6 shadow-sm">
+        <div className="bg-white rounded-2xl p-4 md:p-6 shadow-sm">
           <div className="flex items-center gap-2 mb-4">
             <Bell size={18} className="text-gray-500" />
             <h3 className="font-semibold text-gray-900">Notification Preferences</h3>
@@ -177,7 +177,7 @@ export default function SettingsPage() {
 
       {/* Privacy Tab */}
       {activeTab === 'Privacy' && (
-        <div className="bg-white rounded-2xl p-6 shadow-sm">
+        <div className="bg-white rounded-2xl p-4 md:p-6 shadow-sm">
           <div className="flex items-center gap-2 mb-4">
             <Shield size={18} className="text-gray-500" />
             <h3 className="font-semibold text-gray-900">Consent & Privacy</h3>
