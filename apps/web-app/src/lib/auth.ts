@@ -46,6 +46,14 @@ export function logout() {
   window.location.href = "/login";
 }
 
+export function getAccessToken(): string | null {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem("kavach_access_token");
+}
+
 export function isAuthenticated(): boolean {
-  return getStoredUser() !== null;
+  // Check both localStorage token and sessionStorage user
+  const token = getAccessToken();
+  const user = getStoredUser();
+  return token !== null || user !== null;
 }

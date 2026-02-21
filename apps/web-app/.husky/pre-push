@@ -1,0 +1,1 @@
+cd apps/web-app && pnpm test:ci -- --passWithNoTests

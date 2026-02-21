@@ -26,8 +26,8 @@ export default function LoginPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setLoading(true); // Must be BEFORE any await
     setError("");
-    setLoading(true);
     try {
       await login(email, password);
       // AuthContext.login() handles token storage and redirect
@@ -64,10 +64,11 @@ export default function LoginPage() {
 
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             <div>
-              <label className="block text-sm font-medium text-[#94A3B8] mb-1.5">
+              <label htmlFor="email" className="block text-sm font-medium text-[#94A3B8] mb-1.5">
                 Email
               </label>
               <input
+                id="email"
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -78,11 +79,12 @@ export default function LoginPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-[#94A3B8] mb-1.5">
+              <label htmlFor="password" className="block text-sm font-medium text-[#94A3B8] mb-1.5">
                 Password
               </label>
               <div className="relative">
                 <input
+                  id="password"
                   type={showPassword ? "text" : "password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
