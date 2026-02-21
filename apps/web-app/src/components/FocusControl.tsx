@@ -93,7 +93,7 @@ export function FocusControl({ deviceId, deviceName, onSessionChange }: Props) {
           </div>
         </div>
         <button onClick={handleStop} disabled={loading}
-          className="p-1.5 bg-blue-100 hover:bg-blue-200 rounded-lg text-blue-600 transition-colors">
+          className="p-2 bg-blue-100 hover:bg-blue-200 rounded-lg text-blue-600 transition-colors flex-shrink-0">
           <Square size={14} />
         </button>
       </div>
@@ -110,12 +110,12 @@ export function FocusControl({ deviceId, deviceName, onSessionChange }: Props) {
       </button>
 
       {open && (
-        <div className="absolute top-full left-0 mt-1 w-56 bg-white rounded-2xl shadow-lg border border-gray-100 p-3 z-20">
+        <div className="absolute top-full left-0 mt-1 min-w-[14rem] w-56 bg-white rounded-2xl shadow-lg border border-gray-100 p-3 z-20">
           <p className="text-gray-500 text-xs mb-2">Start focus on <span className="font-medium text-gray-700">{deviceName}</span></p>
           <div className="grid grid-cols-2 gap-1.5 mb-3">
             {PRESETS.map(p => (
               <button key={p.value} onClick={() => setSelectedDuration(p.value)}
-                className={`p-2.5 rounded-xl text-left transition-all border-2 ${
+                className={`p-2.5 rounded-xl text-left transition-all border-2 min-h-[56px] ${
                   selectedDuration === p.value ? 'border-blue-500 bg-blue-50' : 'border-transparent bg-gray-50'
                 }`}>
                 <div className="text-base">{p.emoji}</div>
@@ -125,7 +125,7 @@ export function FocusControl({ deviceId, deviceName, onSessionChange }: Props) {
             ))}
           </div>
           <button onClick={handleStart} disabled={loading}
-            className="w-full py-2 rounded-xl text-white text-xs font-semibold disabled:opacity-60"
+            className="w-full py-2.5 rounded-xl text-white text-xs font-semibold disabled:opacity-60"
             style={{ background: 'linear-gradient(135deg, #2563EB, #7C3AED)' }}>
             {loading ? 'Starting...' : `Start ${selectedDuration}-min Focus`}
           </button>

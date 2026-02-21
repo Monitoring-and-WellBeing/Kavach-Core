@@ -8,9 +8,47 @@
   padding: 0;
 }
 
+html, body {
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+}
+
 body {
   font-family: "Inter", sans-serif;
   -webkit-font-smoothing: antialiased;
+}
+
+/* ── Safe area utilities (notched phones) ── */
+.safe-area-pb {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+.safe-area-pt {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+.pb-safe {
+  padding-bottom: calc(5rem + env(safe-area-inset-bottom, 0px));
+}
+
+/* ── Scrollbar hide ── */
+.scrollbar-hide::-webkit-scrollbar { display: none; }
+.scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* ── Touch optimisations ── */
+button, a, [role="button"] {
+  touch-action: manipulation;
+}
+
+/* ── PWA standalone mode ── */
+@media (display-mode: standalone) {
+  .main-content {
+    min-height: calc(100vh - env(safe-area-inset-bottom));
+  }
+  button, a { min-height: 44px; }
+}
+
+/* ── Momentum scroll for overflow containers ── */
+.overflow-y-auto, .overflow-x-auto {
+  -webkit-overflow-scrolling: touch;
 }
 
 ::-webkit-scrollbar {

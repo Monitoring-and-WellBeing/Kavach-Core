@@ -134,13 +134,13 @@ export default function InsightsPage() {
   const riskCfg = insight ? RISK_CONFIG[insight.riskLevel] : RISK_CONFIG.LOW
 
   return (
-    <div className="p-6 fade-up">
+    <div className="p-4 md:p-6 fade-up">
       {toast && <Toast message={toast.message} type={toast.type} onClose={hideToast} />}
 
       {/* ── Header ── */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 md:mb-6">
         <div>
-          <h1 className="text-gray-900 font-bold text-xl flex items-center gap-2">
+          <h1 className="text-gray-900 font-bold text-lg md:text-xl flex items-center gap-2">
             <Sparkles size={20} className="text-purple-500" />
             AI Insights
           </h1>
@@ -148,12 +148,12 @@ export default function InsightsPage() {
             Powered by Claude · Analyzes last 7 days of usage
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
           {/* Device selector */}
           <div className="relative">
             <select value={selectedDeviceId || ''}
               onChange={e => setSelectedDeviceId(e.target.value)}
-              className="appearance-none bg-white border border-gray-200 rounded-xl px-4 py-2.5 pr-8 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-purple-500 cursor-pointer">
+              className="w-full sm:w-auto appearance-none bg-white border border-gray-200 rounded-xl px-4 h-11 pr-8 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-purple-500 cursor-pointer">
               {devices.map(d => (
                 <option key={d.id} value={d.id}>{d.assignedTo || d.name}</option>
               ))}
@@ -162,7 +162,7 @@ export default function InsightsPage() {
           </div>
 
           <button onClick={handleRefresh} disabled={generating || loading}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-white text-sm font-medium disabled:opacity-60"
+            className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-white text-sm font-medium disabled:opacity-60"
             style={{ background: 'linear-gradient(135deg, #7C3AED, #2563EB)' }}>
             <RefreshCw size={15} className={generating ? 'animate-spin' : ''} />
             {generating ? 'Generating...' : 'Refresh AI'}
@@ -180,7 +180,7 @@ export default function InsightsPage() {
       {selectedDeviceId && loading && <InsightSkeleton />}
 
       {selectedDeviceId && !loading && insight && (
-        <div className="grid grid-cols-3 gap-5">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-5">
 
           {/* ── Left: summary + risk ── */}
           <div className="col-span-1 space-y-4">

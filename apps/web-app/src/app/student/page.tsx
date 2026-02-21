@@ -74,19 +74,19 @@ function ActiveFocusBanner({
   const secs = timeLeft % 60
 
   return (
-    <div className="bg-gradient-to-r from-blue-600 to-violet-600 rounded-2xl p-4 text-white flex items-center gap-4">
-      <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
-        <Target size={20} className="text-white" />
+    <div className="bg-gradient-to-r from-blue-600 to-violet-600 rounded-2xl p-3 md:p-4 text-white flex items-center gap-3">
+      <div className="w-9 h-9 flex-shrink-0 bg-white/20 rounded-xl flex items-center justify-center">
+        <Target size={18} className="text-white" />
       </div>
-      <div className="flex-1">
-        <div className="font-semibold text-sm">{session.title}</div>
+      <div className="flex-1 min-w-0">
+        <div className="font-semibold text-sm truncate">{session.title}</div>
         <div className="text-blue-200 text-xs">Focus mode active</div>
       </div>
-      <div className="text-2xl font-bold tabular-nums">
+      <div className="text-xl md:text-2xl font-bold tabular-nums flex-shrink-0">
         {mins}:{secs.toString().padStart(2, '0')}
       </div>
       <button onClick={onStop}
-        className="p-2 bg-white/20 hover:bg-white/30 rounded-xl transition-colors">
+        className="p-2 bg-white/20 hover:bg-white/30 rounded-xl transition-colors flex-shrink-0">
         <Square size={16} />
       </button>
     </div>
@@ -147,9 +147,9 @@ export default function StudentDashboard() {
 
   if (loading) {
     return (
-      <div className="p-6 space-y-4 animate-pulse">
+      <div className="p-4 md:p-6 space-y-4 animate-pulse">
         <div className="h-32 bg-white rounded-2xl shadow-sm" />
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {[1,2,3].map(i => <div key={i} className="h-28 bg-white rounded-2xl shadow-sm" />)}
         </div>
         <div className="h-48 bg-white rounded-2xl shadow-sm" />
@@ -159,7 +159,7 @@ export default function StudentDashboard() {
 
   if (!data || !data.deviceLinked) {
     return (
-      <div className="p-6 flex flex-col items-center justify-center h-64 text-center">
+      <div className="p-4 md:p-6 flex flex-col items-center justify-center h-64 text-center">
         <div className="text-4xl mb-3">💻</div>
         <h2 className="text-gray-700 font-semibold">No device linked yet</h2>
         <p className="text-gray-400 text-sm mt-1">Ask your parent or institute to link a device to your account.</p>
@@ -170,7 +170,7 @@ export default function StudentDashboard() {
   const totalCatSecs = data.categories.reduce((s, c) => s + c.durationSeconds, 0)
 
   return (
-    <div className="p-6 space-y-4 fade-up">
+    <div className="p-4 md:p-6 space-y-4 fade-up">
 
       {/* ── Active focus banner (shows only when focus is active) ── */}
       {data.activeFocusSession && (
@@ -178,7 +178,7 @@ export default function StudentDashboard() {
       )}
 
       {/* ── Top row: score + stats + streak ── */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
 
         {/* Focus Score */}
         <div className="bg-white rounded-2xl p-5 shadow-sm flex items-center justify-center">
@@ -248,7 +248,7 @@ export default function StudentDashboard() {
       </div>
 
       {/* ── Middle row: weekly chart + category breakdown ── */}
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 
         {/* Weekly chart */}
         <div className="bg-white rounded-2xl p-5 shadow-sm">
@@ -294,7 +294,7 @@ export default function StudentDashboard() {
       </div>
 
       {/* ── Bottom: top apps + quick links ── */}
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 
         {/* Top apps */}
         <div className="bg-white rounded-2xl shadow-sm">

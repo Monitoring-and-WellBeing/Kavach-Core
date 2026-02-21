@@ -146,13 +146,13 @@ export default function AppControlPage() {
   const inputClass = "w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
 
   return (
-    <div className="p-6 fade-up">
+    <div className="p-4 md:p-6 fade-up">
       {toast && <Toast message={toast.message} type={toast.type} onClose={hideToast} />}
 
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-4 md:mb-6">
       <div>
-          <h1 className="text-gray-900 font-bold text-xl">App & Site Control</h1>
+          <h1 className="text-gray-900 font-bold text-lg md:text-xl">App & Site Control</h1>
           <p className="text-gray-400 text-sm mt-0.5">{rules.filter(r => r.active).length} active block rules</p>
         </div>
         <button onClick={() => setCreateOpen(true)}
@@ -163,10 +163,10 @@ export default function AppControlPage() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 bg-gray-100 rounded-xl p-1 w-fit mb-5">
+      <div className="flex gap-1 bg-gray-100 rounded-xl p-1 w-fit mb-4 md:mb-5 overflow-x-auto scrollbar-hide">
         {([['apps','Apps'], ['categories','Categories'], ['schedule','Schedule']] as const).map(([t, label]) => (
           <button key={t} onClick={() => setTab(t)}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${tab === t ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>
+            className={`flex-shrink-0 px-4 py-2 rounded-lg text-sm font-medium transition-all ${tab === t ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>
             {label}
           </button>
         ))}
@@ -178,7 +178,7 @@ export default function AppControlPage() {
           {/* Quick-add common apps */}
           <div className="bg-white rounded-2xl p-5 shadow-sm">
             <h3 className="font-semibold text-gray-800 text-sm mb-3">Quick Block Common Apps</h3>
-            <div className="grid grid-cols-4 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 md:gap-3">
               {QUICK_ADD_APPS.map(app => {
                 const alreadyBlocked = rules.some(r => r.target === app.process && r.active)
                 return (
@@ -260,7 +260,7 @@ export default function AppControlPage() {
 
       {/* ── CATEGORIES TAB ── */}
       {tab === 'categories' && (
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
           {CATEGORIES.map(cat => {
             const blocked = isCategoryBlocked(cat.value)
             return (
@@ -338,7 +338,7 @@ export default function AppControlPage() {
               placeholder="e.g. Block Instagram" className={inputClass} />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="text-gray-600 text-xs font-medium block mb-1.5">Block Type</label>
               <select value={form.ruleType} onChange={e => setForm(f => ({ ...f, ruleType: e.target.value as BlockRule['ruleType'] }))}

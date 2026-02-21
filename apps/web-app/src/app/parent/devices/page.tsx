@@ -205,7 +205,7 @@ export default function DevicesPage() {
   }
 
   return (
-    <div className="p-6 fade-up">
+    <div className="p-4 md:p-6 fade-up">
       {toast && <Toast message={toast.message} type={toast.type} onClose={hideToast} />}
 
       {/* Subscription warning banner */}
@@ -221,9 +221,9 @@ export default function DevicesPage() {
       )}
 
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 md:mb-6">
         <div>
-          <h1 className="text-gray-900 font-bold text-xl">Devices</h1>
+          <h1 className="text-gray-900 font-bold text-lg md:text-xl">Devices</h1>
           <p className="text-gray-400 text-sm mt-0.5">{devices.length} device{devices.length !== 1 ? 's' : ''} registered</p>
         </div>
         <div className="flex items-center gap-2">
@@ -231,7 +231,7 @@ export default function DevicesPage() {
             <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
           </button>
           <button onClick={() => setLinkOpen(true)}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-white text-sm font-medium transition-all hover:opacity-90"
+            className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-white text-sm font-medium transition-all hover:opacity-90"
             style={{ background: 'linear-gradient(135deg, #2563EB, #7C3AED)' }}>
             <Plus size={16} /> Link New Device
           </button>
@@ -239,11 +239,11 @@ export default function DevicesPage() {
       </div>
 
       {/* Filter tabs + search */}
-      <div className="flex items-center justify-between mb-5">
-        <div className="flex items-center gap-1 bg-gray-100 rounded-xl p-1">
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 mb-4 md:mb-5">
+        <div className="flex items-center gap-1 bg-gray-100 rounded-xl p-1 overflow-x-auto scrollbar-hide">
           {(['ALL', 'ONLINE', 'OFFLINE', 'PAUSED'] as const).map(f => (
             <button key={f} onClick={() => setFilter(f)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${filter === f ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>
+              className={`flex-shrink-0 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${filter === f ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>
               {f === 'ALL' ? 'All' : f.charAt(0) + f.slice(1).toLowerCase()} ({counts[f]})
             </button>
           ))}
@@ -251,7 +251,7 @@ export default function DevicesPage() {
         <div className="relative">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search devices..."
-            className="pl-8 pr-8 py-2 bg-white border border-gray-200 rounded-xl text-sm text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 w-52" />
+            className="w-full sm:w-52 pl-8 pr-8 h-10 bg-white border border-gray-200 rounded-xl text-sm text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500" />
           {search && <button onClick={() => setSearch('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"><X size={12} /></button>}
         </div>
       </div>
@@ -267,7 +267,7 @@ export default function DevicesPage() {
 
       {/* Loading skeleton */}
       {loading && devices.length === 0 && (
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
           {[1,2,3].map(i => (
             <div key={i} className="bg-white rounded-2xl p-5 shadow-sm animate-pulse">
               <div className="flex gap-3 mb-4"><div className="w-10 h-10 bg-gray-100 rounded-xl" /><div className="flex-1"><div className="h-4 bg-gray-100 rounded mb-2 w-3/4" /><div className="h-3 bg-gray-100 rounded w-1/2" /></div></div>
@@ -290,7 +290,7 @@ export default function DevicesPage() {
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
           {filtered.map(device => (
             <DeviceCard
               key={device.id}

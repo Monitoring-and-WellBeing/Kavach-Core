@@ -108,12 +108,12 @@ export default function GoalsPage() {
   const inputClass = "w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
 
   return (
-    <div className="p-6 fade-up">
+    <div className="p-4 md:p-6 fade-up">
       {toast && <Toast message={toast.message} type={toast.type} onClose={hideToast} />}
 
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-4 md:mb-6">
         <div>
-          <h1 className="text-gray-900 font-bold text-xl flex items-center gap-2">
+          <h1 className="text-gray-900 font-bold text-lg md:text-xl flex items-center gap-2">
             <Target size={20} className="text-blue-500" /> Goals
           </h1>
           <p className="text-gray-400 text-sm mt-0.5">{metCount} of {goals.length} goals met today</p>
@@ -142,7 +142,7 @@ export default function GoalsPage() {
       )}
 
       {loading ? (
-        <div className="grid grid-cols-2 gap-4 animate-pulse">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4 animate-pulse">
           {[1,2,3,4].map(i => <div key={i} className="h-36 bg-white rounded-2xl shadow-sm" />)}
         </div>
       ) : goals.length === 0 ? (
@@ -155,7 +155,7 @@ export default function GoalsPage() {
           </button>
         </div>
       ) : (
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4">
           {goals.map(goal => <GoalCard key={goal.id} goal={goal} onDelete={handleDelete} />)}
         </div>
       )}
@@ -171,7 +171,7 @@ export default function GoalsPage() {
 
           <div>
             <label className="text-gray-600 text-xs font-medium block mb-1.5">Goal Type</label>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
               {(Object.entries(GOAL_TYPE_CONFIG) as [GoalType, any][]).map(([type, cfg]) => (
                 <button key={type} onClick={() => handleTypeChange(type)}
                   className={`p-3 rounded-xl border-2 text-left transition-all ${form.goalType === type ? 'border-blue-500 bg-blue-50' : 'border-gray-100 hover:border-gray-200'}`}>
@@ -183,7 +183,7 @@ export default function GoalsPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="text-gray-600 text-xs font-medium block mb-1.5">Title</label>
               <input value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} placeholder="e.g. Daily focus goal" className={inputClass} />

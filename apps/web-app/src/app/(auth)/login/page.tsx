@@ -65,7 +65,7 @@ export default function LoginPage() {
         </div>
 
         {/* Card */}
-        <div className="bg-[#0F1629] border border-[#1E2A45] rounded-2xl p-8">
+        <div className="bg-[#0F1629] border border-[#1E2A45] rounded-2xl p-6 sm:p-8">
           <h1 className="text-2xl font-bold text-white mb-1">Welcome back</h1>
           <p className="text-[#64748B] text-sm mb-6">
             Sign in to your KAVACH AI account
@@ -88,7 +88,7 @@ export default function LoginPage() {
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@example.com"
                 required
-                className="w-full px-4 py-2.5 bg-[#0A0F1E] border border-[#1E2A45] rounded-lg text-white placeholder-[#475569] focus:outline-none focus:border-blue-500 transition-colors"
+                className="w-full px-4 py-3 bg-[#0A0F1E] border border-[#1E2A45] rounded-lg text-white placeholder-[#475569] focus:outline-none focus:border-blue-500 transition-colors"
               />
             </div>
 
@@ -103,7 +103,7 @@ export default function LoginPage() {
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
                   required
-                  className="w-full px-4 py-2.5 bg-[#0A0F1E] border border-[#1E2A45] rounded-lg text-white placeholder-[#475569] focus:outline-none focus:border-blue-500 transition-colors pr-10"
+                  className="w-full px-4 py-3 bg-[#0A0F1E] border border-[#1E2A45] rounded-lg text-white placeholder-[#475569] focus:outline-none focus:border-blue-500 transition-colors pr-10"
                 />
                 <button
                   type="button"
@@ -148,7 +148,7 @@ export default function LoginPage() {
                     setEmail(c.email);
                     setPassword(c.password);
                   }}
-                  className="text-left text-xs px-3 py-2 bg-[#0A0F1E] border border-[#1E2A45] rounded-lg hover:border-blue-500 transition-colors"
+                  className="text-left text-xs px-3 py-2.5 bg-[#0A0F1E] border border-[#1E2A45] rounded-lg hover:border-blue-500 transition-colors"
                 >
                   <span className="text-[#94A3B8] capitalize">{c.role}:</span>{" "}
                   <span className="text-blue-400">{c.email}</span>{" "}

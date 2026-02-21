@@ -175,8 +175,8 @@ export default function InstituteDashboard() {
 
   if (loading) {
     return (
-      <div className="p-6 space-y-4 animate-pulse">
-        <div className="grid grid-cols-5 gap-4">
+      <div className="p-4 md:p-6 space-y-4 animate-pulse">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 md:gap-4">
           {[1,2,3,4,5].map(i => <div key={i} className="h-24 bg-white rounded-2xl shadow-sm" />)}
         </div>
         <div className="h-96 bg-white rounded-2xl shadow-sm" />
@@ -216,27 +216,27 @@ export default function InstituteDashboard() {
   }
 
   return (
-    <div className="p-6 space-y-5 fade-up">
+    <div className="p-4 md:p-6 space-y-5 fade-up">
       {toast && <Toast message={toast.message} type={toast.type} onClose={hideToast} />}
 
       {/* ── Header ── */}
-      <div className="flex items-center justify-between">
-            <div>
-          <h1 className="text-gray-900 font-bold text-xl">Institute Overview</h1>
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <h1 className="text-gray-900 font-bold text-lg md:text-xl">Institute Overview</h1>
           <p className="text-gray-400 text-sm mt-0.5">
             {stats.totalDevices} devices · {stats.onlineDevices} online now
           </p>
-            </div>
+        </div>
         <button onClick={load}
-          className="p-2.5 bg-gray-100 hover:bg-gray-200 rounded-xl text-gray-500 transition-colors">
+          className="p-2.5 bg-gray-100 hover:bg-gray-200 rounded-xl text-gray-500 transition-colors flex-shrink-0">
           <RefreshCw size={16} />
         </button>
-          </div>
+      </div>
 
       {/* ── Top row: compliance + stat cards ── */}
-      <div className="grid grid-cols-6 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-6 gap-3 md:gap-4">
         {/* Compliance gauge */}
-        <div className="col-span-2 bg-white rounded-2xl p-5 shadow-sm flex items-center">
+        <div className="col-span-2 bg-white rounded-2xl p-4 md:p-5 shadow-sm flex items-center">
           <ComplianceGauge score={stats.complianceScore} />
         </div>
 
@@ -256,17 +256,17 @@ export default function InstituteDashboard() {
       </div>
 
       {/* ── Main content: device table + top apps ── */}
-      <div className="grid grid-cols-4 gap-5">
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 md:gap-5">
 
         {/* Device table — 3 cols */}
-        <div className="col-span-3 bg-white rounded-2xl shadow-sm">
+        <div className="lg:col-span-3 bg-white rounded-2xl shadow-sm">
           {/* Table header / controls */}
-          <div className="p-4 border-b border-gray-50 flex items-center gap-3">
+          <div className="p-3 md:p-4 border-b border-gray-50 flex flex-col sm:flex-row items-start sm:items-center gap-2 md:gap-3">
             {/* Filter tabs */}
-            <div className="flex gap-1 bg-gray-100 rounded-xl p-1">
+            <div className="flex gap-1 bg-gray-100 rounded-xl p-1 overflow-x-auto w-full sm:w-auto">
               {(['ALL','ONLINE','OFFLINE','PAUSED','FOCUS'] as Filter[]).map(f => (
                 <button key={f} onClick={() => setFilter(f)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${filter === f ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500'}`}>
+                  className={`flex-shrink-0 px-2.5 md:px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${filter === f ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500'}`}>
                   {f === 'ALL' ? `All (${stats.totalDevices})` :
                    f === 'ONLINE' ? `Online (${stats.onlineDevices})` :
                    f === 'OFFLINE' ? `Offline (${stats.offlineDevices})` :
@@ -277,7 +277,7 @@ export default function InstituteDashboard() {
             </div>
 
             {/* Sort */}
-            <div className="relative ml-auto">
+            <div className="relative sm:ml-auto">
               <select value={sort} onChange={e => setSort(e.target.value as SortKey)}
                 className="appearance-none bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs text-gray-600 pr-7 focus:outline-none">
                 <option value="status">Sort: Status</option>
@@ -291,11 +291,11 @@ export default function InstituteDashboard() {
 
           {/* Bulk action toolbar — shows when items selected */}
           {selected.size > 0 && (
-            <div className="px-4 py-2.5 bg-blue-50 border-b border-blue-100 flex items-center gap-3">
+            <div className="px-3 md:px-4 py-2.5 bg-blue-50 border-b border-blue-100 flex flex-wrap items-center gap-2 md:gap-3">
               <span className="text-blue-700 text-sm font-medium">
                 {selected.size} device{selected.size > 1 ? 's' : ''} selected
               </span>
-              <div className="flex items-center gap-2 ml-auto">
+              <div className="flex items-center gap-2 ml-auto flex-wrap">
                 <button onClick={() => handleBulkAction('PAUSE')} disabled={bulkLoading}
                   className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-100 text-amber-700 rounded-lg text-xs font-medium hover:bg-amber-200 transition-colors disabled:opacity-50">
                   <Pause size={12} /> Pause All
@@ -355,7 +355,7 @@ export default function InstituteDashboard() {
         </div>
 
         {/* Top apps sidebar — 1 col */}
-        <div className="space-y-4">
+        <div className="lg:col-span-1 space-y-4">
           {/* Top apps institute-wide */}
           <div className="bg-white rounded-2xl shadow-sm">
             <div className="p-4 border-b border-gray-50">
