@@ -41,19 +41,19 @@ CREATE INDEX idx_progress_device ON goal_progress(device_id, period_date DESC);
 -- ─── SEED DEMO GOALS ─────────────────────────────────────────────────────────
 INSERT INTO goals (tenant_id, device_id, created_by, title, goal_type, period, target_value)
 VALUES
-  ('11111111-1111-1111-1111-111111111111',
+  ('a1b2c3d4-e5f6-7890-abcd-ef1234567890',
    'd1111111-1111-1111-1111-111111111111',
    'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
    'Daily Focus Goal',   'FOCUS_MINUTES',     'DAILY', 45),
-  ('11111111-1111-1111-1111-111111111111',
+  ('a1b2c3d4-e5f6-7890-abcd-ef1234567890',
    'd1111111-1111-1111-1111-111111111111',
    'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
    'Screen Time Limit',  'SCREEN_TIME_LIMIT', 'DAILY', 240),
-  ('11111111-1111-1111-1111-111111111111',
+  ('a1b2c3d4-e5f6-7890-abcd-ef1234567890',
    'd1111111-1111-1111-1111-111111111111',
    'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
    'Study Time Goal',    'EDUCATION_MINUTES', 'DAILY', 60),
-  ('11111111-1111-1111-1111-111111111111',
+  ('a1b2c3d4-e5f6-7890-abcd-ef1234567890',
    'd1111111-1111-1111-1111-111111111111',
    'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
    'Gaming Limit',       'GAMING_LIMIT',      'DAILY', 60);

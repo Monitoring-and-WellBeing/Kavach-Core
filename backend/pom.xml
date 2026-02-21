@@ -16,7 +16,7 @@
   <artifactId>kavach-backend</artifactId>
   <version>0.1.0</version>
   <name>kavach-backend</name>
-  <description>KAVACH AI — Student Safety & Discipline Monitoring Backend</description>
+  <description>KAVACH AI - Student Safety &amp; Discipline Monitoring Backend</description>
 
   <properties>
     <java.version>17</java.version>

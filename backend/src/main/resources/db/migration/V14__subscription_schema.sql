@@ -74,11 +74,11 @@ INSERT INTO plans (code, name, plan_type, price_flat, max_devices, features) VAL
          'institute_dashboard','priority_support','unlimited_history']);
 
 -- ─── SEED DEMO SUBSCRIPTION (30-day trial on STANDARD for demo tenant) ───────
--- Using tenant '11111111-1111-1111-1111-111111111111' from V1__auth_schema
+-- Using tenant 'a1b2c3d4-e5f6-7890-abcd-ef1234567890' from V1__auth_schema
 INSERT INTO subscriptions (tenant_id, plan_id, status, trial_ends_at,
   current_period_end, device_count)
 SELECT
-  '11111111-1111-1111-1111-111111111111',
+  'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
   p.id, 'TRIAL',
   NOW() + INTERVAL '30 days',
   NOW() + INTERVAL '30 days',

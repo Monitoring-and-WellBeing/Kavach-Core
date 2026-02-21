@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -26,4 +27,7 @@ public interface AlertRepository extends JpaRepository<Alert, UUID> {
 
     // Recent alerts for a device
     List<Alert> findTop10ByDeviceIdOrderByTriggeredAtDesc(UUID deviceId);
+
+    // Count alerts after a given timestamp (used by dashboard)
+    long countByTriggeredAtAfter(LocalDateTime triggeredAt);
 }
