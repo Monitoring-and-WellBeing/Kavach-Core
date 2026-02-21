@@ -4,7 +4,7 @@ import { Monitor, Wifi, WifiOff, Target, Shield,
          Bell, Clock, ChevronRight, RefreshCw,
          AlertTriangle, Info } from 'lucide-react'
 import Link from 'next/link'
-import { dashboardApi, ParentDashboard, DeviceSummary, DashboardAlert } from '@/lib/dashboard'
+import { dashboardApi, type ParentDashboard, type DeviceSummary, type DashboardAlert } from '@/lib/dashboard'
 import { alertsApi } from '@/lib/alerts'
 import { FocusControl } from '@/components/FocusControl'
 

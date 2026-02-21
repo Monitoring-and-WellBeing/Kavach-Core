@@ -4,7 +4,7 @@ import { Target, Flame, Clock, BookOpen, Gamepad2,
          Play, Square, ChevronRight, TrendingUp } from 'lucide-react'
 import Link from 'next/link'
 import { BarChart, Bar, XAxis, ResponsiveContainer, Cell } from 'recharts'
-import { studentDashboardApi, StudentDashboard, ActiveFocusSession } from '@/lib/studentDashboard'
+import { studentDashboardApi, type StudentDashboard, type ActiveFocusSession } from '@/lib/studentDashboard'
 import { focusApi } from '@/lib/focus'
 import { GoalsMini } from '@/components/GoalsMini'
 
