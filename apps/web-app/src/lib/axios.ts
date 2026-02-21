@@ -45,7 +45,15 @@ api.interceptors.response.use(
           } catch {
             localStorage.removeItem('kavach_access_token')
             localStorage.removeItem('kavach_refresh_token')
-            window.location.href = '/'
+            if (!window.location.pathname.includes('/login')) {
+              window.location.href = '/login'
+            }
+          }
+        } else {
+          // No refresh token - clear access token and redirect
+          localStorage.removeItem('kavach_access_token')
+          if (!window.location.pathname.includes('/login')) {
+            window.location.href = '/login'
           }
         }
       }

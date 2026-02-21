@@ -4,7 +4,7 @@ import { Bell, User, LogOut, Settings } from "lucide-react";
 import { useState } from "react";
 import { useAlerts } from "@/hooks/useAlerts";
 import { formatTime } from "@kavach/shared-utils";
-import { logout } from "@/lib/auth";
+import { useAuth } from "@/context/AuthContext";
 import { clsx } from "clsx";
 
 interface TopBarProps {
@@ -14,6 +14,7 @@ interface TopBarProps {
 
 export function TopBar({ title, userName = "User" }: TopBarProps) {
   const { alerts, unreadCount, markRead } = useAlerts();
+  const { logout } = useAuth();
   const [showAlerts, setShowAlerts] = useState(false);
   const [showUser, setShowUser] = useState(false);
 

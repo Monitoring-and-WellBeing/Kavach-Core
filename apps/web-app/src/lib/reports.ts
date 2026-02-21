@@ -72,6 +72,9 @@ export const reportsApi = {
       params: endDate ? { endDate } : {}
     }).then(r => r.data),
 
+  getApps: (deviceId: string) =>
+    api.get<AppUsage>(`/reports/apps?deviceId=${deviceId}`).then(r => r.data),
+
   getTopApps: (deviceId: string, startDate?: string, endDate?: string) =>
     api.get<AppUsage>(`/reports/device/${deviceId}/apps`, {
       params: { startDate, endDate }

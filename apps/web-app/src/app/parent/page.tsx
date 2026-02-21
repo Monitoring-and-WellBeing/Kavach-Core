@@ -157,11 +157,11 @@ export default function ParentDashboard() {
       <div className="p-4 md:p-6 space-y-4 md:space-y-5">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
           {[1,2,3,4].map(i => <div key={i} className="bg-white rounded-2xl h-28 animate-pulse shadow-sm" />)}
-        </div>
+            </div>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 md:gap-4">
           {[1,2,3].map(i => <div key={i} className="bg-white rounded-2xl h-36 animate-pulse shadow-sm" />)}
         </div>
-      </div>
+          </div>
     )
   }
 

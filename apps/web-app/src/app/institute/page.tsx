@@ -221,17 +221,17 @@ export default function InstituteDashboard() {
 
       {/* ── Header ── */}
       <div className="flex items-center justify-between gap-3">
-        <div>
+            <div>
           <h1 className="text-gray-900 font-bold text-lg md:text-xl">Institute Overview</h1>
           <p className="text-gray-400 text-sm mt-0.5">
             {stats.totalDevices} devices · {stats.onlineDevices} online now
           </p>
-        </div>
+            </div>
         <button onClick={load}
           className="p-2.5 bg-gray-100 hover:bg-gray-200 rounded-xl text-gray-500 transition-colors flex-shrink-0">
           <RefreshCw size={16} />
         </button>
-      </div>
+          </div>
 
       {/* ── Top row: compliance + stat cards ── */}
       <div className="grid grid-cols-2 lg:grid-cols-6 gap-3 md:gap-4">
