@@ -2,6 +2,9 @@
 -- KAVACH AI — V6 Migration: Focus Mode Schema
 -- ═══════════════════════════════════════════════════════════════
 
+-- Drop old focus_sessions table from V1 so this migration can rebuild it with new schema
+DROP TABLE IF EXISTS focus_sessions CASCADE;
+
 -- ─── FOCUS SESSIONS ──────────────────────────────────────────────────────────
 CREATE TABLE focus_sessions (
     id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -47,22 +50,22 @@ CREATE INDEX idx_whitelist_tenant    ON focus_whitelist(tenant_id);
 -- These are seeded per demo tenant
 INSERT INTO focus_whitelist (tenant_id, process_name, app_name)
 VALUES
-  ('11111111-1111-1111-1111-111111111111', 'code.exe',         'VS Code'),
-  ('11111111-1111-1111-1111-111111111111', 'notepad.exe',      'Notepad'),
-  ('11111111-1111-1111-1111-111111111111', 'notepad++.exe',    'Notepad++'),
-  ('11111111-1111-1111-1111-111111111111', 'winword.exe',      'Microsoft Word'),
-  ('11111111-1111-1111-1111-111111111111', 'excel.exe',        'Microsoft Excel'),
-  ('11111111-1111-1111-1111-111111111111', 'acrobat.exe',      'Adobe Acrobat'),
-  ('11111111-1111-1111-1111-111111111111', 'sumatrapdf.exe',   'Sumatra PDF'),
-  ('11111111-1111-1111-1111-111111111111', 'onenote.exe',      'OneNote'),
-  ('11111111-1111-1111-1111-111111111111', 'calculator.exe',   'Calculator'),
-  ('11111111-1111-1111-1111-111111111111', 'explorer.exe',     'File Explorer');
+  ('a1b2c3d4-e5f6-7890-abcd-ef1234567890', 'code.exe',         'VS Code'),
+  ('a1b2c3d4-e5f6-7890-abcd-ef1234567890', 'notepad.exe',      'Notepad'),
+  ('a1b2c3d4-e5f6-7890-abcd-ef1234567890', 'notepad++.exe',    'Notepad++'),
+  ('a1b2c3d4-e5f6-7890-abcd-ef1234567890', 'winword.exe',      'Microsoft Word'),
+  ('a1b2c3d4-e5f6-7890-abcd-ef1234567890', 'excel.exe',        'Microsoft Excel'),
+  ('a1b2c3d4-e5f6-7890-abcd-ef1234567890', 'acrobat.exe',      'Adobe Acrobat'),
+  ('a1b2c3d4-e5f6-7890-abcd-ef1234567890', 'sumatrapdf.exe',   'Sumatra PDF'),
+  ('a1b2c3d4-e5f6-7890-abcd-ef1234567890', 'onenote.exe',      'OneNote'),
+  ('a1b2c3d4-e5f6-7890-abcd-ef1234567890', 'calculator.exe',   'Calculator'),
+  ('a1b2c3d4-e5f6-7890-abcd-ef1234567890', 'explorer.exe',     'File Explorer');
 
 -- ─── SEED DEMO COMPLETED SESSION ─────────────────────────────────────────────
 INSERT INTO focus_sessions (tenant_id, device_id, initiated_role, title, duration_minutes,
   started_at, ends_at, ended_at, status, end_reason)
 VALUES
-  ('11111111-1111-1111-1111-111111111111',
+  ('a1b2c3d4-e5f6-7890-abcd-ef1234567890',
    'd1111111-1111-1111-1111-111111111111',
    'PARENT', '45-minute Study Session', 45,
    NOW() - INTERVAL '2 hours',
@@ -70,7 +73,7 @@ VALUES
    NOW() - INTERVAL '75 minutes',
    'COMPLETED', 'COMPLETED'),
 
-  ('11111111-1111-1111-1111-111111111111',
+  ('a1b2c3d4-e5f6-7890-abcd-ef1234567890',
    'd1111111-1111-1111-1111-111111111111',
    'STUDENT', 'Pomodoro — Math', 25,
    NOW() - INTERVAL '1 hour',

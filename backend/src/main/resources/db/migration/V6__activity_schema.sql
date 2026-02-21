@@ -2,6 +2,9 @@
 -- KAVACH AI — V6 Migration: Activity Logs Schema
 -- ═══════════════════════════════════════════════════════════════
 
+-- Drop old tables from V1 so this migration can rebuild them with new schema
+DROP TABLE IF EXISTS activity_logs CASCADE;
+
 -- ─── APP CATEGORY ENUM ───────────────────────────────────────────────────────
 CREATE TYPE app_category AS ENUM (
   'EDUCATION',
