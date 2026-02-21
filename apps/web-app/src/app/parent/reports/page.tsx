@@ -61,24 +61,24 @@ export default function ReportsPage() {
   }
 
   return (
-    <div className="p-6 fade-up">
+    <div className="p-4 md:p-6 fade-up">
       {toast && <Toast message={toast.message} type={toast.type} onClose={hideToast} />}
 
       {/* ── Header ── */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 md:mb-6">
         <div>
-          <h1 className="text-gray-900 font-bold text-xl">Usage Reports</h1>
+          <h1 className="text-gray-900 font-bold text-lg md:text-xl">Usage Reports</h1>
           <p className="text-gray-400 text-sm mt-0.5">
             {selectedDevice ? `Showing data for ${selectedDevice.assignedTo || selectedDevice.name}` : 'Select a device to view reports'}
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {/* Device selector */}
-          <div className="relative">
+          <div className="relative flex-1 sm:flex-none">
             <select
               value={selectedDeviceId || ''}
               onChange={e => setSelectedDeviceId(e.target.value)}
-              className="appearance-none bg-white border border-gray-200 rounded-xl px-4 py-2.5 pr-8 text-sm text-gray-700 font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer">
+              className="w-full sm:w-auto appearance-none bg-white border border-gray-200 rounded-xl px-4 h-11 pr-8 text-sm text-gray-700 font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer">
               {devices.length === 0 && <option value="">No devices</option>}
               {devices.map(d => (
                 <option key={d.id} value={d.id}>
@@ -107,7 +107,7 @@ export default function ReportsPage() {
           </button>
 
           <button onClick={handleExport}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-white text-sm font-medium"
+            className="hidden sm:flex items-center gap-2 px-4 py-2.5 rounded-xl text-white text-sm font-medium"
             style={{ background: 'linear-gradient(135deg, #2563EB, #7C3AED)' }}>
             <Download size={15} /> Export PDF
           </button>
@@ -134,7 +134,7 @@ export default function ReportsPage() {
       {selectedDeviceId && (
         <>
           {/* ── Summary stat cards ── */}
-          <div className="grid grid-cols-4 gap-4 mb-5">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-4 md:mb-5">
             {loading ? (
               <>
                 {[1,2,3,4].map(i => (
@@ -187,7 +187,7 @@ export default function ReportsPage() {
           </div>
 
           {/* ── Row 1: Screen time trend + Heatmap ── */}
-          <div className="grid grid-cols-2 gap-5 mb-5">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5 mb-4 md:mb-5">
             <div className="bg-white rounded-2xl p-6 shadow-sm">
               <div className="flex items-start justify-between mb-4">
                 <div>
@@ -234,7 +234,7 @@ export default function ReportsPage() {
           </div>
 
           {/* ── Row 2: Top apps chart + Category donut ── */}
-          <div className="grid grid-cols-2 gap-5 mb-5">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5 mb-4 md:mb-5">
             <div className="bg-white rounded-2xl p-6 shadow-sm">
               <h3 className="font-semibold text-gray-900 mb-1">Top Apps by Time</h3>
               <p className="text-gray-400 text-sm mb-4">

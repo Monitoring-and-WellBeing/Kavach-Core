@@ -104,9 +104,9 @@ export default function ParentSubscriptionPage() {
   }
 
   if (loading) return (
-    <div className="p-6 animate-pulse space-y-4">
+    <div className="p-4 md:p-6 animate-pulse space-y-4">
       <div className="h-40 bg-white rounded-2xl shadow-sm" />
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4">
         {[1, 2].map(i => <div key={i} className="h-80 bg-white rounded-2xl shadow-sm" />)}
       </div>
     </div>
@@ -115,19 +115,19 @@ export default function ParentSubscriptionPage() {
   if (!sub) return null
 
   return (
-    <div className="p-6 space-y-6 fade-up">
+    <div className="p-4 md:p-6 space-y-4 md:space-y-6 fade-up">
       {toast && <Toast message={toast.message} type={toast.type} onClose={hideToast} />}
 
       <div>
-        <h1 className="text-gray-900 font-bold text-xl flex items-center gap-2">
+        <h1 className="text-gray-900 font-bold text-lg md:text-xl flex items-center gap-2">
           <CreditCard size={20} className="text-blue-500" /> Subscription
         </h1>
         <p className="text-gray-400 text-sm mt-0.5">Manage your plan and device limits</p>
       </div>
 
       {/* ── Current plan card ── */}
-      <div className={`rounded-2xl p-5 border-2 ${PLAN_COLORS[sub.planCode] || 'bg-white border-gray-200'} shadow-sm`}>
-        <div className="flex items-start justify-between mb-4">
+      <div className={`rounded-2xl p-4 md:p-5 border-2 ${PLAN_COLORS[sub.planCode] || 'bg-white border-gray-200'} shadow-sm`}>
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-4">
           <div className="flex items-center gap-3">
             {PLAN_ICONS[sub.planCode]}
             <div>
@@ -135,7 +135,7 @@ export default function ParentSubscriptionPage() {
               <StatusBadge sub={sub} />
             </div>
           </div>
-          <div className="text-right">
+          <div className="sm:text-right">
             <div className="font-bold text-gray-900 text-xl">{sub.monthlyTotalFormatted}</div>
             <div className="text-gray-400 text-xs">flat monthly billing</div>
           </div>
@@ -192,8 +192,8 @@ export default function ParentSubscriptionPage() {
 
       {/* ── Plan comparison ── */}
       <div>
-        <h2 className="font-semibold text-gray-800 mb-4">Available Plans</h2>
-        <div className="grid grid-cols-2 gap-4">
+        <h2 className="font-semibold text-gray-800 mb-3 md:mb-4">Available Plans</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4">
           {plans.map(plan => (
             <div key={plan.id}
               className={`bg-white rounded-2xl p-5 shadow-sm border-2 transition-all ${

@@ -95,7 +95,7 @@ function CreateRuleWizard({
   return (
     <div>
       {/* Step indicator */}
-      <div className="flex items-center gap-2 mb-6">
+      <div className="flex items-center gap-2 mb-4 md:mb-6 overflow-x-auto scrollbar-hide">
         {[1,2,3].map(s => (
           <div key={s} className="flex items-center gap-2">
             <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
@@ -201,7 +201,7 @@ function CreateRuleWizard({
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className={labelClass}>Severity</label>
               <select value={form.severity} onChange={e => setForm(f => ({ ...f, severity: e.target.value as Severity }))}
@@ -360,13 +360,13 @@ export default function AlertsRulesPage() {
   }
 
   return (
-    <div className="p-6 fade-up">
+    <div className="p-4 md:p-6 fade-up">
       {toast && <Toast message={toast.message} type={toast.type} onClose={hideToast} />}
 
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-4 md:mb-6">
         <div>
-          <h1 className="text-gray-900 font-bold text-xl">Alerts & Rules</h1>
+          <h1 className="text-gray-900 font-bold text-lg md:text-xl">Alerts & Rules</h1>
           <p className="text-gray-400 text-sm mt-0.5">
             {unread > 0 ? `${unread} unread alert${unread > 1 ? 's' : ''}` : 'No unread alerts'}
           </p>
@@ -389,7 +389,7 @@ export default function AlertsRulesPage() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 bg-gray-100 rounded-xl p-1 w-fit mb-5">
+      <div className="flex gap-1 bg-gray-100 rounded-xl p-1 w-fit mb-4 md:mb-5">
         <button onClick={() => setTab('alerts')}
           className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${tab === 'alerts' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500'}`}>
           <Bell size={15} />

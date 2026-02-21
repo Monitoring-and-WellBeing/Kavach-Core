@@ -22,7 +22,7 @@ function StatCard({ icon, label, value, sub, color }: {
   sub?: string; color: string
 }) {
       return (
-    <div className="bg-white rounded-2xl p-5 shadow-sm">
+    <div className="bg-white rounded-2xl p-3 md:p-5 shadow-sm">
       <div className="flex items-center justify-between mb-3">
         <span className="text-gray-400 text-xs font-medium">{label}</span>
         <div className={`w-8 h-8 ${color} rounded-xl flex items-center justify-center`}>
@@ -154,14 +154,14 @@ export default function ParentDashboard() {
 
   if (loading) {
     return (
-      <div className="p-6 space-y-5">
-        <div className="grid grid-cols-4 gap-4">
+      <div className="p-4 md:p-6 space-y-4 md:space-y-5">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
           {[1,2,3,4].map(i => <div key={i} className="bg-white rounded-2xl h-28 animate-pulse shadow-sm" />)}
-            </div>
-        <div className="grid grid-cols-3 gap-4">
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 md:gap-4">
           {[1,2,3].map(i => <div key={i} className="bg-white rounded-2xl h-36 animate-pulse shadow-sm" />)}
         </div>
-          </div>
+      </div>
     )
   }
 
@@ -177,12 +177,12 @@ export default function ParentDashboard() {
   const { stats, devices, recentAlerts } = data
 
   return (
-    <div className="p-6 space-y-5 fade-up">
+    <div className="p-4 md:p-6 space-y-4 md:space-y-5 fade-up">
 
       {/* ── Header ── */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-gray-900 font-bold text-xl">Overview</h1>
+          <h1 className="text-gray-900 font-bold text-lg md:text-xl">Overview</h1>
           <p className="text-gray-400 text-xs mt-0.5">
             {lastUpdated && `Updated ${lastUpdated.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}`}
           </p>
@@ -193,7 +193,7 @@ export default function ParentDashboard() {
       </div>
 
       {/* ── Stat cards ── */}
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
         <StatCard
           icon={<Clock size={16} className="text-blue-600" />}
           label="Screen Time Today"
@@ -227,7 +227,7 @@ export default function ParentDashboard() {
       </div>
 
       {/* ── Main content: devices + alerts ── */}
-      <div className="grid grid-cols-3 gap-5">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-5">
 
         {/* Device grid — takes 2 cols */}
         <div className="col-span-2 space-y-3">
@@ -248,7 +248,7 @@ export default function ParentDashboard() {
               </Link>
             </div>
           ) : (
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4">
               {devices.slice(0, 4).map(device => (
                 <DeviceCard key={device.id} device={device} onFocusChange={load} />
               ))}
