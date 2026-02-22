@@ -15,6 +15,7 @@ export interface AgentBlockRule {
 // In-memory rule cache — refreshed every 60 seconds
 let cachedRules: AgentBlockRule[] = []
 let lastFetch = 0
+let lastUpdated: string | null = null // Track lastUpdated timestamp from server
 
 // App time tracking: Map<processName, secondsUsedToday>
 const appTimeToday = new Map<string, number>()
@@ -43,11 +44,29 @@ export async function refreshBlockRules(): Promise<void> {
       { signal: AbortSignal.timeout(5000) }
     )
     if (res.ok) {
-      cachedRules = await res.json()
+      const data = await res.json()
+      
+      // Check if rules were updated
+      const currentLastUpdated = data.lastUpdated || null
+      const rulesChanged = lastUpdated !== null && currentLastUpdated !== lastUpdated
+      
+      if (rulesChanged) {
+        console.log('[rules] Rules updated at', currentLastUpdated, '- reloading immediately')
+      }
+      
+      // Update cached rules and metadata
+      cachedRules = data.rules || []
+      lastUpdated = currentLastUpdated
       lastFetch = Date.now()
+      
+      // If rules changed, log it
+      if (rulesChanged) {
+        console.log('[rules] Loaded', cachedRules.length, 'active rules')
+      }
     }
-  } catch {
+  } catch (err) {
     // Keep using cached rules on network failure
+    console.debug('[rules] Failed to refresh rules, using cached:', err)
   }
 }
 

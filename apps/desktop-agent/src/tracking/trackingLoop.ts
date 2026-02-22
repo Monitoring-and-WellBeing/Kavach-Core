@@ -1,5 +1,5 @@
 import { getActiveWindow, recordWindow, flushCurrentSession, UsageSession } from './tracker'
-import { syncSessions } from '../sync/syncer'
+import { syncSessions, getSyncInterval } from '../sync/syncer'
 import { sendHeartbeat } from '../sync/deviceRegistration'
 import { shouldBlock, refreshBlockRules, trackAppTime } from '../blocking/blockingEngine'
 import { killProcess, showBlockNotification } from '../blocking/processKiller'
@@ -7,7 +7,6 @@ import { reportViolation } from '../blocking/violationReporter'
 import { pollFocusStatus, isFocusBlocked, getCurrentFocusStatus } from '../focus/focusEnforcer'
 
 const POLL_INTERVAL_MS   = 5000
-const SYNC_INTERVAL_MS   = 30000
 const RULES_REFRESH_MS   = 60000  // refresh block rules every 60 seconds
 
 let pollTimer: NodeJS.Timeout | null = null
@@ -59,8 +58,16 @@ export function startTrackingLoop(): void {
           console.log(`[blocker] Blocking ${window.processName}: ${reason}`)
           recentlyBlocked.set(window.processName, Date.now())
 
-          // Kill the process
-          await killProcess(window.processName)
+          // Kill the process (wrapped in try/catch for graceful degradation)
+          try {
+            await killProcess(window.processName)
+          } catch (err) {
+            console.warn('[blocker] Process kill error handled gracefully', {
+              processName: window.processName,
+              error: String(err),
+            })
+            // Continue with notification and violation reporting even if kill fails
+          }
 
           // Show notification to user (include time limit message if applicable)
           const message = rule.ruleType === 'APP_TIME_LIMIT' && rule.limitMinutes
@@ -87,7 +94,18 @@ export function startTrackingLoop(): void {
       if (window && isFocusBlocked(window.processName)) {
         const status = getCurrentFocusStatus()
         console.log(`[focus] Blocking non-whitelisted app during focus: ${window.processName}`)
-        await killProcess(window.processName)
+        
+        // Kill the process (wrapped in try/catch for graceful degradation)
+        try {
+          await killProcess(window.processName)
+        } catch (err) {
+          console.warn('[focus] Process kill error handled gracefully', {
+            processName: window.processName,
+            error: String(err),
+          })
+          // Continue with notification even if kill fails
+        }
+        
         await showBlockNotification(
           window.appName,
           `Focus mode is active (${Math.floor((status.remainingSeconds || 0) / 60)} min remaining). Only study apps are allowed.`
@@ -102,19 +120,26 @@ export function startTrackingLoop(): void {
     sessionQueue.push(...completed)
   }, POLL_INTERVAL_MS)
 
-  // Sync to backend every 30 seconds
-  syncTimer = setInterval(async () => {
-    const partial = flushCurrentSession()
-    if (partial) sessionQueue.push(partial)
+  // Sync to backend with dynamic interval (30s normal, 5min after failures)
+  const scheduleSync = () => {
+    const interval = getSyncInterval()
+    if (syncTimer) clearInterval(syncTimer)
+    syncTimer = setInterval(async () => {
+      const partial = flushCurrentSession()
+      if (partial) sessionQueue.push(partial)
 
-    if (sessionQueue.length > 0) {
-      const toSync = [...sessionQueue]
-      sessionQueue = []
-      await syncSessions(toSync)
-    }
+      if (sessionQueue.length > 0) {
+        const toSync = [...sessionQueue]
+        sessionQueue = []
+        await syncSessions(toSync)
+        // Reschedule with updated interval after sync
+        scheduleSync()
+      }
 
-    await sendHeartbeat()
-  }, SYNC_INTERVAL_MS)
+      await sendHeartbeat()
+    }, interval)
+  }
+  scheduleSync()
 
   // Refresh block rules every 60 seconds
   rulesTimer = setInterval(refreshBlockRules, RULES_REFRESH_MS)

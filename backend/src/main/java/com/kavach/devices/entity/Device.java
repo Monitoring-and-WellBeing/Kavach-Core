@@ -52,4 +52,7 @@ public class Device {
 
     @Column(name = "updated_at")
     private LocalDateTime updatedAt = LocalDateTime.now();
+
+    @Column(name = "rules_updated_at")
+    private LocalDateTime rulesUpdatedAt;
 }

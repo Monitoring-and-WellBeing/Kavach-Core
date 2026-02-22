@@ -39,6 +39,21 @@ public class BlockingService {
         return ruleRepo.findActiveRulesForDevice(tenantId, deviceId)
                 .stream().map(this::toAgentDto).toList();
     }
+    
+    // Get agent rules with metadata (lastUpdated, serverTime)
+    public java.util.Map<String, Object> getAgentRulesWithMetadata(UUID tenantId, UUID deviceId) {
+        var device = deviceRepo.findById(deviceId)
+                .orElseThrow(() -> new IllegalArgumentException("Device not found"));
+        
+        List<AgentBlockRuleDto> rules = getAgentRules(tenantId, deviceId);
+        
+        java.util.Map<String, Object> response = new java.util.HashMap<>();
+        response.put("rules", rules);
+        response.put("lastUpdated", device.getRulesUpdatedAt());
+        response.put("serverTime", LocalDateTime.now());
+        
+        return response;
+    }
 
     @Transactional
     public BlockRuleDto createRule(UUID tenantId, UUID userId, CreateBlockRuleRequest req) {
@@ -57,7 +72,23 @@ public class BlockingService {
                 .showMessage(req.isShowMessage())
                 .blockMessage(req.getBlockMessage())
                 .build();
-        return toDto(ruleRepo.save(rule));
+        rule = ruleRepo.save(rule);
+        
+        // Update device's rules_updated_at timestamp
+        if (req.getDeviceId() != null) {
+            deviceRepo.findById(req.getDeviceId()).ifPresent(d -> {
+                d.setRulesUpdatedAt(LocalDateTime.now());
+                deviceRepo.save(d);
+            });
+        } else {
+            // If applies to all devices, update all devices for this tenant
+            deviceRepo.findByTenantIdAndActiveTrue(tenantId).forEach(d -> {
+                d.setRulesUpdatedAt(LocalDateTime.now());
+                deviceRepo.save(d);
+            });
+        }
+        
+        return toDto(rule);
     }
 
     @Transactional
@@ -67,7 +98,12 @@ public class BlockingService {
                 .orElseThrow(() -> new NoSuchElementException("Rule not found"));
         rule.setActive(!rule.isActive());
         rule.setUpdatedAt(LocalDateTime.now());
-        return toDto(ruleRepo.save(rule));
+        rule = ruleRepo.save(rule);
+        
+        // Update device's rules_updated_at timestamp
+        updateDeviceRulesTimestamp(rule.getDeviceId(), rule.getTenantId());
+        
+        return toDto(rule);
     }
 
     @Transactional
@@ -75,7 +111,27 @@ public class BlockingService {
         BlockRule rule = ruleRepo.findById(ruleId)
                 .filter(r -> r.getTenantId().equals(tenantId))
                 .orElseThrow(() -> new NoSuchElementException("Rule not found"));
+        
+        UUID deviceId = rule.getDeviceId();
         ruleRepo.delete(rule);
+        
+        // Update device's rules_updated_at timestamp
+        updateDeviceRulesTimestamp(deviceId, tenantId);
+    }
+    
+    private void updateDeviceRulesTimestamp(UUID deviceId, UUID tenantId) {
+        if (deviceId != null) {
+            deviceRepo.findById(deviceId).ifPresent(d -> {
+                d.setRulesUpdatedAt(LocalDateTime.now());
+                deviceRepo.save(d);
+            });
+        } else {
+            // If applies to all devices, update all devices for this tenant
+            deviceRepo.findByTenantIdAndActiveTrue(tenantId).forEach(d -> {
+                d.setRulesUpdatedAt(LocalDateTime.now());
+                deviceRepo.save(d);
+            });
+        }
     }
 
     // ── Violation logging (called by desktop agent) ───────────────────────────

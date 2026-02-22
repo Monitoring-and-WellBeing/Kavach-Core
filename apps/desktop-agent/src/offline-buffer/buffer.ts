@@ -30,9 +30,17 @@ export async function bufferSessions(deviceId: string, sessions: UsageSession[])
       bufferedAt: new Date().toISOString(),
     }))
 
-    // Keep max 5000 buffered logs (prevent unbounded growth)
-    const combined = [...existing, ...newLogs].slice(-5000)
-    await fs.writeFile(BUFFER_PATH, JSON.stringify(combined))
+    // Keep max 500 buffered logs (MAX_BUFFER_SIZE from syncer.ts)
+    // Drop oldest entries if exceeded
+    const MAX_BUFFER_SIZE = 500
+    const combined = [...existing, ...newLogs]
+    
+    if (combined.length > MAX_BUFFER_SIZE) {
+      console.warn(`[buffer] Buffer size (${combined.length}) exceeds MAX_BUFFER_SIZE (${MAX_BUFFER_SIZE}), dropping oldest entries`)
+    }
+    
+    const trimmed = combined.slice(-MAX_BUFFER_SIZE)
+    await fs.writeFile(BUFFER_PATH, JSON.stringify(trimmed))
   } catch (err) {
     console.error('[buffer] Failed to write offline buffer:', err)
   }

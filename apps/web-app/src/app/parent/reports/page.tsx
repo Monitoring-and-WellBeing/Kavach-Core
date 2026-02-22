@@ -56,8 +56,42 @@ export default function ReportsPage() {
 
   const selectedDevice = devices.find(d => d.id === selectedDeviceId)
 
-  const handleExport = () => {
-    showToast('Report exported successfully! Check your downloads.', 'success')
+  const handleExport = async () => {
+    if (!selectedDeviceId) {
+      showToast('Please select a device first', 'error')
+      return
+    }
+
+    try {
+      const token = localStorage.getItem('kavach_access_token')
+      const url = `/api/v1/reports/device/${selectedDeviceId}/export?format=csv&period=${period}`
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'
+      
+      const response = await fetch(`${apiUrl}${url}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+
+      if (!response.ok) {
+        if (response.status === 501) {
+          const data = await response.json()
+          showToast(data.error || 'PDF export not available yet', 'info')
+          return
+        }
+        throw new Error('Export failed')
+      }
+
+      const blob = await response.blob()
+      const link = document.createElement('a')
+      link.href = URL.createObjectURL(blob)
+      link.download = `kavach-report-${selectedDeviceId}-${period}-${new Date().toISOString().split('T')[0]}.csv`
+      link.click()
+      URL.revokeObjectURL(link.href)
+      
+      showToast('Report exported successfully! Check your downloads.', 'success')
+    } catch (err) {
+      console.error('Export error:', err)
+      showToast('Failed to export report. Please try again.', 'error')
+    }
   }
 
   return (
