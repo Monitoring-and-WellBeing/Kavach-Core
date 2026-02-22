@@ -3,6 +3,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { Target, Play, Square, CheckCircle, Clock } from 'lucide-react'
 import { focusApi, FocusSession } from '@/lib/focus'
 import { useAuth } from '@/context/AuthContext'
+import { studentDashboardApi } from '@/lib/studentDashboard'
 
 const PRESETS = [
   { label: '25 min', value: 25, emoji: '🍅', desc: 'Pomodoro' },
@@ -22,14 +23,27 @@ export default function StudentFocusPage() {
   const [history, setHistory] = useState<FocusSession[]>([])
   const [stats, setStats] = useState({ focusMinutesToday: 0, sessionsToday: 0 })
   const [loading, setLoading] = useState(false)
+  const [deviceId, setDeviceId] = useState<string | null>(null)
+  const [deviceLoading, setDeviceLoading] = useState(true)
   const timerRef = useRef<NodeJS.Timeout>()
 
-  // Needs device ID from user's linked device
-  // For student, we use their primary device (first device in their tenant)
-  // TODO: Get deviceId from student dashboard data or device list
-  const deviceId = 'd1111111-1111-1111-1111-111111111111'
+  // Load deviceId from student dashboard
+  useEffect(() => {
+    studentDashboardApi.get()
+      .then(dashboard => {
+        if (dashboard.deviceLinked && dashboard.deviceId) {
+          setDeviceId(dashboard.deviceId)
+        }
+      })
+      .catch(err => {
+        console.error('Failed to load device:', err)
+      })
+      .finally(() => setDeviceLoading(false))
+  }, [])
 
   const loadData = useCallback(async () => {
+    if (!deviceId) return
+    
     const [active, hist, todayStats] = await Promise.all([
       focusApi.getActive(deviceId),
       focusApi.getHistory(deviceId),
@@ -82,6 +96,24 @@ export default function StudentFocusPage() {
     : 0
 
   const circumference = 2 * Math.PI * 54
+
+  if (deviceLoading) {
+    return (
+      <div className="p-4 md:p-6 max-w-2xl mx-auto animate-pulse">
+        <div className="h-32 bg-white rounded-2xl shadow-sm" />
+      </div>
+    )
+  }
+
+  if (!deviceId) {
+    return (
+      <div className="p-4 md:p-6 max-w-2xl mx-auto flex flex-col items-center justify-center h-64 text-center">
+        <div className="text-4xl mb-3">💻</div>
+        <h2 className="text-gray-700 font-semibold">No device linked yet</h2>
+        <p className="text-gray-400 text-sm mt-1">Ask your parent or institute to link a device to your account.</p>
+      </div>
+    )
+  }
 
   return (
     <div className="p-4 md:p-6 max-w-2xl mx-auto fade-up">

@@ -2,18 +2,36 @@ import { loadConfig } from '../auth/config'
 
 export interface AgentBlockRule {
   id: string
-  ruleType: 'APP' | 'CATEGORY' | 'KEYWORD'
+  ruleType: 'APP' | 'CATEGORY' | 'KEYWORD' | 'APP_TIME_LIMIT'
   target: string           // process name / category / keyword
   scheduleEnabled: boolean
   scheduleDays: string     // "MON,TUE,WED,THU,FRI"
   scheduleStart?: string   // "09:00"
   scheduleEnd?: string     // "17:00"
   blockMessage: string
+  limitMinutes?: number    // Time limit in minutes (for APP_TIME_LIMIT)
 }
 
 // In-memory rule cache — refreshed every 60 seconds
 let cachedRules: AgentBlockRule[] = []
 let lastFetch = 0
+
+// App time tracking: Map<processName, secondsUsedToday>
+const appTimeToday = new Map<string, number>()
+let lastResetDate = new Date().toDateString()
+
+// Reset app time tracking at midnight
+function resetAppTimeTrackingIfNeeded(): void {
+  const today = new Date().toDateString()
+  if (today !== lastResetDate) {
+    appTimeToday.clear()
+    lastResetDate = today
+    console.log('[time-limit] Reset app time tracking for new day')
+  }
+}
+
+// Check and reset on first call
+resetAppTimeTrackingIfNeeded()
 
 export async function refreshBlockRules(): Promise<void> {
   const config = await loadConfig()
@@ -31,6 +49,14 @@ export async function refreshBlockRules(): Promise<void> {
   } catch {
     // Keep using cached rules on network failure
   }
+}
+
+// Track app usage time (called every 5 seconds from tracking loop)
+export function trackAppTime(processName: string): void {
+  resetAppTimeTrackingIfNeeded() // Check if we need to reset for new day
+  const proc = processName.toLowerCase()
+  const current = appTimeToday.get(proc) || 0
+  appTimeToday.set(proc, current + 5) // Add 5 seconds (poll interval)
 }
 
 // Check if a window should be blocked
@@ -55,6 +81,24 @@ export function shouldBlock(processName: string, windowTitle: string, category: 
       case 'APP':
         if (proc === target || proc.includes(target)) {
           return { blocked: true, rule, reason: `App blocked: ${processName}` }
+        }
+        break
+
+      case 'APP_TIME_LIMIT':
+        // Check if this app matches the target
+        if (proc === target || proc.includes(target)) {
+          if (rule.limitMinutes) {
+            const limitSeconds = rule.limitMinutes * 60
+            const usedSeconds = appTimeToday.get(proc) || 0
+            
+            if (usedSeconds >= limitSeconds) {
+              return { 
+                blocked: true, 
+                rule, 
+                reason: `Time limit reached for ${processName} (${rule.limitMinutes} min/day)` 
+              }
+            }
+          }
         }
         break
 

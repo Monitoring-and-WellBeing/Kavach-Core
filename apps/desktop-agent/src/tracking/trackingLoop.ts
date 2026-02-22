@@ -1,7 +1,7 @@
 import { getActiveWindow, recordWindow, flushCurrentSession, UsageSession } from './tracker'
 import { syncSessions } from '../sync/syncer'
 import { sendHeartbeat } from '../sync/deviceRegistration'
-import { shouldBlock, refreshBlockRules } from '../blocking/blockingEngine'
+import { shouldBlock, refreshBlockRules, trackAppTime } from '../blocking/blockingEngine'
 import { killProcess, showBlockNotification } from '../blocking/processKiller'
 import { reportViolation } from '../blocking/violationReporter'
 import { pollFocusStatus, isFocusBlocked, getCurrentFocusStatus } from '../focus/focusEnforcer'
@@ -39,6 +39,11 @@ export function startTrackingLoop(): void {
     const window = await getActiveWindow()
 
     if (window) {
+      // ── APP TIME TRACKING ────────────────────────────────────────────────────
+      // Track app usage time (add 5 seconds for this poll interval)
+      trackAppTime(window.processName)
+      // ── END APP TIME TRACKING ────────────────────────────────────────────────
+
       // ── BLOCKING CHECK ──────────────────────────────────────────────────────
       const lastBlocked = recentlyBlocked.get(window.processName) || 0
       const cooldownPassed = Date.now() - lastBlocked > 10000
@@ -57,8 +62,11 @@ export function startTrackingLoop(): void {
           // Kill the process
           await killProcess(window.processName)
 
-          // Show notification to user
-          await showBlockNotification(window.appName, rule.blockMessage)
+          // Show notification to user (include time limit message if applicable)
+          const message = rule.ruleType === 'APP_TIME_LIMIT' && rule.limitMinutes
+            ? `Time limit reached for ${window.appName} (${rule.limitMinutes} min/day)`
+            : rule.blockMessage
+          await showBlockNotification(window.appName, message)
 
           // Report violation to backend (async — don't await)
           reportViolation(
