@@ -184,7 +184,7 @@ export default function AchievementsPage() {
       </div>
 
       {/* XP Bar */}
-      <XPBar level={data.level} xp={data.totalXp} progress={data.levelProgress} />
+      <XPBar level={String(data.level)} xp={data.totalXp} progress={data.levelProgress} />
 
       {/* Stats row */}
       <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 md:gap-3">

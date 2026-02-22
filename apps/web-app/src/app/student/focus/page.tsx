@@ -70,6 +70,7 @@ export default function StudentFocusPage() {
   }, [phase])
 
   const handleStart = async () => {
+    if (!deviceId) return
     setLoading(true)
     try {
       const s = await focusApi.selfStart(deviceId, selected, PRESETS.find(p => p.value === selected)?.desc)

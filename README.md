@@ -31,6 +31,34 @@ Install all of these before starting:
 
 ---
 
+## Quick Start (Docker)
+
+```bash
+cp .env.example .env
+# Edit .env with your values
+docker compose up -d
+# App available at http://localhost:3000
+# API available at http://localhost:8080
+```
+
+## Quick Start (Local Dev)
+
+```bash
+# Terminal 1: Database
+docker compose up postgres -d
+
+# Terminal 2: Backend
+cd backend && ./mvnw spring-boot:run
+
+# Terminal 3: Frontend
+cd apps/web-app && pnpm dev
+
+# Terminal 4: Desktop Agent (optional)
+cd apps/desktop-agent && pnpm dev
+```
+
+---
+
 ## Complete Local Setup (Step by Step)
 
 ### Step 1 — Clone & Install Dependencies

@@ -6,6 +6,7 @@ import { RouteGuard } from '@/components/auth/RouteGuard'
 import { QueryProvider } from '@/lib/query-client'
 import { InstallPrompt } from '@/components/pwa/InstallPrompt'
 import { OfflineBanner } from '@/components/pwa/OfflineBanner'
+import { ErrorBoundary } from '@/components/ErrorBoundary'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -54,6 +55,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <body className={inter.className}>
         <OfflineBanner />
+        <ErrorBoundary>
         <AuthProvider>
           <QueryProvider>
             <RouteGuard>
@@ -61,6 +63,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </RouteGuard>
           </QueryProvider>
         </AuthProvider>
+        </ErrorBoundary>
         <InstallPrompt />
       </body>
     </html>

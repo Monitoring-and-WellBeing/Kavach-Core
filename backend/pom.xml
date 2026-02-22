@@ -46,6 +46,10 @@
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-websocket</artifactId>
     </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-actuator</artifactId>
+    </dependency>
 
     <!-- Database -->
     <dependency>
@@ -103,6 +107,13 @@
       <groupId>com.bucket4j</groupId>
       <artifactId>bucket4j-core</artifactId>
       <version>8.10.1</version>
+    </dependency>
+
+    <!-- Logging (JSON for production) -->
+    <dependency>
+      <groupId>net.logstash.logback</groupId>
+      <artifactId>logstash-logback-encoder</artifactId>
+      <version>7.4</version>
     </dependency>
 
     <!-- Test -->

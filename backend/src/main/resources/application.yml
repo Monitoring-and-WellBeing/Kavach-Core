@@ -52,3 +52,12 @@ razorpay:
     secret: ${RAZORPAY_KEY_SECRET:XXXXXXXXXXXXXXXXXXXXXXXX}
   webhook:
     secret: ${RAZORPAY_WEBHOOK_SECRET:YOUR_WEBHOOK_SECRET_HERE}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: when-authorized
