@@ -92,7 +92,10 @@ export function FocusControl({ deviceId, deviceName, onSessionChange }: Props) {
               style={{ width: `${Math.min(progress, 100)}%` }} />
           </div>
         </div>
-        <button onClick={handleStop} disabled={loading}
+        <button 
+          onClick={handleStop} 
+          disabled={loading}
+          aria-label="Stop focus session"
           className="p-2 bg-blue-100 hover:bg-blue-200 rounded-lg text-blue-600 transition-colors flex-shrink-0">
           <Square size={14} />
         </button>

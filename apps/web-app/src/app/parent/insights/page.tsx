@@ -145,7 +145,7 @@ export default function InsightsPage() {
             AI Insights
           </h1>
           <p className="text-gray-400 text-sm mt-0.5">
-            Powered by Claude · Analyzes last 7 days of usage
+            Powered by Gemini · Analyzes last 7 days of usage
           </p>
         </div>
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">

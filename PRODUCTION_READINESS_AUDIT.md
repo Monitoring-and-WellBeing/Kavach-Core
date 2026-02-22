@@ -223,7 +223,7 @@
 
 **Findings:**
 - ✅ Claude API integration implemented with graceful degradation
-- ✅ Returns mock insights if `ANTHROPIC_API_KEY` not set
+- ✅ Returns mock insights if `GEMINI_API_KEY` not set
 - ✅ 4-hour cache for insights
 - ⚠️ No unit tests for `ClaudeApiService`
 - ⚠️ No integration tests for insight generation flow
@@ -395,7 +395,7 @@
    - **Risk:** Production CORS may be too permissive
 
 4. **API Key Management**
-   - ⚠️ `ANTHROPIC_API_KEY` read from environment (good)
+   - ⚠️ `GEMINI_API_KEY` read from environment (good)
    - ⚠️ No key rotation mechanism
    - ⚠️ No key validation on startup
 
