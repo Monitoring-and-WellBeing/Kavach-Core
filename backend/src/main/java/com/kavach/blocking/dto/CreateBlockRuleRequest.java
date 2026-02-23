@@ -1,6 +1,7 @@
 package com.kavach.blocking.dto;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import lombok.Data;
 
 import java.time.LocalTime;
@@ -9,7 +10,9 @@ import java.util.UUID;
 @Data
 public class CreateBlockRuleRequest {
     @NotBlank private String name;
-    @NotBlank private String ruleType;   // APP | CATEGORY | WEBSITE | KEYWORD
+    @NotBlank 
+    @Pattern(regexp = "APP|CATEGORY|WEBSITE|KEYWORD", message = "ruleType must be one of: APP, CATEGORY, WEBSITE, KEYWORD")
+    private String ruleType;
     @NotBlank private String target;
     private String appliesTo = "ALL_DEVICES";
     private UUID deviceId;

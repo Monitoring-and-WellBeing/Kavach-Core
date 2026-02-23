@@ -31,6 +31,34 @@ Install all of these before starting:
 
 ---
 
+## Quick Start (Docker)
+
+```bash
+cp .env.example .env
+# Edit .env with your values
+docker compose up -d
+# App available at http://localhost:3000
+# API available at http://localhost:8080
+```
+
+## Quick Start (Local Dev)
+
+```bash
+# Terminal 1: Database
+docker compose up postgres -d
+
+# Terminal 2: Backend
+cd backend && ./mvnw spring-boot:run
+
+# Terminal 3: Frontend
+cd apps/web-app && pnpm dev
+
+# Terminal 4: Desktop Agent (optional)
+cd apps/desktop-agent && pnpm dev
+```
+
+---
+
 ## Complete Local Setup (Step by Step)
 
 ### Step 1 — Clone & Install Dependencies
@@ -100,7 +128,7 @@ export SPRING_DATASOURCE_PASSWORD=kavach123
 export JWT_SECRET=kavach-jwt-secret-key-minimum-256-bits-long-change-in-production-2024
 
 # AI Insights (optional — leave blank to disable)
-export ANTHROPIC_API_KEY=your_claude_api_key_here
+export GEMINI_API_KEY=your_gemini_api_key_here
 
 # Payments (optional — use test keys for local)
 export RAZORPAY_KEY_ID=rzp_test_XXXXXXXXXXXXXXXX

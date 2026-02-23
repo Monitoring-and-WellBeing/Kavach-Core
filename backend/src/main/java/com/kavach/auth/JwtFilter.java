@@ -38,6 +38,7 @@ public class JwtFilter extends OncePerRequestFilter {
 
         String email = jwtService.extractEmail(token);
         String role = jwtService.extractRole(token);
+        String tenantId = jwtService.extractTenantId(token);
 
         if (email != null && SecurityContextHolder.getContext().getAuthentication() == null) {
             var auth = new UsernamePasswordAuthenticationToken(
@@ -46,6 +47,12 @@ public class JwtFilter extends OncePerRequestFilter {
             );
             auth.setDetails(token);
             SecurityContextHolder.getContext().setAuthentication(auth);
+            
+            // Set request attributes for rate limiting
+            req.setAttribute("email", email);
+            if (tenantId != null && !tenantId.isEmpty()) {
+                req.setAttribute("tenantId", tenantId);
+            }
         }
 
         chain.doFilter(req, res);

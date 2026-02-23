@@ -96,3 +96,14 @@ app.on("before-quit", () => {
 app.on("window-all-closed", (e: Event) => {
   e.preventDefault(); // Keep running in tray
 });
+
+// Crash recovery handlers
+process.on('uncaughtException', (error) => {
+  console.error('[crash] Uncaught exception in main process', { error: error.message, stack: error.stack });
+  // Don't crash the agent — log and continue
+  // If the error is in a non-critical module, attempt recovery
+});
+
+process.on('unhandledRejection', (reason) => {
+  console.error('[crash] Unhandled promise rejection', { reason: String(reason) });
+});

@@ -21,6 +21,9 @@
     "test:focus": "NODE_PATH=../../node_modules:. jest --testPathPattern=08-focus",
     "test:goals": "NODE_PATH=../../node_modules:. jest --testPathPattern=09-goals",
     "test:features": "NODE_PATH=../../node_modules:. jest --testPathPattern=features",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:headed": "playwright test --headed",
     "prepare": "husky"
   },
   "dependencies": {

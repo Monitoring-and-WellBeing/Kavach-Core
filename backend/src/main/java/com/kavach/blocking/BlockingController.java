@@ -61,11 +61,11 @@ public class BlockingController {
     // GET /api/v1/blocking/rules/{deviceId}/agent
     // Called by desktop agent every 60s to refresh its local rule cache
     @GetMapping("/rules/{deviceId}/agent")
-    public ResponseEntity<List<AgentBlockRuleDto>> getAgentRules(@PathVariable UUID deviceId) {
+    public ResponseEntity<java.util.Map<String, Object>> getAgentRules(@PathVariable UUID deviceId) {
         UUID tenantId = deviceRepo.findById(deviceId)
                 .map(d -> d.getTenantId())
                 .orElseThrow(() -> new IllegalArgumentException("Device not found"));
-        return ResponseEntity.ok(blockingService.getAgentRules(tenantId, deviceId));
+        return ResponseEntity.ok(blockingService.getAgentRulesWithMetadata(tenantId, deviceId));
     }
 
     // POST /api/v1/blocking/violations

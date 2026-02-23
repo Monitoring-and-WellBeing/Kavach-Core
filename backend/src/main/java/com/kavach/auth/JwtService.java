@@ -41,6 +41,14 @@ public class JwtService {
         return extractAllClaims(token).get("userId", String.class);
     }
 
+    public String extractTenantId(String token) {
+        try {
+            return extractAllClaims(token).get("tenantId", String.class);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
     public boolean isTokenValid(String token) {
         try {
             return !isTokenExpired(token);

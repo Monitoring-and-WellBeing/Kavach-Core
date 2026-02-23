@@ -74,4 +74,30 @@ public class ReportsController {
         LocalDate end = endDate != null ? endDate : LocalDate.now();
         return ResponseEntity.ok(reportingService.getHeatmap(deviceId, end));
     }
+
+    // GET /api/v1/reports/device/{deviceId}/export?format=csv&period=weekly
+    @GetMapping("/device/{deviceId}/export")
+    public ResponseEntity<?> exportReport(
+            @PathVariable UUID deviceId,
+            @RequestParam(defaultValue = "csv") String format,
+            @RequestParam(defaultValue = "weekly") String period) {
+        
+        if ("pdf".equalsIgnoreCase(format)) {
+            return ResponseEntity.status(501).body(
+                java.util.Map.of("error", "PDF export coming soon. Use CSV for now.")
+            );
+        }
+
+        // Generate CSV
+        String csv = reportingService.exportToCsv(deviceId, period);
+        String filename = String.format("kavach-report-%s-%s-%s.csv",
+            deviceId.toString().substring(0, 8),
+            period,
+            LocalDate.now().toString());
+
+        return ResponseEntity.ok()
+            .header("Content-Type", "text/csv")
+            .header("Content-Disposition", "attachment; filename=\"" + filename + "\"")
+            .body(csv);
+    }
 }

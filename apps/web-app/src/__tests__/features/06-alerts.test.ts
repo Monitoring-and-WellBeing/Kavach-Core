@@ -31,11 +31,11 @@ describe('Feature 05 — Alerts & Rules', () => {
       )
       const newRule = {
         name: 'Gaming Alert',
-        ruleType: 'APP_USAGE',
+        ruleType: 'APP_USAGE_EXCEEDED' as const,
         config: { threshold: 60 },
-        appliesTo: 'SPECIFIC_DEVICE',
+        appliesTo: 'SPECIFIC_DEVICE' as const,
         deviceId: 'device-001',
-        severity: 'HIGH',
+        severity: 'HIGH' as const,
         active: true,
         notifyPush: true,
         notifyEmail: false,

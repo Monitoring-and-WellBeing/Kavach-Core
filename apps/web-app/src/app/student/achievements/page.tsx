@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import { Trophy, Star, Zap, Lock } from 'lucide-react'
 import { badgesApi, BadgeProgress, Badge, BadgeTier, BadgeCategory } from '@/lib/badges'
 import { useAuth } from '@/context/AuthContext'
+import { studentDashboardApi } from '@/lib/studentDashboard'
 
 // ── Tier config ────────────────────────────────────────────────────────────────
 const TIER_CONFIG: Record<BadgeTier, { label: string; ring: string; bg: string }> = {
@@ -107,13 +108,31 @@ function XPBar({ level, xp, progress }: { level: string; xp: number; progress: n
 
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function AchievementsPage() {
-  // TODO: Get deviceId from student dashboard data or device list
-  const deviceId = 'd1111111-1111-1111-1111-111111111111'
+  const [deviceId, setDeviceId] = useState<string | null>(null)
+  const [deviceLoading, setDeviceLoading] = useState(true)
   const [data, setData] = useState<BadgeProgress | null>(null)
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<BadgeCategory | 'ALL'>('ALL')
 
+  // Load deviceId from student dashboard
   useEffect(() => {
+    studentDashboardApi.get()
+      .then(dashboard => {
+        if (dashboard.deviceLinked && dashboard.deviceId) {
+          setDeviceId(dashboard.deviceId)
+        }
+      })
+      .catch(err => {
+        console.error('Failed to load device:', err)
+      })
+      .finally(() => setDeviceLoading(false))
+  }, [])
+
+  // Load badges when deviceId is available
+  useEffect(() => {
+    if (!deviceId) return
+    
+    setLoading(true)
     badgesApi.getProgress(deviceId)
       .then(setData)
       .catch(err => {
@@ -122,7 +141,7 @@ export default function AchievementsPage() {
       .finally(() => setLoading(false))
   }, [deviceId])
 
-  if (loading) {
+  if (deviceLoading || loading) {
     return (
       <div className="p-4 md:p-6 animate-pulse space-y-4">
         <div className="h-24 bg-white rounded-2xl shadow-sm" />
@@ -132,6 +151,16 @@ export default function AchievementsPage() {
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
           {[1,2,3,4,5,6,7,8].map(i => <div key={i} className="h-40 bg-white rounded-2xl" />)}
         </div>
+      </div>
+    )
+  }
+
+  if (!deviceId) {
+    return (
+      <div className="p-4 md:p-6 flex flex-col items-center justify-center h-64 text-center">
+        <div className="text-4xl mb-3">💻</div>
+        <h2 className="text-gray-700 font-semibold">No device linked yet</h2>
+        <p className="text-gray-400 text-sm mt-1">Ask your parent or institute to link a device to your account.</p>
       </div>
     )
   }
@@ -155,7 +184,7 @@ export default function AchievementsPage() {
       </div>
 
       {/* XP Bar */}
-      <XPBar level={data.level} xp={data.totalXp} progress={data.levelProgress} />
+      <XPBar level={String(data.level)} xp={data.totalXp} progress={data.levelProgress} />
 
       {/* Stats row */}
       <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 md:gap-3">

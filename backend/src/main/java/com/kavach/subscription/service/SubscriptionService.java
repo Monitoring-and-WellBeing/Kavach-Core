@@ -12,6 +12,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -236,9 +237,35 @@ public class SubscriptionService {
         });
     }
 
+    // ── Scheduled job: Expire subscriptions whose period has ended ───────────
+    @Scheduled(fixedDelay = 3600000) // every hour
+    @Transactional
+    public void expireElapsedSubscriptions() {
+        List<Subscription> expired = subRepo.findByStatusIn(Arrays.asList("ACTIVE", "TRIAL"))
+                .stream()
+                .filter(s -> s.getCurrentPeriodEnd() != null &&
+                        s.getCurrentPeriodEnd().isBefore(LocalDateTime.now()))
+                .toList();
+
+        for (Subscription sub : expired) {
+            sub.setStatus("EXPIRED");
+            sub.setUpdatedAt(LocalDateTime.now());
+            subRepo.save(sub);
+            log.info("[subscription] Expired subscription for tenant {}", sub.getTenantId());
+        }
+        
+        if (!expired.isEmpty()) {
+            log.info("[subscription] Expired {} subscriptions", expired.size());
+        }
+    }
+
     // ── Device limit check ────────────────────────────────────────────────────
     public boolean canAddDevice(UUID tenantId) {
         return subRepo.findByTenantId(tenantId).map(sub -> {
+            // Don't allow adding devices to expired or cancelled subscriptions
+            if ("EXPIRED".equals(sub.getStatus()) || "CANCELLED".equals(sub.getStatus())) {
+                return false;
+            }
             Plan plan = planRepo.findById(sub.getPlanId()).orElse(null);
             if (plan == null) return false;
             if (plan.getMaxDevices() == -1) return true;

@@ -25,7 +25,7 @@ public class InsightService {
     private final ActivityLogRepository activityRepo;
     private final FocusSessionRepository focusRepo;
     private final DeviceRepository deviceRepo;
-    private final ClaudeApiService claudeApi;
+    private final GeminiService geminiService;
 
     private static final int CACHE_HOURS = 4;
 
@@ -62,7 +62,7 @@ public class InsightService {
         LocalDateTime dataTo   = LocalDateTime.now();
         LocalDateTime dataFrom = dataTo.minusDays(7);
 
-        // Build activity summary string for Claude
+        // Build activity summary string for AI analysis
         String summary = buildActivitySummary(deviceId, dataFrom);
 
         String studentName = device.getAssignedTo() != null
@@ -70,8 +70,8 @@ public class InsightService {
 
         log.info("[insights] Generating insights for device {} ({})", deviceId, studentName);
 
-        // Call Claude
-        Map<String, Object> aiResponse = claudeApi.analyzeStudentActivity(
+        // Call Gemini AI service
+        Map<String, Object> aiResponse = geminiService.analyzeStudentActivity(
             summary, studentName, device.getName());
 
         // Parse and save
@@ -92,7 +92,7 @@ public class InsightService {
         return toDto(insight, true);
     }
 
-    // ── Build activity summary text for Claude prompt ─────────────────────────
+    // ── Build activity summary text for AI prompt ───────────────────────────
     private String buildActivitySummary(UUID deviceId, LocalDateTime from) {
         StringBuilder sb = new StringBuilder();
 

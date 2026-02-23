@@ -21,7 +21,7 @@ const FEATURE_LABELS: Record<string, string> = {
   alerts:              '🔔 Smart alerts',
   focus_mode:          '🎯 Focus mode',
   parent_dashboard:    '📱 Parent dashboard',
-  ai_insights:         '🤖 AI insights (Claude)',
+  ai_insights:         '🤖 AI insights (Gemini)',
   goals:               '🏹 Goals system',
   achievements:        '🏆 Achievements & badges',
   reports:             '📈 Usage reports',

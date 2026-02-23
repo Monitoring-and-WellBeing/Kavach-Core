@@ -10,14 +10,14 @@ describe('Feature 07 — Reports & Analytics', () => {
     it('getWeekly() returns 7 days of data', async () => {
       const data = await reportsApi.getWeekly('device-001')
       expect(data.days).toHaveLength(7)
-      expect(data.screenTime).toHaveLength(7)
+      expect(data.days.length).toBe(7)
     })
 
     it('getWeekly() returns numeric screen time values', async () => {
       const data = await reportsApi.getWeekly('device-001')
-      data.screenTime.forEach((v: number) => {
-        expect(typeof v).toBe('number')
-        expect(v).toBeGreaterThanOrEqual(0)
+      data.days.forEach((day) => {
+        expect(typeof day.totalSeconds).toBe('number')
+        expect(day.totalSeconds).toBeGreaterThanOrEqual(0)
       })
     })
 
