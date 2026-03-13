@@ -47,6 +47,12 @@ logging:
     com.kavach: DEBUG
     org.springframework.security: INFO
 
+r2:
+  account-id: ${R2_ACCOUNT_ID:}
+  access-key-id: ${R2_ACCESS_KEY_ID:}
+  secret-access-key: ${R2_SECRET_ACCESS_KEY:}
+  bucket-name: ${R2_BUCKET_NAME:kavach-screenshots}
+
 razorpay:
   key:
     id: ${RAZORPAY_KEY_ID:rzp_test_XXXXXXXXXXXXXXXX}

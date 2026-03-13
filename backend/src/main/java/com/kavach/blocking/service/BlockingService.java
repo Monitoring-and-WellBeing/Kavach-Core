@@ -7,6 +7,8 @@ import com.kavach.blocking.entity.BlockingViolation;
 import com.kavach.blocking.repository.BlockRuleRepository;
 import com.kavach.blocking.repository.BlockingViolationRepository;
 import com.kavach.devices.repository.DeviceRepository;
+import com.kavach.enforcement.repository.EnforcementStateRepository;
+import com.kavach.sse.SseRegistry;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -15,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.UUID;
 
@@ -23,10 +26,12 @@ import java.util.UUID;
 @Slf4j
 public class BlockingService {
 
-    private final BlockRuleRepository ruleRepo;
+    private final BlockRuleRepository         ruleRepo;
     private final BlockingViolationRepository violationRepo;
-    private final DeviceRepository deviceRepo;
-    private final AlertEvaluationService alertEvaluationService;
+    private final DeviceRepository            deviceRepo;
+    private final AlertEvaluationService      alertEvaluationService;
+    private final EnforcementStateRepository  enforcementStateRepository;
+    private final SseRegistry                 sseRegistry;
 
     // ── Rules CRUD ────────────────────────────────────────────────────────────
 
@@ -88,6 +93,8 @@ public class BlockingService {
             });
         }
         
+        // ── Notify device(s) via SSE ──────────────────────────────────────────
+        pushRulesUpdated(tenantId, req.getDeviceId());
         return toDto(rule);
     }
 
@@ -102,7 +109,9 @@ public class BlockingService {
         
         // Update device's rules_updated_at timestamp
         updateDeviceRulesTimestamp(rule.getDeviceId(), rule.getTenantId());
-        
+
+        // ── Notify device(s) via SSE ──────────────────────────────────────────
+        pushRulesUpdated(tenantId, rule.getDeviceId());
         return toDto(rule);
     }
 
@@ -117,20 +126,38 @@ public class BlockingService {
         
         // Update device's rules_updated_at timestamp
         updateDeviceRulesTimestamp(deviceId, tenantId);
+
+        // ── Notify device(s) via SSE ──────────────────────────────────────────
+        pushRulesUpdated(tenantId, deviceId);
     }
-    
+
+    /** Push rules_updated SSE event to the affected device(s) and the parent dashboard. */
+    private void pushRulesUpdated(UUID tenantId, UUID deviceId) {
+        Map<String, Object> payload = Map.of("ts", System.currentTimeMillis());
+        if (deviceId != null) {
+            sseRegistry.sendToDevice(deviceId.toString(), "rules_updated", payload);
+        } else {
+            sseRegistry.sendToTenantDevices(tenantId, "rules_updated", payload);
+        }
+        // Also refresh parent dashboard's rules panel
+        sseRegistry.sendToTenant(tenantId, "rules_updated", payload);
+    }
+
     private void updateDeviceRulesTimestamp(UUID deviceId, UUID tenantId) {
         if (deviceId != null) {
             deviceRepo.findById(deviceId).ifPresent(d -> {
                 d.setRulesUpdatedAt(LocalDateTime.now());
                 deviceRepo.save(d);
             });
+            // Increment enforcement version so both clients re-fetch immediately
+            enforcementStateRepository.incrementVersion(deviceId);
         } else {
-            // If applies to all devices, update all devices for this tenant
+            // Rule applies to all devices — update every device in the tenant
             deviceRepo.findByTenantIdAndActiveTrue(tenantId).forEach(d -> {
                 d.setRulesUpdatedAt(LocalDateTime.now());
                 deviceRepo.save(d);
             });
+            enforcementStateRepository.incrementVersionForTenant(tenantId);
         }
     }
 

@@ -65,7 +65,7 @@ class BadgeEvaluationServiceTest {
         // Given: Badge requires 1 focus session, device has 1 completed
         when(badgeRepo.findByActiveTrue()).thenReturn(List.of(mockBadge));
         when(studentBadgeRepo.existsByDeviceIdAndBadgeId(deviceId, badgeId)).thenReturn(false);
-        when(focusRepo.countCompletedSince(deviceId, any(LocalDateTime.class))).thenReturn(1L);
+        when(focusRepo.countCompletedSince(eq(deviceId), any(LocalDateTime.class))).thenReturn(1L);
         when(studentBadgeRepo.save(any(StudentBadge.class)))
             .thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -192,7 +192,7 @@ class BadgeEvaluationServiceTest {
         when(studentBadgeRepo.existsByDeviceIdAndBadgeId(deviceId, badge2.getId())).thenReturn(false);
 
         // Mock: Both criteria met
-        when(focusRepo.countCompletedSince(deviceId, any(LocalDateTime.class))).thenReturn(1L);
+        when(focusRepo.countCompletedSince(eq(deviceId), any(LocalDateTime.class))).thenReturn(1L);
         FocusSession longSession = FocusSession.builder()
             .id(UUID.randomUUID())
             .deviceId(deviceId)

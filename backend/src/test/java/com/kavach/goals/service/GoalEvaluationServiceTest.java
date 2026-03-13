@@ -64,9 +64,9 @@ class GoalEvaluationServiceTest {
     @DisplayName("FOCUS_MINUTES goal met when focusMinutes >= target")
     void evaluateGoal_focusMinutesGoalMet_whenTargetReached() {
         // Given: Goal requires 60 min focus, device has 75 min
-        when(progressRepo.findByGoalIdAndPeriodDate(goalId, any(LocalDate.class)))
+        when(progressRepo.findByGoalIdAndPeriodDate(eq(goalId), any(LocalDate.class)))
             .thenReturn(Optional.empty());
-        when(focusRepo.totalFocusMinutesSince(deviceId, any(LocalDateTime.class)))
+        when(focusRepo.totalFocusMinutesSince(eq(deviceId), any(LocalDateTime.class)))
             .thenReturn(75L);
 
         // When
@@ -89,9 +89,9 @@ class GoalEvaluationServiceTest {
         mockGoal.setGoalType("SCREEN_TIME_LIMIT");
         mockGoal.setTargetValue(120);
 
-        when(progressRepo.findByGoalIdAndPeriodDate(goalId, any(LocalDate.class)))
+        when(progressRepo.findByGoalIdAndPeriodDate(eq(goalId), any(LocalDate.class)))
             .thenReturn(Optional.empty());
-        when(activityRepo.totalDurationSince(deviceId, any(LocalDateTime.class)))
+        when(activityRepo.totalDurationSince(eq(deviceId), any(LocalDateTime.class)))
             .thenReturn(5400L); // 90 minutes in seconds
 
         // When
@@ -113,12 +113,12 @@ class GoalEvaluationServiceTest {
         mockGoal.setGoalType("GAMING_LIMIT");
         mockGoal.setTargetValue(60);
 
-        when(progressRepo.findByGoalIdAndPeriodDate(goalId, any(LocalDate.class)))
+        when(progressRepo.findByGoalIdAndPeriodDate(eq(goalId), any(LocalDate.class)))
             .thenReturn(Optional.empty());
         Object[] categoryUsage = new Object[]{"GAMING", 5400L};
         List<Object[]> mockBreakdown = new java.util.ArrayList<>();
         mockBreakdown.add(categoryUsage);
-        when(activityRepo.categoryBreakdown(deviceId, any(LocalDateTime.class)))
+        when(activityRepo.categoryBreakdown(eq(deviceId), any(LocalDateTime.class)))
             .thenReturn(mockBreakdown); // 90 minutes
 
         // When
@@ -140,7 +140,7 @@ class GoalEvaluationServiceTest {
         mockGoal.setGoalType("NO_LATE_NIGHT");
         mockGoal.setTargetValue(0);
 
-        when(progressRepo.findByGoalIdAndPeriodDate(goalId, any(LocalDate.class)))
+        when(progressRepo.findByGoalIdAndPeriodDate(eq(goalId), any(LocalDate.class)))
             .thenReturn(Optional.empty());
         when(activityRepo.findByDeviceIdAndStartedAtBetweenOrderByStartedAtDesc(
             eq(deviceId), any(LocalDateTime.class), any(LocalDateTime.class)))
@@ -172,9 +172,9 @@ class GoalEvaluationServiceTest {
             .met(false)
             .build();
 
-        when(progressRepo.findByGoalIdAndPeriodDate(goalId, any(LocalDate.class)))
+        when(progressRepo.findByGoalIdAndPeriodDate(eq(goalId), any(LocalDate.class)))
             .thenReturn(Optional.of(existingProgress));
-        when(focusRepo.totalFocusMinutesSince(deviceId, any(LocalDateTime.class)))
+        when(focusRepo.totalFocusMinutesSince(eq(deviceId), any(LocalDateTime.class)))
             .thenReturn(75L); // Now met
 
         // When
@@ -188,7 +188,8 @@ class GoalEvaluationServiceTest {
         assertThat(updatedProgress.getId()).isEqualTo(existingProgress.getId());
         assertThat(updatedProgress.getCurrentValue()).isEqualTo(75);
         assertThat(updatedProgress.isMet()).isTrue();
-        verify(progressRepo, never()).save(any(GoalProgress.class)); // Only one save call
+        // Verify exactly ONE save call total (upsert, not duplicate insert)
+        verify(progressRepo, times(1)).save(any(GoalProgress.class));
     }
 
     @Test
@@ -199,9 +200,9 @@ class GoalEvaluationServiceTest {
         mockGoal.setGoalType("FOCUS_MINUTES");
         mockGoal.setTargetValue(300);
 
-        when(progressRepo.findByGoalIdAndPeriodDate(goalId, any(LocalDate.class)))
+        when(progressRepo.findByGoalIdAndPeriodDate(eq(goalId), any(LocalDate.class)))
             .thenReturn(Optional.empty());
-        when(focusRepo.totalFocusMinutesSince(deviceId, any(LocalDateTime.class)))
+        when(focusRepo.totalFocusMinutesSince(eq(deviceId), any(LocalDateTime.class)))
             .thenReturn(350L);
 
         // When
@@ -210,6 +211,7 @@ class GoalEvaluationServiceTest {
         // Then: Should query from Monday of current week
         ArgumentCaptor<LocalDate> dateCaptor = ArgumentCaptor.forClass(LocalDate.class);
         verify(progressRepo).findByGoalIdAndPeriodDate(eq(goalId), dateCaptor.capture());
+
 
         LocalDate periodDate = dateCaptor.getValue();
         assertThat(periodDate.getDayOfWeek()).isEqualTo(java.time.DayOfWeek.MONDAY);

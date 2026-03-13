@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard, Monitor, BarChart3, Brain,
-  Shield, Bell, CreditCard, Settings,
+  Shield, Bell, CreditCard, Settings, Gift,
   ChevronLeft, ChevronRight,
 } from "lucide-react";
 import { BottomNav } from "@/components/layout/BottomNav";
@@ -17,6 +17,7 @@ const navItems = [
   { label: "AI Insights",     icon: <Brain size={18} />,           href: "/parent/insights" },
   { label: "App & Site Control", icon: <Shield size={18} />,       href: "/parent/control" },
   { label: "Alerts & Rules",  icon: <Bell size={18} />,            href: "/parent/rules" },
+  { label: "Rewards",         icon: <Gift size={18} />,            href: "/parent/rewards" },
   { label: "Subscription",    icon: <CreditCard size={18} />,      href: "/parent/subscription" },
   { label: "Settings",        icon: <Settings size={18} />,        href: "/parent/settings" },
 ];

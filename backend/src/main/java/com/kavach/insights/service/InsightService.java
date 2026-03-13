@@ -1,6 +1,7 @@
 package com.kavach.insights.service;
 
 import com.kavach.activity.repository.ActivityLogRepository;
+import com.kavach.ai.service.MoodService;
 import com.kavach.devices.repository.DeviceRepository;
 import com.kavach.focus.repository.FocusSessionRepository;
 import com.kavach.insights.dto.InsightDto;
@@ -26,6 +27,7 @@ public class InsightService {
     private final FocusSessionRepository focusRepo;
     private final DeviceRepository deviceRepo;
     private final GeminiService geminiService;
+    private final MoodService moodService;
 
     private static final int CACHE_HOURS = 4;
 
@@ -68,11 +70,14 @@ public class InsightService {
         String studentName = device.getAssignedTo() != null
             ? device.getAssignedTo() : "Student";
 
+        // Build mood summary for richer parent digest
+        String moodSummary = buildMoodSummary(deviceId, studentName);
+
         log.info("[insights] Generating insights for device {} ({})", deviceId, studentName);
 
-        // Call Gemini AI service
+        // Call Gemini AI service with enhanced context including mood
         Map<String, Object> aiResponse = geminiService.analyzeStudentActivity(
-            summary, studentName, device.getName());
+            summary, moodSummary, studentName, device.getName());
 
         // Parse and save
         AiInsight insight = AiInsight.builder()
@@ -90,6 +95,15 @@ public class InsightService {
 
         insight = insightRepo.save(insight);
         return toDto(insight, true);
+    }
+
+    // ── Build mood summary for AI prompt ──────────────────────────────────────
+    private String buildMoodSummary(UUID deviceId, String studentName) {
+        try {
+            return moodService.getWeeklyMoodSummaryByDevice(deviceId);
+        } catch (Exception e) {
+            return "No mood data available.";
+        }
     }
 
     // ── Build activity summary text for AI prompt ───────────────────────────

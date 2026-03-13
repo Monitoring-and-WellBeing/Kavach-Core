@@ -11,7 +11,9 @@ import com.kavach.focus.entity.FocusSession;
 import com.kavach.focus.entity.FocusWhitelist;
 import com.kavach.focus.repository.FocusSessionRepository;
 import com.kavach.focus.repository.FocusWhitelistRepository;
+import com.kavach.challenges.service.ChallengeService;
 import com.kavach.gamification.service.BadgeEvaluationService;
+import com.kavach.sse.SseRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -36,6 +38,8 @@ class FocusServiceTest {
     @Mock FocusWhitelistRepository whitelistRepo;
     @Mock DeviceRepository deviceRepo;
     @Mock BadgeEvaluationService badgeEvaluationService;
+    @Mock ChallengeService challengeService;
+    @Mock SseRegistry sseRegistry;
 
     @InjectMocks FocusService focusService;
 
@@ -208,7 +212,7 @@ class FocusServiceTest {
         when(sessionRepo.findExpiredSessions(any(LocalDateTime.class)))
             .thenReturn(List.of(expiredSession));
         when(sessionRepo.saveAll(anyList())).thenAnswer(invocation -> invocation.getArgument(0));
-        doNothing().when(badgeEvaluationService).evaluateAndAwardBadges(any(), any());
+        when(badgeEvaluationService.evaluateAndAwardBadges(any(UUID.class), any(UUID.class))).thenReturn(List.of());
 
         // When
         focusService.expireElapsedSessions();

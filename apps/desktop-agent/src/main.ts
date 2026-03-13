@@ -2,17 +2,94 @@ import { app, BrowserWindow, ipcMain, Tray, Menu } from "electron";
 import path from "path";
 import { startTrackingLoop, stopTrackingLoop, isTrackingActive } from "./tracking/trackingLoop";
 import { loadConfig, saveConfig } from "./auth/config";
+import { EnforcementEngine } from "./enforcement/EnforcementEngine";
+import { RuleSync } from "./enforcement/RuleSync";
+import { BrowserMonitor } from "./enforcement/BrowserMonitor";
+import { SelfProtection } from "./protection/SelfProtection";
+import { timeSync } from "./enforcement/TimeSync";
+import { ScreenshotCapture } from "./screenshots/ScreenshotCapture";
+import { generateLinkCode, pollForLink } from "./sync/deviceRegistration";
 
 let mainWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
 
-// After device is confirmed linked, start tracking:
+// Enforcement singletons — kept at module scope so stopEnforcement() can reach them
+let enforcementEngine: EnforcementEngine | null = null;
+let ruleSync: RuleSync | null = null;
+let browserMonitor: BrowserMonitor | null = null;
+let selfProtection: SelfProtection | null = null;
+let screenshotCapture: ScreenshotCapture | null = null;
+
+/**
+ * Starts the full enforcement stack for a linked device.
+ * Order matters:
+ *   1. Sync server time first (so schedule checks are correct immediately)
+ *   2. Create enforcement engine + screenshot capture
+ *   3. Create BrowserMonitor (needed by RuleSync constructor)
+ *   4. Create RuleSync(deviceId, engine, browserMonitor) — fetches rules immediately
+ *   5. Start enforcement loop
+ *   6. Start browser URL monitor (rules already loaded by step 4)
+ *   7. Start self-protection watchdog
+ *   8. Register Windows startup key
+ */
+async function startEnforcement(deviceId: string): Promise<void> {
+  // 1. Server-time sync (anti-clock-manipulation — edge case 8)
+  await timeSync.sync();
+
+  // 2. Enforcement engine
+  enforcementEngine = new EnforcementEngine(deviceId);
+
+  // 2a. Screenshot capture — load settings, wire into engine, start periodic
+  screenshotCapture = new ScreenshotCapture();
+  await screenshotCapture.loadSettings(deviceId);
+  enforcementEngine.setScreenshotCapture(screenshotCapture);
+
+  // Show student disclosure dialog if screenshots enabled and student not yet notified
+  await screenshotCapture.showDisclosureIfNeeded(deviceId);
+
+  // Start periodic capture if enabled
+  screenshotCapture.startPeriodic(deviceId);
+
+  // 3. Browser URL monitor — must be created before RuleSync so it can be injected
+  browserMonitor = new BrowserMonitor();
+
+  // 4. Rule sync — fetches rules immediately, then every 30 s.
+  //    Receives browserMonitor so it can push URL rules into it on every sync.
+  ruleSync = new RuleSync(deviceId, enforcementEngine, browserMonitor);
+  ruleSync.start();
+
+  // 5. Enforcement loop (kills blocked apps every 2 s)
+  enforcementEngine.start();
+
+  // 6. Start browser URL monitor after rules are loaded
+  browserMonitor.start();
+
+  // 7. Self-protection watchdog (detects Task Manager / Process Explorer)
+  selfProtection = new SelfProtection();
+  selfProtection.start(process.pid);
+
+  // 8. Register agent in Windows startup so it survives crashes & reboots (edge case 9)
+  await SelfProtection.registerStartup();
+
+  console.log('[KAVACH] Enforcement engine active for device', deviceId);
+}
+
+function stopEnforcement(): void {
+  enforcementEngine?.stop();
+  ruleSync?.stop();
+  browserMonitor?.stop();
+  selfProtection?.stop();
+  screenshotCapture?.stopPeriodic();
+}
+
+// After device is confirmed linked, start tracking + enforcement:
 async function initializeAgent() {
   const config = await loadConfig();
 
   if (config.deviceLinked && config.deviceId) {
-    console.log('[main] Device already linked, starting tracking');
+    console.log('[main] Device already linked, starting tracking + enforcement');
     startTrackingLoop();
+    await startEnforcement(config.deviceId);
     mainWindow?.hide(); // hide window — runs in tray
   } else {
     console.log('[main] Device not linked, showing link screen');
@@ -57,40 +134,66 @@ app.whenReady().then(async () => {
   // Initialize agent
   await initializeAgent();
 
-  // IPC handlers
-  ipcMain.handle("link-device", async (_, code: string) => {
-    // Mock device linking
-    await saveConfig({ ...config, deviceLinked: true, deviceCode: code });
-    startTrackingLoop();
-    mainWindow?.hide();
-    return { success: true };
+  // IPC: renderer requests a new link code (step 1 of linking flow)
+  ipcMain.handle("generate-link-code", async () => {
+    try {
+      const { code, expiresInMinutes } = await generateLinkCode();
+
+      // Start background polling — when linked, notify renderer and start enforcement
+      pollForLink(code).then(async (deviceId) => {
+        if (deviceId) {
+          startTrackingLoop();
+          await startEnforcement(deviceId);
+          mainWindow?.webContents.send("link-success");
+          setTimeout(() => mainWindow?.hide(), 3500);
+        }
+      }).catch((err) => {
+        console.error('[main] pollForLink failed:', err);
+      });
+
+      return { code, expiresInMinutes };
+    } catch (err: any) {
+      console.error('[main] generate-link-code error:', err);
+      return { error: err?.message || 'Failed to reach KAVACH server' };
+    }
   });
 
-  // IPC: called after successful linking from renderer
+  // IPC: called after successful linking (e.g. manual trigger / legacy)
   ipcMain.handle("device-linked", async () => {
+    const linkedConfig = await loadConfig();
     startTrackingLoop();
+    if (linkedConfig.deviceId) {
+      await startEnforcement(linkedConfig.deviceId);
+    }
     mainWindow?.hide();
     return { success: true };
   });
 
   // IPC: status check
-  ipcMain.handle("get-status", () => ({
-    linked: config.deviceLinked,
-    tracking: isTrackingActive(),
-    version: "1.2.4",
-  }));
+  ipcMain.handle("get-status", async () => {
+    const current = await loadConfig();
+    return {
+      linked: current.deviceLinked,
+      tracking: isTrackingActive(),
+      version: "1.2.4",
+    };
+  });
 
   // Legacy handler for backward compatibility
-  ipcMain.handle("get-tracking-status", () => ({
-    linked: config.deviceLinked,
-    tracking: isTrackingActive(),
-    version: "1.2.4",
-  }));
+  ipcMain.handle("get-tracking-status", async () => {
+    const current = await loadConfig();
+    return {
+      linked: current.deviceLinked,
+      tracking: isTrackingActive(),
+      version: "1.2.4",
+    };
+  });
 });
 
 // Graceful shutdown
 app.on("before-quit", () => {
   stopTrackingLoop();
+  stopEnforcement();
 });
 
 app.on("window-all-closed", (e: Event) => {

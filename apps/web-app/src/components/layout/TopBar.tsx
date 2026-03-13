@@ -2,6 +2,7 @@
 
 import { Bell, User, LogOut, Settings } from "lucide-react";
 import { useState } from "react";
+import Link from "next/link";
 import { useAlerts } from "@/hooks/useAlerts";
 import { formatTime } from "@kavach/shared-utils";
 import { useAuth } from "@/context/AuthContext";

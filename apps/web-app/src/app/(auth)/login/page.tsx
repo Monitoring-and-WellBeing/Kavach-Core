@@ -10,16 +10,18 @@ export default function LoginPage() {
   const roleParam = searchParams.get("role");
   const { login } = useAuth();
 
+  const showDemoCredentials = process.env.NEXT_PUBLIC_SHOW_DEMO_CREDENTIALS === "true";
+
   const [email, setEmail] = useState(
-    roleParam === "parent"
+    showDemoCredentials && roleParam === "parent"
       ? "parent@demo.com"
-      : roleParam === "student"
+      : showDemoCredentials && roleParam === "student"
       ? "student@demo.com"
-      : roleParam === "institute"
+      : showDemoCredentials && roleParam === "institute"
       ? "admin@demo.com"
       : ""
   );
-  const [password, setPassword] = useState("demo123");
+  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -122,7 +124,8 @@ export default function LoginPage() {
             </button>
           </form>
 
-          {/* Demo credentials hint */}
+          {/* Demo credentials hint — only rendered when NEXT_PUBLIC_SHOW_DEMO_CREDENTIALS=true */}
+          {showDemoCredentials && (
           <div className="mt-6 pt-6 border-t border-[#1E2A45]">
             <p className="text-xs text-[#64748B] mb-3 font-medium uppercase tracking-wide">
               Demo Credentials
@@ -149,6 +152,7 @@ export default function LoginPage() {
               ))}
             </div>
           </div>
+          )}
         </div>
 
         <p className="text-center mt-4 text-[#64748B] text-sm">

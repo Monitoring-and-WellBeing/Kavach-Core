@@ -18,19 +18,8 @@
       padding: 24px;
       user-select: none;
     }
-    .logo {
-      font-size: 28px;
-      font-weight: 700;
-      letter-spacing: 2px;
-      color: #3b82f6;
-      margin-bottom: 8px;
-    }
-    .subtitle {
-      font-size: 12px;
-      color: #6b7280;
-      margin-bottom: 32px;
-      text-align: center;
-    }
+    .logo { font-size: 28px; font-weight: 700; letter-spacing: 2px; color: #3b82f6; margin-bottom: 6px; }
+    .subtitle { font-size: 12px; color: #6b7280; margin-bottom: 28px; text-align: center; }
     .card {
       background: #1a2035;
       border: 1px solid #2a3555;
@@ -39,29 +28,37 @@
       width: 100%;
       max-width: 320px;
     }
-    label {
-      display: block;
-      font-size: 12px;
-      color: #9ca3af;
-      margin-bottom: 6px;
-      letter-spacing: 0.5px;
-    }
-    input {
-      width: 100%;
-      padding: 10px 14px;
+    .step-label { font-size: 11px; color: #6b7280; letter-spacing: 0.5px; margin-bottom: 12px; }
+    .code-box {
       background: #0d1326;
       border: 1px solid #2a3555;
-      border-radius: 8px;
-      color: #fff;
-      font-size: 20px;
-      letter-spacing: 6px;
+      border-radius: 10px;
+      padding: 18px 12px;
       text-align: center;
-      text-transform: uppercase;
-      outline: none;
       margin-bottom: 16px;
     }
-    input:focus { border-color: #3b82f6; }
-    button {
+    .code-display {
+      font-size: 36px;
+      font-weight: 700;
+      letter-spacing: 10px;
+      color: #3b82f6;
+      font-family: 'Courier New', monospace;
+    }
+    .code-hint { font-size: 11px; color: #6b7280; margin-top: 8px; }
+    .timer { font-size: 11px; color: #f59e0b; margin-top: 4px; }
+    .steps { font-size: 12px; color: #9ca3af; line-height: 1.8; margin-bottom: 16px; }
+    .steps span { color: #3b82f6; font-weight: 600; }
+    .status {
+      font-size: 12px;
+      text-align: center;
+      color: #6b7280;
+      min-height: 18px;
+      margin-top: 10px;
+    }
+    .status.error   { color: #ef4444; }
+    .status.success { color: #22c55e; }
+    .status.waiting { color: #f59e0b; }
+    .btn {
       width: 100%;
       padding: 12px;
       background: #3b82f6;
@@ -73,73 +70,141 @@
       cursor: pointer;
       transition: background 0.2s;
     }
-    button:hover { background: #2563eb; }
-    button:disabled { background: #374151; cursor: not-allowed; }
-    .status {
-      margin-top: 12px;
+    .btn:hover { background: #2563eb; }
+    .btn:disabled { background: #374151; cursor: not-allowed; }
+    .btn-outline {
+      background: transparent;
+      border: 1px solid #2a3555;
+      color: #9ca3af;
       font-size: 12px;
-      text-align: center;
-      color: #6b7280;
-      min-height: 18px;
+      padding: 8px;
+      border-radius: 8px;
+      cursor: pointer;
+      width: 100%;
+      margin-top: 8px;
     }
-    .status.error { color: #ef4444; }
-    .status.success { color: #22c55e; }
+    .btn-outline:hover { border-color: #3b82f6; color: #fff; }
+    .pulse { animation: pulse 2s infinite; }
+    @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+    .spinner {
+      display: inline-block; width: 14px; height: 14px;
+      border: 2px solid #374151; border-top-color: #3b82f6;
+      border-radius: 50%; animation: spin 0.6s linear infinite;
+      vertical-align: middle; margin-right: 6px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
   </style>
 </head>
 <body>
   <div class="logo">🛡️ KAVACH AI</div>
   <p class="subtitle">Student Safety & Discipline Monitor</p>
 
-  <div class="card">
-    <label>ENTER DEVICE LINK CODE</label>
-    <input
-      id="codeInput"
-      type="text"
-      maxlength="6"
-      placeholder="XXXXXX"
-      autocomplete="off"
-    />
-    <button id="linkBtn" onclick="linkDevice()">Link This Device</button>
-    <div class="status" id="statusMsg"></div>
+  <!-- Screen 1: Generating code -->
+  <div class="card" id="screenGenerating">
+    <div class="step-label">STEP 1 OF 2 — GENERATING LINK CODE</div>
+    <div style="text-align:center;padding:20px 0;">
+      <span class="spinner"></span> Connecting to server...
+    </div>
+  </div>
+
+  <!-- Screen 2: Show code + polling -->
+  <div class="card" id="screenCode" style="display:none">
+    <div class="step-label">STEP 1 OF 2 — SHOW THIS CODE TO YOUR PARENT</div>
+    <div class="code-box">
+      <div class="code-display" id="linkCode">------</div>
+      <div class="code-hint">Share this code with the person who manages this device</div>
+      <div class="timer" id="timerText"></div>
+    </div>
+    <div class="steps">
+      <span>1.</span> Parent opens the KAVACH web dashboard<br>
+      <span>2.</span> Goes to <strong>Devices → Link New Device</strong><br>
+      <span>3.</span> Enters the 6-character code above
+    </div>
+    <div class="status waiting pulse" id="waitingMsg">
+      <span class="spinner"></span> Waiting for parent to link...
+    </div>
+    <button class="btn-outline" onclick="generateNewCode()">Generate New Code</button>
+  </div>
+
+  <!-- Screen 3: Success -->
+  <div class="card" id="screenSuccess" style="display:none">
+    <div style="text-align:center;padding:16px 0;">
+      <div style="font-size:48px;margin-bottom:12px;">✅</div>
+      <div style="font-size:16px;font-weight:700;color:#22c55e;margin-bottom:8px;">Device Linked!</div>
+      <div style="font-size:12px;color:#9ca3af;">Monitoring is now active. This window will close shortly.</div>
+    </div>
+  </div>
+
+  <!-- Screen 4: Error -->
+  <div class="card" id="screenError" style="display:none">
+    <div style="text-align:center;padding:16px 0;">
+      <div style="font-size:32px;margin-bottom:12px;">⚠️</div>
+      <div style="font-size:13px;color:#ef4444;margin-bottom:12px;" id="errorMsg">Unable to connect to server.</div>
+      <button class="btn" onclick="generateNewCode()">Try Again</button>
+    </div>
   </div>
 
   <script>
     const { ipcRenderer } = require('electron');
 
-    async function linkDevice() {
-      const code = document.getElementById('codeInput').value.trim().toUpperCase();
-      const btn = document.getElementById('linkBtn');
-      const msg = document.getElementById('statusMsg');
+    function showScreen(id) {
+      ['screenGenerating','screenCode','screenSuccess','screenError'].forEach(s => {
+        document.getElementById(s).style.display = s === id ? 'block' : 'none';
+      });
+    }
 
-      if (code.length !== 6) {
-        msg.textContent = 'Please enter a valid 6-character code';
-        msg.className = 'status error';
-        return;
-      }
+    let expiryInterval = null;
 
-      btn.disabled = true;
-      btn.textContent = 'Linking...';
-      msg.textContent = '';
-      msg.className = 'status';
-
+    async function generateNewCode() {
+      showScreen('screenGenerating');
       try {
-        const result = await ipcRenderer.invoke('link-device', code);
-        if (result.success) {
-          msg.textContent = '✓ Device linked! Monitoring started.';
-          msg.className = 'status success';
-          setTimeout(() => window.close(), 2000);
+        const result = await ipcRenderer.invoke('generate-link-code');
+        if (result.error) {
+          document.getElementById('errorMsg').textContent = result.error;
+          showScreen('screenError');
+          return;
         }
+        document.getElementById('linkCode').textContent = result.code;
+        if (expiryInterval) clearInterval(expiryInterval);
+
+        // Countdown timer
+        if (result.expiresInMinutes) {
+          let remaining = result.expiresInMinutes * 60;
+          const timerEl = document.getElementById('timerText');
+          timerEl.textContent = `Expires in ${result.expiresInMinutes} min`;
+          expiryInterval = setInterval(() => {
+            remaining--;
+            const m = Math.floor(remaining / 60);
+            const s = remaining % 60;
+            timerEl.textContent = remaining > 0
+              ? `Expires in ${m}:${s.toString().padStart(2,'0')}`
+              : 'Code expired — generating new code...';
+            if (remaining <= 0) {
+              clearInterval(expiryInterval);
+              generateNewCode();
+            }
+          }, 1000);
+        }
+
+        showScreen('screenCode');
+        startPolling(result.code);
       } catch (err) {
-        msg.textContent = 'Failed to link device. Try again.';
-        msg.className = 'status error';
-        btn.disabled = false;
-        btn.textContent = 'Link This Device';
+        document.getElementById('errorMsg').textContent = 'Failed to connect to KAVACH server. Check your internet connection.';
+        showScreen('screenError');
       }
     }
 
-    document.getElementById('codeInput').addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') linkDevice();
-    });
+    function startPolling(code) {
+      // Main process polls automatically; listen for the 'device-linked' event
+      ipcRenderer.once('link-success', () => {
+        if (expiryInterval) clearInterval(expiryInterval);
+        showScreen('screenSuccess');
+        setTimeout(() => window.close(), 3000);
+      });
+    }
+
+    // Auto-start on page load
+    generateNewCode();
   </script>
 </body>
 </html>

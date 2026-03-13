@@ -19,7 +19,7 @@ export async function generateLinkCode(): Promise<{ code: string; expiresInMinut
     throw new Error(`Failed to generate code: ${response.status}`)
   }
 
-  return response.json()
+  return response.json() as Promise<{ code: string; expiresInMinutes: number }>
 }
 
 // Step 2: Poll to check if the code has been used to link (web dashboard entered the code)
@@ -32,7 +32,7 @@ export async function pollForLink(code: string, maxAttempts = 90): Promise<strin
     try {
       const response = await fetch(`${apiBase}/devices/check-linked?code=${code}`)
       if (response.ok) {
-        const data = await response.json()
+        const data = await response.json() as { linked: boolean; deviceId?: string; tenantId?: string }
         if (data.linked && data.deviceId) {
           // Save deviceId to config
           const config = await loadConfig()

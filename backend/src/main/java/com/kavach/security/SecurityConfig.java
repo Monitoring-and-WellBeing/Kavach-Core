@@ -60,6 +60,25 @@ public class SecurityConfig {
                                 "/api/v1/blocking/rules/*/agent",
                                 "/api/v1/blocking/violations",
                                 "/api/v1/focus/agent/**",
+                                // Enforcement engine endpoints (desktop + Android — no JWT)
+                                "/api/v1/enforcement/events",
+                                "/api/v1/enforcement/state/*",
+                                "/api/v1/enforcement/version/*",
+                                "/api/v1/enforcement/usage",
+                                // Mobile agent endpoints (no JWT — device authenticates by deviceId)
+                                "/api/v1/location/update",
+                                "/api/v1/location/batch",
+                                "/api/v1/location/geofences",
+                                "/api/v1/location/geofence-event",
+                                "/api/v1/activity/mobile-usage",
+                                "/api/v1/health/time",
+                                // Screenshot endpoints (desktop agent — no JWT)
+                                "/api/v1/screenshots/upload",
+                                "/api/v1/screenshots/settings/*/mark-notified",
+                                "/api/v1/screenshots/settings/*",
+                                // SSE endpoint for desktop agent (device-auth, no JWT)
+                                "/api/v1/sse/device/**",
+                                "/api/v1/sse/health",
                                 "/swagger-ui/**",
                                 "/swagger-ui.html",
                                 "/api-docs/**",

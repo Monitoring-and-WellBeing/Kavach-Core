@@ -2,6 +2,8 @@ package com.kavach.blocking.service;
 
 import com.kavach.alerts.service.AlertEvaluationService;
 import com.kavach.blocking.dto.ViolationRequest;
+import com.kavach.enforcement.repository.EnforcementStateRepository;
+import com.kavach.sse.SseRegistry;
 import com.kavach.blocking.entity.BlockRule;
 import com.kavach.blocking.entity.BlockingViolation;
 import com.kavach.blocking.repository.BlockRuleRepository;
@@ -34,6 +36,8 @@ class BlockingServiceTest {
     @Mock BlockingViolationRepository violationRepo;
     @Mock DeviceRepository deviceRepo;
     @Mock AlertEvaluationService alertEvaluationService;
+    @Mock EnforcementStateRepository enforcementStateRepository;
+    @Mock SseRegistry sseRegistry;
 
     @InjectMocks BlockingService blockingService;
 
@@ -131,11 +135,9 @@ class BlockingServiceTest {
     @Test
     @DisplayName("PAUSED device ignores block rules")
     void getAgentRules_pausedDevice_returnsEmptyList() {
-        // Given: Device is PAUSED
+        // Given: Device is PAUSED — getAgentRules delegates directly to ruleRepo (no device lookup)
+        // ruleRepo.findActiveRulesForDevice returns empty list by default (Mockito default)
         mockDevice.setStatus(DeviceStatus.PAUSED);
-        when(deviceRepo.findById(deviceId)).thenReturn(Optional.of(mockDevice));
-        when(ruleRepo.findActiveRulesForDevice(tenantId, deviceId))
-            .thenReturn(List.of()); // No active rules when paused
 
         // When
         var rules = blockingService.getAgentRules(tenantId, deviceId);

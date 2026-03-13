@@ -7,6 +7,7 @@ import { blockingApi, BlockRule } from '@/lib/blocking'
 import { devicesApi, Device } from '@/lib/devices'
 import { Modal } from '@/components/ui/Modal'
 import { Toast, useToast } from '@/components/ui/Toast'
+import AiRuleSuggestions from '@/components/rules/AiRuleSuggestions'
 
 // ── Category config ────────────────────────────────────────────────────────────
 const CATEGORIES = [
@@ -160,6 +161,11 @@ export default function AppControlPage() {
           style={{ background: 'linear-gradient(135deg, #2563EB, #7C3AED)' }}>
           <Plus size={16} /> Add Block Rule
         </button>
+      </div>
+
+      {/* AI Rule Suggestions */}
+      <div className="mb-5">
+        <AiRuleSuggestions onRuleApplied={load} />
       </div>
 
       {/* Tabs */}
