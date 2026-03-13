@@ -44,7 +44,7 @@ export async function refreshBlockRules(): Promise<void> {
       { signal: AbortSignal.timeout(5000) }
     )
     if (res.ok) {
-      const data = await res.json()
+      const data = await res.json() as { rules?: AgentBlockRule[]; lastUpdated?: string }
       
       // Check if rules were updated
       const currentLastUpdated = data.lastUpdated || null

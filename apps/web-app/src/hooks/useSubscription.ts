@@ -1,30 +1,74 @@
-import { useState } from "react";
-import { Subscription, PlanType } from "@kavach/shared-types";
-import { mockSubscription, mockUsage } from "@/mock/subscription";
+import { useState, useEffect, useCallback } from "react";
+import { subscriptionApi, Subscription, Plan } from "@/lib/subscription";
 
 export function useSubscription() {
-  const [subscription, setSubscription] = useState<Subscription>(mockSubscription);
-  const [usage] = useState(mockUsage);
+  const [subscription, setSubscription] = useState<Subscription | null>(null);
+  const [plans, setPlans] = useState<Plan[]>([]);
+  const [loading, setLoading] = useState(true);
   const [upgrading, setUpgrading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const upgradePlan = async (plan: PlanType, billingCycle: "MONTHLY" | "ANNUAL") => {
+  const load = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const [sub, planList] = await Promise.all([
+        subscriptionApi.getCurrent(),
+        subscriptionApi.getPlans().catch(() => [] as Plan[]),
+      ]);
+      setSubscription(sub);
+      setPlans(planList);
+    } catch (err: any) {
+      setError(err?.response?.data?.message || "Failed to load subscription");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const upgradePlan = useCallback(async (planCode: string) => {
     setUpgrading(true);
-    await new Promise((r) => setTimeout(r, 1200));
-    const limits: Record<PlanType, number> = {
-      FREE_TRIAL: 5,
-      STARTER: 50,
-      INSTITUTE: 300,
-      ENTERPRISE: 99999,
-    };
-    setSubscription((s) => ({
-      ...s,
-      plan,
-      billingCycle,
-      deviceLimit: limits[plan],
-      status: "ACTIVE",
-    }));
-    setUpgrading(false);
-  };
+    try {
+      // create-order returns Razorpay order; caller should handle payment UI
+      const order = await subscriptionApi.createOrder(planCode);
+      return order;
+    } finally {
+      setUpgrading(false);
+    }
+  }, []);
 
-  return { subscription, usage, upgrading, upgradePlan };
+  const onPaymentSuccess = useCallback(async (data: {
+    razorpayOrderId: string;
+    razorpayPaymentId: string;
+    razorpaySignature: string;
+    planCode: string;
+  }) => {
+    const updated = await subscriptionApi.verifyPayment(data);
+    setSubscription(updated);
+    return updated;
+  }, []);
+
+  // Derived usage values for backwards-compat
+  const usage = subscription
+    ? {
+        devices: subscription.deviceCount,
+        maxDevices: subscription.maxDevices,
+        usagePercent: subscription.deviceUsagePercent,
+        nearLimit: subscription.nearLimit,
+        atLimit: subscription.atLimit,
+      }
+    : null;
+
+  return {
+    subscription,
+    plans,
+    usage,
+    loading,
+    upgrading,
+    error,
+    upgradePlan,
+    onPaymentSuccess,
+    refetch: load,
+  };
 }

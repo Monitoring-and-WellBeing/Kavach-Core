@@ -28,9 +28,19 @@ public class GeminiService {
 
     /**
      * Analyze student activity data and return structured insights.
-     * Returns null if API key is not configured (graceful degradation).
+     * Returns mock data if API key is not configured (graceful degradation).
      */
     public Map<String, Object> analyzeStudentActivity(String activitySummary,
+                                                        String studentName,
+                                                        String deviceName) {
+        return analyzeStudentActivity(activitySummary, null, studentName, deviceName);
+    }
+
+    /**
+     * Analyze student activity + mood data and return structured insights.
+     */
+    public Map<String, Object> analyzeStudentActivity(String activitySummary,
+                                                        String moodSummary,
                                                         String studentName,
                                                         String deviceName) {
         // Production safety check
@@ -59,18 +69,22 @@ public class GeminiService {
             Always respond in valid JSON only. No markdown, no explanation outside the JSON.
             """;
 
+        String moodSection = (moodSummary != null && !moodSummary.isBlank())
+            ? "\nMOOD DATA:\n" + moodSummary + "\n"
+            : "";
+
         String userPrompt = String.format("""
-            Analyze this student's device usage data for the past 7 days and provide insights.
+            Analyze this student's digital week and write a parent report.
 
             Student: %s
             Device: %s
 
             USAGE DATA:
             %s
-
+            %s
             Respond with ONLY a valid JSON object in this exact structure:
             {
-              "weekly_summary": "2-3 sentence summary of the week's usage pattern",
+              "weekly_summary": "Parent report: 1. SUMMARY (2 sentences). 2. WHAT WENT WELL (1-2 specifics). 3. WATCH OUT FOR (1 concern, gentle tone, or skip if none). 4. SUGGESTION (1 actionable tip). Total under 150 words. Warm, factual, supportive tone.",
               "risk_level": "LOW | MEDIUM | HIGH | CRITICAL",
               "risk_tags": ["tag1", "tag2"],
               "positive_tags": ["tag1", "tag2"],
@@ -93,7 +107,8 @@ public class GeminiService {
 
             Generate 3-5 insight cards total. Mix positive and constructive feedback.
             Prioritize the most important insight as priority 1.
-            """, studentName, deviceName, activitySummary);
+            Not alarmist — this parent loves their child and wants to help, not punish.
+            """, studentName, deviceName, activitySummary, moodSection);
 
         try {
             String url = String.format(

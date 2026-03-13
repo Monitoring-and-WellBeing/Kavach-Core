@@ -49,7 +49,6 @@ const withPWA = require('next-pwa')({
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  swcMinify: true,
   transpilePackages: [
     "@kavach/shared-types",
     "@kavach/shared-constants",

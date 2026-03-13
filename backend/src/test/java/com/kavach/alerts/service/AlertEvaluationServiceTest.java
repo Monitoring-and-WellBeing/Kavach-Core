@@ -10,6 +10,7 @@ import com.kavach.devices.entity.Device;
 import com.kavach.devices.entity.DeviceStatus;
 import com.kavach.devices.entity.DeviceType;
 import com.kavach.devices.repository.DeviceRepository;
+import com.kavach.sse.SseRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -35,6 +36,7 @@ class AlertEvaluationServiceTest {
     @Mock AlertRepository alertRepo;
     @Mock ActivityLogRepository activityRepo;
     @Mock DeviceRepository deviceRepo;
+    @Mock SseRegistry sseRegistry;
 
     @InjectMocks AlertEvaluationService alertEvaluationService;
 
@@ -78,7 +80,7 @@ class AlertEvaluationServiceTest {
         // Given: Rule with 120 min threshold, device has 150 min usage
         when(ruleRepo.findAll()).thenReturn(List.of(mockRule));
         when(deviceRepo.findByTenantIdAndActiveTrue(tenantId)).thenReturn(List.of(mockDevice));
-        when(activityRepo.totalDurationSince(deviceId, any(LocalDateTime.class)))
+        when(activityRepo.totalDurationSince(eq(deviceId), any(LocalDateTime.class)))
             .thenReturn(9000L); // 150 minutes in seconds
 
         // When
@@ -103,7 +105,7 @@ class AlertEvaluationServiceTest {
         // Given: Rule with 120 min threshold, device has 60 min usage
         when(ruleRepo.findAll()).thenReturn(List.of(mockRule));
         when(deviceRepo.findByTenantIdAndActiveTrue(tenantId)).thenReturn(List.of(mockDevice));
-        when(activityRepo.totalDurationSince(deviceId, any(LocalDateTime.class)))
+        when(activityRepo.totalDurationSince(eq(deviceId), any(LocalDateTime.class)))
             .thenReturn(3600L); // 60 minutes in seconds
 
         // When
@@ -117,11 +119,9 @@ class AlertEvaluationServiceTest {
     @DisplayName("cooldown active → no duplicate alert")
     void evaluateRule_cooldownActive_noDuplicateAlert() {
         // Given: Rule triggered 30 minutes ago (cooldown is 60 minutes)
+        // Service returns early at cooldown check — no device/activity queries needed
         mockRule.setLastTriggered(LocalDateTime.now().minusMinutes(30));
         when(ruleRepo.findAll()).thenReturn(List.of(mockRule));
-        when(deviceRepo.findByTenantIdAndActiveTrue(tenantId)).thenReturn(List.of(mockDevice));
-        when(activityRepo.totalDurationSince(deviceId, any(LocalDateTime.class)))
-            .thenReturn(9000L); // 150 minutes
 
         // When
         alertEvaluationService.evaluateAllRules();
@@ -138,7 +138,7 @@ class AlertEvaluationServiceTest {
         mockRule.setDeviceId(deviceId);
         when(ruleRepo.findAll()).thenReturn(List.of(mockRule));
         when(deviceRepo.findById(deviceId)).thenReturn(Optional.of(mockDevice));
-        when(activityRepo.totalDurationSince(deviceId, any(LocalDateTime.class)))
+        when(activityRepo.totalDurationSince(eq(deviceId), any(LocalDateTime.class)))
             .thenReturn(9000L);
 
         // When
@@ -165,7 +165,7 @@ class AlertEvaluationServiceTest {
         Object[] appUsage = new Object[]{"Chrome", "Browser", 4500L};
         List<Object[]> mockTopApps = new java.util.ArrayList<>();
         mockTopApps.add(appUsage);
-        when(activityRepo.topAppsSince(deviceId, any(LocalDateTime.class)))
+        when(activityRepo.topAppsSince(eq(deviceId), any(LocalDateTime.class)))
             .thenReturn(mockTopApps); // 75 minutes
 
         // When

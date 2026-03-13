@@ -1,11 +1,13 @@
 package com.kavach.focus.service;
 
+import com.kavach.challenges.service.ChallengeService;
 import com.kavach.devices.repository.DeviceRepository;
 import com.kavach.focus.dto.*;
 import com.kavach.focus.entity.FocusSession;
 import com.kavach.focus.repository.FocusSessionRepository;
 import com.kavach.focus.repository.FocusWhitelistRepository;
 import com.kavach.gamification.service.BadgeEvaluationService;
+import com.kavach.sse.SseRegistry;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -30,6 +32,8 @@ public class FocusService {
     private final FocusWhitelistRepository whitelistRepo;
     private final DeviceRepository deviceRepo;
     private final BadgeEvaluationService badgeEvaluationService;
+    private final ChallengeService challengeService;
+    private final SseRegistry sseRegistry;
 
     // ── Start a focus session ─────────────────────────────────────────────────
     @Transactional
@@ -61,6 +65,14 @@ public class FocusService {
 
         session = sessionRepo.save(session);
         log.info("[focus] Session started: {} min on device {}", req.getDurationMinutes(), req.getDeviceId());
+
+        // ── Notify desktop agent via SSE ──────────────────────────────────────
+        java.util.Map<String, Object> ssePayload = new java.util.HashMap<>();
+        ssePayload.put("sessionId",       String.valueOf(session.getId()));
+        ssePayload.put("durationMinutes", req.getDurationMinutes());
+        ssePayload.put("endsAt",          endsAt.toString());
+        sseRegistry.sendToDevice(req.getDeviceId().toString(), "focus_start", ssePayload);
+
         return toDto(session);
     }
 
@@ -74,7 +86,13 @@ public class FocusService {
         session.setStatus("CANCELLED");
         session.setEndReason("CANCELLED_BY_" + cancelledBy);
         session.setEndedAt(LocalDateTime.now());
-        return toDto(sessionRepo.save(session));
+        FocusSessionDto dto = toDto(sessionRepo.save(session));
+
+        // ── Notify desktop agent via SSE ──────────────────────────────────────
+        sseRegistry.sendToDevice(session.getDeviceId().toString(), "focus_end",
+                java.util.Map.of("sessionId", sessionId, "reason", "CANCELLED_BY_" + cancelledBy));
+
+        return dto;
     }
 
     // ── Get active session for device ────────────────────────────────────────
@@ -171,7 +189,7 @@ public class FocusService {
         sessionRepo.saveAll(expiredSessions);
         log.info("[focus] Completed {} sessions", expiredSessions.size());
         
-        // Trigger badge evaluation for affected devices
+        // Trigger badge evaluation + challenge progress for affected devices
         for (UUID deviceId : affectedDevices) {
             try {
                 FocusSession firstSession = expiredSessions.stream()
@@ -180,6 +198,21 @@ public class FocusService {
                     .orElse(null);
                 if (firstSession != null) {
                     badgeEvaluationService.evaluateAndAwardBadges(deviceId, firstSession.getTenantId());
+
+                    // Sum up total focus minutes for all completed sessions in this batch
+                    int totalMinutes = expiredSessions.stream()
+                        .filter(s -> s.getDeviceId().equals(deviceId))
+                        .mapToInt(FocusSession::getDurationMinutes)
+                        .sum();
+                    challengeService.updateChallengeProgress(deviceId, "FOCUS_MINUTES", totalMinutes);
+
+                    // Check for EARLY_START challenge (started before 10 AM)
+                    boolean hadEarlyStart = expiredSessions.stream()
+                        .filter(s -> s.getDeviceId().equals(deviceId))
+                        .anyMatch(s -> s.getStartedAt().getHour() < 10);
+                    if (hadEarlyStart) {
+                        challengeService.updateChallengeProgress(deviceId, "EARLY_START", 1);
+                    }
                 }
             } catch (Exception e) {
                 log.warn("[focus] Failed to evaluate badges for device {}: {}", deviceId, e.getMessage());

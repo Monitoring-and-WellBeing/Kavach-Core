@@ -10,6 +10,7 @@ import { subscriptionApi } from '@/lib/subscription'
 import { Modal } from '@/components/ui/Modal'
 import { Toast, useToast } from '@/components/ui/Toast'
 import { FocusControl } from '@/components/FocusControl'
+import { LocationCard } from '@/components/devices/LocationCard'
 
 // ── Status badge ──────────────────────────────────────────────────────────────
 function StatusBadge({ status }: { status: Device['status'] }) {
@@ -108,6 +109,13 @@ function DeviceCard({
           <Trash2 size={14} />
         </button>
       </div>
+
+      {/* Location — only shown for MOBILE device type */}
+      {device.type === 'MOBILE' && (
+        <div className="mt-3">
+          <LocationCard deviceId={device.id} />
+        </div>
+      )}
     </div>
   )
 }

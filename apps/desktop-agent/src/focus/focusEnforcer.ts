@@ -24,7 +24,7 @@ export async function pollFocusStatus(): Promise<AgentFocusStatus> {
     )
     if (res.ok) {
       const prev = currentStatus
-      currentStatus = await res.json()
+      currentStatus = await res.json() as AgentFocusStatus
 
       // Focus just started
       if (!prev.focusActive && currentStatus.focusActive) {
@@ -82,7 +82,7 @@ function onFocusEnded() {
 
 // Show a small persistent overlay showing remaining time
 export function showFocusOverlay() {
-  if (typeof window !== 'undefined') return // Skip in renderer process
+  if (typeof (globalThis as any).window !== 'undefined') return // Skip in renderer process
 
   try {
     const { BrowserWindow } = require('electron')

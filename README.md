@@ -191,7 +191,7 @@ Kavach-Core/
 ├── apps/
 │   ├── web-app/          # Next.js dashboard (port 3000)
 │   ├── desktop-agent/    # Electron monitoring agent
-│   └── mobile-agent/     # React Native (future)
+│   └── mobile/           # React Native child/kid app (Expo)
 ├── backend/              # Spring Boot API (port 8080)
 │   ├── src/main/java/com/kavach/
 │   │   ├── auth/         # JWT authentication
