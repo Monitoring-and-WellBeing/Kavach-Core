@@ -2,7 +2,6 @@
 import { useState, useEffect } from 'react'
 import { Trophy, Star, Zap, Lock } from 'lucide-react'
 import { badgesApi, BadgeProgress, Badge, BadgeTier, BadgeCategory } from '@/lib/badges'
-import { useAuth } from '@/context/AuthContext'
 import { studentDashboardApi } from '@/lib/studentDashboard'
 
 // ── Tier config ────────────────────────────────────────────────────────────────

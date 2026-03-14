@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { Monitor, Laptop, Plus, RefreshCw, Pause, Play, Trash2,
-         Wifi, WifiOff, Clock, Search, X, AlertCircle, AlertTriangle } from 'lucide-react'
+         Clock, Search, X, AlertCircle, AlertTriangle } from 'lucide-react'
 import Link from 'next/link'
 import { useDevices } from '@/hooks/useDevices'
 import { Device } from '@/lib/devices'
@@ -51,7 +51,7 @@ function DeviceCard({
   const handlePauseResume = async () => {
     setActionLoading(true)
     try {
-      device.status === 'PAUSED' ? await onResume() : await onPause()
+      if (device.status === 'PAUSED') { await onResume() } else { await onPause() }
     } finally {
       setActionLoading(false)
     }

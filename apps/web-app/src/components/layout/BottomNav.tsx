@@ -3,7 +3,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard, Monitor, BarChart2, Bell, Shield,
-  Target, Trophy, Timer, Users, BookOpen,
+  Target, Trophy, Users, BookOpen,
 } from 'lucide-react'
 
 const PARENT_TABS = [

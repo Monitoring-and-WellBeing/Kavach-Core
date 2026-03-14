@@ -2,7 +2,7 @@
 
 import { Device, DeviceStatus } from "@kavach/shared-types";
 import { formatMinutes } from "@kavach/shared-utils";
-import { Monitor, Laptop, Pause, Play, Focus, RefreshCw, Clock, Wifi, WifiOff } from "lucide-react";
+import { Monitor, Laptop, Pause, Play, Focus, RefreshCw, Clock } from "lucide-react";
 import { clsx } from "clsx";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";

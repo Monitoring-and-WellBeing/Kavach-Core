@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
-import { Target, Square, Clock, ChevronDown } from 'lucide-react'
+import { Target, Square, ChevronDown } from 'lucide-react'
 import { focusApi, FocusSession } from '@/lib/focus'
 
 const PRESETS = [

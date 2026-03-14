@@ -1,8 +1,7 @@
 'use client'
 import { useState, useEffect, useCallback } from 'react'
 import { Shield, Plus, Trash2, ToggleLeft, ToggleRight,
-         Monitor, Gamepad2, Instagram, Globe, Search,
-         Clock, X, AlertCircle, ChevronRight } from 'lucide-react'
+         Search, Clock } from 'lucide-react'
 import { blockingApi, BlockRule } from '@/lib/blocking'
 import { devicesApi, Device } from '@/lib/devices'
 import { Modal } from '@/components/ui/Modal'
@@ -49,7 +48,7 @@ function RuleTypeBadge({ type }: { type: BlockRule['ruleType'] }) {
 export default function AppControlPage() {
   const [tab, setTab] = useState<Tab>('apps')
   const [rules, setRules] = useState<BlockRule[]>([])
-  const [devices, setDevices] = useState<Device[]>([])
+  const [_devices, setDevices] = useState<Device[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [createOpen, setCreateOpen] = useState(false)
