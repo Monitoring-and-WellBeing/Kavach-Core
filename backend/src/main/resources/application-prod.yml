@@ -65,9 +65,4 @@ logging:
     org.springframework.web: WARN
     org.hibernate: WARN
 
-# Swagger / OpenAPI docs -- enabled for API integration.
-springdoc:
-  api-docs:
-    enabled: true
-  swagger-ui:
-    enabled: true
+# Swagger / OpenAPI docs are enabled in application.yml (base config).
