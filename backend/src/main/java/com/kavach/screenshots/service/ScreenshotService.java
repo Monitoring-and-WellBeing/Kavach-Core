@@ -130,7 +130,7 @@ public class ScreenshotService {
         s.setSchoolStart(LocalTime.parse(dto.getSchoolStart()));
         s.setSchoolEnd(LocalTime.parse(dto.getSchoolEnd()));
         s.setRetentionDays(dto.getRetentionDays());
-        s.setUpdatedAt(java.time.LocalDateTime.now());
+        s.setUpdatedAt(java.time.Instant.now());
 
         s = settingsRepo.save(s);
         return toSettingsDto(s);
@@ -145,7 +145,7 @@ public class ScreenshotService {
         ScreenshotSettings s = settingsRepo.findById(tenantId)
                 .orElseGet(() -> defaultSettings(tenantId));
         s.setStudentNotified(true);
-        s.setUpdatedAt(java.time.LocalDateTime.now());
+        s.setUpdatedAt(java.time.Instant.now());
         settingsRepo.save(s);
         log.info("[screenshots] Student disclosure acknowledged for tenant {}", tenantId);
     }
