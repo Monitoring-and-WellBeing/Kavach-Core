@@ -65,9 +65,9 @@ logging:
     org.springframework.web: WARN
     org.hibernate: WARN
 
-# In production Swagger / OpenAPI docs should be disabled or access-controlled.
+# Swagger / OpenAPI docs -- enabled for API integration.
 springdoc:
   api-docs:
-    enabled: false
+    enabled: true
   swagger-ui:
-    enabled: false
+    enabled: true
