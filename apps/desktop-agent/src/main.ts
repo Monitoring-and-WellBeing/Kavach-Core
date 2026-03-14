@@ -1,6 +1,6 @@
 import { app, BrowserWindow, ipcMain, Tray, Menu } from "electron";
 import path from "path";
-import { startTrackingLoop, stopTrackingLoop, isTrackingActive } from "./tracking/trackingLoop";
+import { startTrackingLoop, stopTrackingLoop, isTrackingActive, TrackingLoopOptions } from "./tracking/trackingLoop";
 import { loadConfig, saveConfig } from "./auth/config";
 import { EnforcementEngine } from "./enforcement/EnforcementEngine";
 import { RuleSync } from "./enforcement/RuleSync";
@@ -8,7 +8,7 @@ import { BrowserMonitor } from "./enforcement/BrowserMonitor";
 import { SelfProtection } from "./protection/SelfProtection";
 import { timeSync } from "./enforcement/TimeSync";
 import { ScreenshotCapture } from "./screenshots/ScreenshotCapture";
-import { generateLinkCode, pollForLink } from "./sync/deviceRegistration";
+import { generateLinkCode, pollForLink, sendHeartbeat } from "./sync/deviceRegistration";
 
 let mainWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
@@ -19,6 +19,7 @@ let ruleSync: RuleSync | null = null;
 let browserMonitor: BrowserMonitor | null = null;
 let selfProtection: SelfProtection | null = null;
 let screenshotCapture: ScreenshotCapture | null = null;
+let heartbeatTimer: NodeJS.Timeout | null = null;
 
 /**
  * Starts the full enforcement stack for a linked device.
@@ -71,6 +72,10 @@ async function startEnforcement(deviceId: string): Promise<void> {
   // 8. Register agent in Windows startup so it survives crashes & reboots (edge case 9)
   await SelfProtection.registerStartup();
 
+  // 9. Heartbeat — send device keep-alive every 30 s so parent dashboard shows "Online"
+  sendHeartbeat().catch(() => {})
+  heartbeatTimer = setInterval(() => sendHeartbeat().catch(() => {}), 30_000)
+
   console.log('[KAVACH] Enforcement engine active for device', deviceId);
 }
 
@@ -80,6 +85,7 @@ function stopEnforcement(): void {
   browserMonitor?.stop();
   selfProtection?.stop();
   screenshotCapture?.stopPeriodic();
+  if (heartbeatTimer) { clearInterval(heartbeatTimer); heartbeatTimer = null; }
 }
 
 // After device is confirmed linked, start tracking + enforcement:
@@ -88,7 +94,10 @@ async function initializeAgent() {
 
   if (config.deviceLinked && config.deviceId) {
     console.log('[main] Device already linked, starting tracking + enforcement');
-    startTrackingLoop();
+    // skipLegacyEnforcement=true: EnforcementEngine handles all blocking.
+    // TrackingLoop runs in activity-logging-only mode to avoid double-kills
+    // and duplicate usage reports.
+    startTrackingLoop({ skipLegacyEnforcement: true });
     await startEnforcement(config.deviceId);
     mainWindow?.hide(); // hide window — runs in tray
   } else {
@@ -142,7 +151,7 @@ app.whenReady().then(async () => {
       // Start background polling — when linked, notify renderer and start enforcement
       pollForLink(code).then(async (deviceId) => {
         if (deviceId) {
-          startTrackingLoop();
+          startTrackingLoop({ skipLegacyEnforcement: true });
           await startEnforcement(deviceId);
           mainWindow?.webContents.send("link-success");
           setTimeout(() => mainWindow?.hide(), 3500);
@@ -161,7 +170,7 @@ app.whenReady().then(async () => {
   // IPC: called after successful linking (e.g. manual trigger / legacy)
   ipcMain.handle("device-linked", async () => {
     const linkedConfig = await loadConfig();
-    startTrackingLoop();
+    startTrackingLoop({ skipLegacyEnforcement: true });
     if (linkedConfig.deviceId) {
       await startEnforcement(linkedConfig.deviceId);
     }
