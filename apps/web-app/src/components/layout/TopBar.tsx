@@ -2,9 +2,10 @@
 
 import { Bell, User, LogOut, Settings } from "lucide-react";
 import { useState } from "react";
+import Link from "next/link";
 import { useAlerts } from "@/hooks/useAlerts";
 import { formatTime } from "@kavach/shared-utils";
-import { logout } from "@/lib/auth";
+import { useAuth } from "@/context/AuthContext";
 import { clsx } from "clsx";
 
 interface TopBarProps {
@@ -14,6 +15,7 @@ interface TopBarProps {
 
 export function TopBar({ title, userName = "User" }: TopBarProps) {
   const { alerts, unreadCount, markRead } = useAlerts();
+  const { logout } = useAuth();
   const [showAlerts, setShowAlerts] = useState(false);
   const [showUser, setShowUser] = useState(false);
 
@@ -31,6 +33,7 @@ export function TopBar({ title, userName = "User" }: TopBarProps) {
               setShowAlerts(!showAlerts);
               setShowUser(false);
             }}
+            aria-label={`Notifications${unreadCount > 0 ? ` (${unreadCount} unread)` : ''}`}
             className="relative p-2 text-[#64748B] hover:text-white hover:bg-[#0F1629] rounded-lg transition-colors"
           >
             <Bell className="w-5 h-5" />
@@ -73,6 +76,7 @@ export function TopBar({ title, userName = "User" }: TopBarProps) {
               setShowUser(!showUser);
               setShowAlerts(false);
             }}
+            aria-label={`User menu for ${userName}`}
             className="flex items-center gap-2 px-3 py-1.5 bg-[#0F1629] border border-[#1E2A45] rounded-lg hover:border-blue-500/50 transition-colors"
           >
             <div className="w-7 h-7 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white text-xs font-bold">
@@ -83,20 +87,20 @@ export function TopBar({ title, userName = "User" }: TopBarProps) {
 
           {showUser && (
             <div className="absolute right-0 top-12 w-48 bg-[#0F1629] border border-[#1E2A45] rounded-xl shadow-2xl z-50">
-              <a
+              <Link
                 href="/parent/settings"
                 className="flex items-center gap-2 px-4 py-3 text-sm text-[#94A3B8] hover:text-white hover:bg-[#0A0F1E] transition-colors"
               >
                 <Settings className="w-4 h-4" />
                 Settings
-              </a>
-              <a
+              </Link>
+              <Link
                 href="/"
                 className="flex items-center gap-2 px-4 py-3 text-sm text-[#94A3B8] hover:text-white hover:bg-[#0A0F1E] transition-colors"
               >
                 <User className="w-4 h-4" />
                 Switch Role
-              </a>
+              </Link>
               <hr className="border-[#1E2A45]" />
               <button
                 onClick={logout}

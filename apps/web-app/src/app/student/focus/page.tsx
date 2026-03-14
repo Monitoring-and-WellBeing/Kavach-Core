@@ -1,138 +1,241 @@
 'use client'
-import { useState, useEffect, useCallback } from 'react'
-import { Play, Pause, Square, Zap } from 'lucide-react'
-import { useToast, Toast } from '@/components/ui/Toast'
+import { useState, useEffect, useRef, useCallback } from 'react'
+import { Target, Play, Square, CheckCircle, Clock } from 'lucide-react'
+import { focusApi, FocusSession } from '@/lib/focus'
+import { useAuth } from '@/context/AuthContext'
+import { studentDashboardApi } from '@/lib/studentDashboard'
 
 const PRESETS = [
-  { label: '25 min', value: 25, desc: 'Pomodoro' },
-  { label: '50 min', value: 50, desc: 'Deep Work' },
-  { label: '90 min', value: 90, desc: 'Flow State' },
-  { label: 'Custom', value: 0, desc: 'Set your own' },
+  { label: '25 min', value: 25, emoji: '🍅', desc: 'Pomodoro' },
+  { label: '45 min', value: 45, emoji: '📚', desc: 'Study block' },
+  { label: '60 min', value: 60, emoji: '🎯', desc: 'Deep work' },
+  { label: '90 min', value: 90, emoji: '🔥', desc: 'Marathon' },
 ]
 
-const sessionHistory = [
-  { date: 'Today', duration: '50 min', status: 'Completed', score: 95 },
-  { date: 'Yesterday', duration: '25 min', status: 'Completed', score: 88 },
-  { date: 'Yesterday', duration: '90 min', status: 'Interrupted', score: 62 },
-  { date: 'Mon, Feb 17', duration: '50 min', status: 'Completed', score: 91 },
-]
+type Phase = 'idle' | 'active' | 'done'
 
-export default function FocusMode() {
+export default function StudentFocusPage() {
+  const { user } = useAuth()
+  const [phase, setPhase] = useState<Phase>('idle')
   const [selected, setSelected] = useState(25)
-  const [custom, setCustom] = useState('')
-  const [seconds, setSeconds] = useState(25 * 60)
-  const [running, setRunning] = useState(false)
-  const [finished, setFinished] = useState(false)
-  const { toast, showToast, hideToast } = useToast()
+  const [session, setSession] = useState<FocusSession | null>(null)
+  const [timeLeft, setTimeLeft] = useState(0)
+  const [history, setHistory] = useState<FocusSession[]>([])
+  const [stats, setStats] = useState({ focusMinutesToday: 0, sessionsToday: 0 })
+  const [loading, setLoading] = useState(false)
+  const [deviceId, setDeviceId] = useState<string | null>(null)
+  const [deviceLoading, setDeviceLoading] = useState(true)
+  const timerRef = useRef<NodeJS.Timeout>()
 
-  const totalSeconds = (selected || parseInt(custom) || 25) * 60
-
+  // Load deviceId from student dashboard
   useEffect(() => {
-    setSeconds(totalSeconds)
-    setFinished(false)
-  }, [selected, custom])
-
-  useEffect(() => {
-    if (!running) return
-    const interval = setInterval(() => {
-      setSeconds(s => {
-        if (s <= 1) { clearInterval(interval); setRunning(false); setFinished(true); showToast('Focus session complete! Great work 🎉', 'success'); return 0 }
-        return s - 1
+    studentDashboardApi.get()
+      .then(dashboard => {
+        if (dashboard.deviceLinked && dashboard.deviceId) {
+          setDeviceId(dashboard.deviceId)
+        }
       })
-    }, 1000)
-    return () => clearInterval(interval)
-  }, [running, showToast])
+      .catch(err => {
+        console.error('Failed to load device:', err)
+      })
+      .finally(() => setDeviceLoading(false))
+  }, [])
 
-  const start = () => { setRunning(true); setFinished(false) }
-  const pause = () => setRunning(false)
-  const stop = () => { setRunning(false); setSeconds(totalSeconds); setFinished(false) }
+  const loadData = useCallback(async () => {
+    if (!deviceId) return
+    
+    const [active, hist, todayStats] = await Promise.all([
+      focusApi.getActive(deviceId),
+      focusApi.getHistory(deviceId),
+      focusApi.getTodayStats(deviceId),
+    ])
+    if (active) { setSession(active); setTimeLeft(active.remainingSeconds); setPhase('active') }
+    setHistory(hist)
+    setStats(todayStats)
+  }, [deviceId])
 
-  const mins = Math.floor(seconds / 60).toString().padStart(2, '0')
-  const secs = (seconds % 60).toString().padStart(2, '0')
-  const progress = 1 - seconds / totalSeconds
-  const circumference = 2 * Math.PI * 90
-  const strokeDashoffset = circumference * (1 - progress)
+  useEffect(() => { loadData() }, [loadData])
+
+  // Countdown
+  useEffect(() => {
+    if (phase === 'active' && timeLeft > 0) {
+      timerRef.current = setInterval(() => {
+        setTimeLeft(t => {
+          if (t <= 1) { clearInterval(timerRef.current); setPhase('done'); return 0 }
+          return t - 1
+        })
+      }, 1000)
+    }
+    return () => clearInterval(timerRef.current)
+  }, [phase])
+
+  const handleStart = async () => {
+    if (!deviceId) return
+    setLoading(true)
+    try {
+      const s = await focusApi.selfStart(deviceId, selected, PRESETS.find(p => p.value === selected)?.desc)
+      setSession(s); setTimeLeft(s.remainingSeconds); setPhase('active')
+    } finally { setLoading(false) }
+  }
+
+  const handleStop = async () => {
+    if (!session) return
+    setLoading(true)
+    try {
+      await focusApi.stop(session.id)
+      setSession(null); setTimeLeft(0); setPhase('idle')
+      loadData()
+    } finally { setLoading(false) }
+  }
+
+  const handleDone = () => { setPhase('idle'); loadData() }
+
+  const mins = Math.floor(timeLeft / 60)
+  const secs = timeLeft % 60
+  const progress = session
+    ? ((session.durationMinutes * 60 - timeLeft) / (session.durationMinutes * 60)) * 100
+    : 0
+
+  const circumference = 2 * Math.PI * 54
+
+  if (deviceLoading) {
+    return (
+      <div className="p-4 md:p-6 max-w-2xl mx-auto animate-pulse">
+        <div className="h-32 bg-white rounded-2xl shadow-sm" />
+      </div>
+    )
+  }
+
+  if (!deviceId) {
+    return (
+      <div className="p-4 md:p-6 max-w-2xl mx-auto flex flex-col items-center justify-center h-64 text-center">
+        <div className="text-4xl mb-3">💻</div>
+        <h2 className="text-gray-700 font-semibold">No device linked yet</h2>
+        <p className="text-gray-400 text-sm mt-1">Ask your parent or institute to link a device to your account.</p>
+      </div>
+    )
+  }
 
   return (
-    <div className="p-6 fade-up">
-      {toast && <Toast message={toast.message} type={toast.type} onClose={hideToast} />}
-      <div className="max-w-4xl mx-auto grid grid-cols-2 gap-6">
-        {/* Timer card */}
-        <div className="bg-white rounded-2xl p-8 shadow-sm flex flex-col items-center">
-          <h2 className="text-gray-900 font-bold text-xl mb-6">Focus Mode</h2>
+    <div className="p-4 md:p-6 max-w-2xl mx-auto fade-up">
+      <div className="text-center mb-6 md:mb-8">
+        <h1 className="text-xl md:text-2xl font-bold text-gray-900">Focus Mode</h1>
+        <p className="text-gray-400 text-sm mt-1">
+          {stats.sessionsToday} sessions · {stats.focusMinutesToday} min today
+        </p>
+      </div>
 
-          {/* Circular SVG timer */}
-          <div className="relative mb-6">
-            <svg width="220" height="220" viewBox="0 0 220 220">
-              <circle cx="110" cy="110" r="90" fill="none" stroke="#F3F4F6" strokeWidth="10" />
-              <circle cx="110" cy="110" r="90" fill="none" stroke={finished ? '#22C55E' : '#7C3AED'} strokeWidth="10"
-                strokeLinecap="round" strokeDasharray={circumference} strokeDashoffset={strokeDashoffset}
-                transform="rotate(-90 110 110)" style={{ transition: 'stroke-dashoffset 1s linear' }} />
+      {/* ── Idle: preset selector ── */}
+      {phase === 'idle' && (
+        <div className="space-y-6">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {PRESETS.map(p => (
+              <button key={p.value} onClick={() => setSelected(p.value)}
+                className={`p-3 md:p-4 rounded-2xl border-2 text-center transition-all ${
+                  selected === p.value ? 'border-blue-500 bg-blue-50' : 'border-gray-100 bg-white hover:border-gray-200'
+                }`}>
+                <div className="text-2xl mb-1">{p.emoji}</div>
+                <div className="font-semibold text-gray-800 text-sm">{p.label}</div>
+                <div className="text-gray-400 text-xs">{p.desc}</div>
+              </button>
+            ))}
+          </div>
+
+          <button onClick={handleStart} disabled={loading}
+            className="w-full py-4 rounded-2xl text-white font-bold text-lg flex items-center justify-center gap-3 disabled:opacity-60"
+            style={{ background: 'linear-gradient(135deg, #2563EB, #7C3AED)' }}>
+            <Play size={22} fill="white" />
+            {loading ? 'Starting...' : `Start ${selected}-min Focus`}
+          </button>
+        </div>
+      )}
+
+      {/* ── Active: circular timer ── */}
+      {phase === 'active' && (
+        <div className="flex flex-col items-center gap-6">
+          <div className="relative">
+            <svg width="140" height="140" className="-rotate-90">
+              <circle cx="70" cy="70" r="54" fill="none" stroke="#F1F5F9" strokeWidth="10" />
+              <circle cx="70" cy="70" r="54" fill="none" stroke="#3B82F6" strokeWidth="10"
+                strokeLinecap="round"
+                strokeDasharray={circumference}
+                strokeDashoffset={circumference - (progress / 100) * circumference}
+                className="transition-all duration-1000" />
             </svg>
             <div className="absolute inset-0 flex flex-col items-center justify-center">
-              <div className={`text-5xl font-bold text-gray-900 ${running ? 'timer-pulse' : ''}`}>{mins}:{secs}</div>
-              <div className="text-gray-400 text-sm mt-1">{running ? 'Focusing...' : finished ? 'Complete!' : 'Ready'}</div>
-            </div>
-          </div>
-
-          {/* Controls */}
-          <div className="flex gap-3">
-            {!running ? (
-              <button onClick={start} className="flex items-center gap-2 px-6 py-3 rounded-xl text-white font-semibold transition-all hover:opacity-90" style={{ background: 'linear-gradient(135deg, #7C3AED, #3B82F6)' }}>
-                <Play size={18} /> Start
-              </button>
-            ) : (
-              <button onClick={pause} className="flex items-center gap-2 px-6 py-3 rounded-xl bg-amber-500 text-white font-semibold hover:bg-amber-600 transition-colors">
-                <Pause size={18} /> Pause
-              </button>
-            )}
-            <button onClick={stop} className="flex items-center gap-2 px-5 py-3 rounded-xl bg-gray-100 text-gray-600 font-medium hover:bg-gray-200 transition-colors">
-              <Square size={16} /> Reset
-            </button>
-          </div>
-        </div>
-
-        <div className="space-y-4">
-          {/* Presets */}
-          <div className="bg-white rounded-2xl p-5 shadow-sm">
-            <h3 className="font-semibold text-gray-900 mb-3">Session Presets</h3>
-            <div className="grid grid-cols-2 gap-2">
-              {PRESETS.map(p => (
-                <button key={p.label} onClick={() => { setSelected(p.value); if (p.value !== 0) setCustom('') }}
-                  className={`p-3 rounded-xl text-left transition-all border-2 ${selected === p.value ? 'border-purple-500 bg-purple-50' : 'border-gray-100 hover:border-gray-200'}`}>
-                  <div className={`font-semibold text-sm ${selected === p.value ? 'text-purple-700' : 'text-gray-700'}`}>{p.label}</div>
-                  <div className="text-xs text-gray-400">{p.desc}</div>
-                </button>
-              ))}
-            </div>
-            {selected === 0 && (
-              <div className="mt-3">
-                <input type="number" placeholder="Enter minutes" value={custom} onChange={e => setCustom(e.target.value)}
-                  className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-purple-500" />
+              <div className="text-3xl font-bold text-gray-900 tabular-nums">
+                {mins}:{secs.toString().padStart(2, '0')}
               </div>
-            )}
+              <div className="text-gray-400 text-xs mt-0.5">remaining</div>
+            </div>
           </div>
 
-          {/* Session history */}
-          <div className="bg-white rounded-2xl p-5 shadow-sm">
-            <h3 className="font-semibold text-gray-900 mb-3">Session History</h3>
-            <div className="space-y-2">
-              {sessionHistory.map((s, i) => (
-                <div key={i} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
-                  <div>
-                    <div className="text-sm font-medium text-gray-700">{s.duration}</div>
-                    <div className="text-xs text-gray-400">{s.date}</div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-semibold text-gray-700">{s.score}%</span>
-                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${s.status === 'Completed' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>{s.status}</span>
+          <div className="text-center">
+            <div className="font-semibold text-gray-800">{session?.title}</div>
+            <div className="text-gray-400 text-sm">{session?.durationMinutes} minute session</div>
+          </div>
+
+          <div className="bg-blue-50 border border-blue-100 rounded-2xl px-5 py-3 text-center">
+            <p className="text-blue-700 text-sm font-medium">🎯 Stay focused!</p>
+            <p className="text-blue-500 text-xs mt-0.5">Only study apps are allowed right now</p>
+          </div>
+
+          <button onClick={handleStop} disabled={loading}
+            className="flex items-center gap-2 px-6 py-3 bg-gray-100 hover:bg-gray-200 rounded-2xl text-gray-600 font-medium transition-colors">
+            <Square size={16} /> End Session Early
+          </button>
+        </div>
+      )}
+
+      {/* ── Done: celebration ── */}
+      {phase === 'done' && (
+        <div className="flex flex-col items-center gap-4 py-8">
+          <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center">
+            <CheckCircle size={40} className="text-green-500" />
+          </div>
+          <h2 className="text-2xl font-bold text-gray-900">Session Complete! 🎉</h2>
+          <p className="text-gray-500 text-center">
+            You focused for {session?.durationMinutes} minutes. Great work!
+          </p>
+          <button onClick={handleDone} className="px-8 py-3 rounded-2xl text-white font-medium"
+            style={{ background: '#2563EB' }}>
+            Start Another
+          </button>
+        </div>
+      )}
+
+      {/* ── Session History ── */}
+      {history.length > 0 && phase !== 'active' && (
+        <div className="mt-8">
+          <h3 className="font-semibold text-gray-700 text-sm mb-3 flex items-center gap-2">
+            <Clock size={14} /> Recent Sessions
+          </h3>
+          <div className="space-y-2">
+            {history.slice(0, 5).map(s => (
+              <div key={s.id} className="flex items-center gap-3 bg-white rounded-xl p-3 shadow-sm">
+                <div className={`w-2 h-2 rounded-full flex-shrink-0 ${
+                  s.status === 'COMPLETED' ? 'bg-green-500' :
+                  s.status === 'CANCELLED' ? 'bg-red-400' : 'bg-gray-300'
+                }`} />
+                <div className="flex-1">
+                  <div className="text-gray-700 text-sm font-medium">{s.title}</div>
+                  <div className="text-gray-400 text-xs">
+                    {new Date(s.startedAt).toLocaleDateString('en-IN', { month: 'short', day: 'numeric' })}
+                    {' · '}{s.durationMinutes} min
                   </div>
                 </div>
-              ))}
-            </div>
+                <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                  s.status === 'COMPLETED' ? 'bg-green-100 text-green-700' :
+                  s.status === 'CANCELLED' ? 'bg-red-100 text-red-600' :
+                  'bg-gray-100 text-gray-500'
+                }`}>
+                  {s.status.charAt(0) + s.status.slice(1).toLowerCase()}
+                </span>
+              </div>
+            ))}
           </div>
         </div>
-      </div>
+      )}
     </div>
   )
 }

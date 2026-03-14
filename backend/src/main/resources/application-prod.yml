@@ -1,0 +1,37 @@
+# ═══════════════════════════════════════════════════════════════
+# KAVACH AI — Production profile overrides
+# Activate via: SPRING_PROFILES_ACTIVE=prod
+# ═══════════════════════════════════════════════════════════════
+
+# ── Logging ──────────────────────────────────────────────────────
+logging:
+  level:
+    com.kavach: INFO
+    org.springframework.security: WARN
+    org.springframework.web: WARN
+    org.hibernate: WARN
+
+# ── Disable Swagger / API docs in production ─────────────────────
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false
+
+# ── Health endpoint: never expose full details publicly ──────────
+management:
+  endpoint:
+    health:
+      show-details: never
+  endpoints:
+    web:
+      exposure:
+        include: health
+
+# ── JPA: never print SQL in production ───────────────────────────
+spring:
+  jpa:
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: false

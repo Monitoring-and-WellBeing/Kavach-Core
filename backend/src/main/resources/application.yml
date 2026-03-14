@@ -16,14 +16,23 @@ spring:
     enabled: true
     locations: classpath:db/migration
     baseline-on-migrate: true
+  security:
+    cors:
+      allowed-origins: ${CORS_ORIGINS:http://localhost:3000,http://localhost:3001}
 
 server:
   port: ${PORT:8080}
 
 kavach:
   jwt:
-    secret: ${JWT_SECRET:kavach-super-secret-key-change-in-production-2024-must-be-at-least-256-bits}
-    expiration: ${JWT_EXPIRATION:86400000}
+    secret: ${JWT_SECRET:kavach-jwt-secret-key-minimum-256-bits-long-change-in-production-2024}
+    access-token-expiry: ${JWT_ACCESS_EXPIRY:900000}        # 15 minutes in ms
+    refresh-token-expiry: ${JWT_REFRESH_EXPIRY:604800000}    # 7 days in ms
+  ai:
+    provider: gemini
+    gemini:
+      api-key: ${GEMINI_API_KEY:}
+      model: gemini-1.5-flash
 
 springdoc:
   api-docs:
@@ -37,3 +46,25 @@ logging:
   level:
     com.kavach: DEBUG
     org.springframework.security: INFO
+
+r2:
+  account-id: ${R2_ACCOUNT_ID:}
+  access-key-id: ${R2_ACCESS_KEY_ID:}
+  secret-access-key: ${R2_SECRET_ACCESS_KEY:}
+  bucket-name: ${R2_BUCKET_NAME:kavach-screenshots}
+
+razorpay:
+  key:
+    id: ${RAZORPAY_KEY_ID:rzp_test_XXXXXXXXXXXXXXXX}
+    secret: ${RAZORPAY_KEY_SECRET:XXXXXXXXXXXXXXXXXXXXXXXX}
+  webhook:
+    secret: ${RAZORPAY_WEBHOOK_SECRET:YOUR_WEBHOOK_SECRET_HERE}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: when-authorized
