@@ -1,0 +1,54 @@
+services:
+  - type: web
+    name: kavach-backend
+    runtime: java           # native Java runtime — no Docker/mise required
+    rootDir: backend
+    buildCommand: chmod +x mvnw && ./mvnw clean package -DskipTests
+    startCommand: java $JAVA_OPTS -jar target/kavach-backend-0.1.0.jar -Dspring.profiles.active=prod
+
+    # ── JVM tuning — fits inside Render's free/starter 512 MB RAM limit ────
+    envVars:
+      - key: JAVA_OPTS
+        value: -Xmx400m -Xss512k
+
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod
+
+      # ── Secrets — set values in Render dashboard, NOT here ────────────────
+      # Database (Neon)
+      - key: SPRING_DATASOURCE_URL
+        sync: false
+      - key: SPRING_DATASOURCE_USERNAME
+        sync: false
+      - key: SPRING_DATASOURCE_PASSWORD
+        sync: false
+
+      # Auth
+      - key: JWT_SECRET
+        sync: false
+
+      # AI
+      - key: GEMINI_API_KEY
+        sync: false
+
+      # Razorpay
+      - key: RAZORPAY_KEY_ID
+        sync: false
+      - key: RAZORPAY_KEY_SECRET
+        sync: false
+      - key: RAZORPAY_WEBHOOK_SECRET
+        sync: false
+
+      # Cloudflare R2 (screenshots)
+      - key: R2_ACCOUNT_ID
+        sync: false
+      - key: R2_ACCESS_KEY_ID
+        sync: false
+      - key: R2_SECRET_ACCESS_KEY
+        sync: false
+      - key: R2_BUCKET_NAME
+        sync: false
+
+      # CORS — set to your production frontend domain(s), e.g. https://app.kavachai.com
+      - key: CORS_ORIGINS
+        sync: false
