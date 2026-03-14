@@ -7,7 +7,7 @@ import lombok.Data;
 public class SignupRequest {
     @NotBlank private String name;
     @Email @NotBlank private String email;
-    @NotBlank @Size(min = 6, message = "Password must be at least 6 characters") private String password;
+    @NotBlank @Size(min = 8, message = "Password must be at least 8 characters") private String password;
     private String phone;
     @NotBlank private String instituteName;
     @NotBlank private String instituteType;  // SCHOOL | COACHING | TRAINING

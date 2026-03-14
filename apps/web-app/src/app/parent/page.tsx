@@ -1,368 +1,341 @@
-"use client";
+'use client'
+import { useState, useEffect, useCallback } from 'react'
+import { Monitor, Wifi, WifiOff, Target, Shield,
+         Bell, Clock, ChevronRight, RefreshCw,
+         AlertTriangle, Info } from 'lucide-react'
+import Link from 'next/link'
+import { dashboardApi, type ParentDashboard, type DeviceSummary, type DashboardAlert } from '@/lib/dashboard'
+import { alertsApi } from '@/lib/alerts'
+import { FocusControl } from '@/components/FocusControl'
+import { ChildChallengesWidget } from '@/components/challenges/ChildChallengesWidget'
+import { MoodTrendWidget } from '@/components/challenges/MoodTrendWidget'
 
-import { useState } from "react";
-import {
-  Clock,
-  Smartphone,
-  Activity,
-  AlertTriangle,
-  Brain,
-  Plus,
-  ArrowUpRight,
-} from "lucide-react";
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  ResponsiveContainer,
-  Cell,
-  Tooltip,
-} from "recharts";
-import { Modal } from "@/components/ui/Modal";
-import { useToast, Toast } from "@/components/ui/Toast";
-import Link from "next/link";
-
-const heatmapData = Array.from({ length: 7 }, (_, day) =>
-  Array.from({ length: 18 }, (_, hour) => ({
-    intensity:
-      day === 5 || day === 6
-        ? Math.floor(Math.random() * 3) + (hour > 8 && hour < 16 ? 1 : 0)
-        : Math.floor(Math.random() * 2) + (hour > 7 && hour < 15 ? 1 : 0),
-  }))
-);
-
-const topApps = [
-  { name: "YouTube", time: 82, color: "#EF4444" },
-  { name: "Instagram", time: 52, color: "#8B5CF6" },
-  { name: "WhatsApp", time: 28, color: "#22C55E" },
-  { name: "Chrome", time: 20, color: "#3B82F6" },
-  { name: "Games", time: 18, color: "#F59E0B" },
-];
-
-const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-const hours = Array.from({ length: 18 }, (_, i) => i + 6);
-
-function HeatmapCell({ intensity }: { intensity: number }) {
-  const colors = ["#E5E7EB", "#FCD34D", "#F97316", "#EF4444"];
-  return (
-    <div
-      className="w-4 h-4 rounded-sm transition-all"
-      style={{ background: colors[intensity] }}
-    />
-  );
+// ── Severity config ────────────────────────────────────────────────────────────
+const SEVERITY = {
+  CRITICAL: { icon: <AlertTriangle size={14} className="text-red-500" />,   bg: 'bg-red-50',    text: 'text-red-700' },
+  HIGH:     { icon: <AlertTriangle size={14} className="text-orange-500" />, bg: 'bg-orange-50', text: 'text-orange-700' },
+  MEDIUM:   { icon: <Info size={14} className="text-amber-500" />,           bg: 'bg-amber-50',  text: 'text-amber-700' },
+  LOW:      { icon: <Info size={14} className="text-blue-400" />,            bg: 'bg-blue-50',   text: 'text-blue-700' },
 }
 
-export default function ParentDashboard() {
-  const [addDeviceOpen, setAddDeviceOpen] = useState(false);
-  const [deviceCode, setDeviceCode] = useState("");
-  const [limitOpen, setLimitOpen] = useState(false);
-  const { toast, showToast, hideToast } = useToast();
-
-  const handleAddDevice = () => {
-    if (deviceCode.length !== 6) {
-      showToast("Enter a valid 6-character device code", "error");
-      return;
-    }
-    setDeviceCode("");
-    setAddDeviceOpen(false);
-    showToast("Device linked successfully! 🎉", "success");
-  };
-
-  const CustomTooltip = ({ active, payload }: any) => {
-    if (active && payload?.length) {
+// ── Stat card ─────────────────────────────────────────────────────────────────
+function StatCard({ icon, label, value, sub, color }: {
+  icon: React.ReactNode; label: string; value: string | number;
+  sub?: string; color: string
+}) {
       return (
-        <div className="bg-white border border-gray-100 rounded-xl px-3 py-2 shadow-lg">
-          <p className="font-medium text-gray-800">
-            {payload[0].payload.name}
-          </p>
-          <p className="text-gray-500 text-sm">
-            Time : {payload[0].value} min
-          </p>
+    <div className="bg-white rounded-2xl p-3 md:p-5 shadow-sm">
+      <div className="flex items-center justify-between mb-3">
+        <span className="text-gray-400 text-xs font-medium">{label}</span>
+        <div className={`w-8 h-8 ${color} rounded-xl flex items-center justify-center`}>
+          {icon}
         </div>
-      );
-    }
-    return null;
-  };
+      </div>
+      <div className="text-2xl font-bold text-gray-900">{value}</div>
+      {sub && <div className="text-gray-400 text-xs mt-1">{sub}</div>}
+    </div>
+  )
+}
+
+// ── Device summary card ───────────────────────────────────────────────────────
+function DeviceCard({ device, onFocusChange }: {
+  device: DeviceSummary
+  onFocusChange: () => void
+}) {
+  const statusConfig = {
+    ONLINE:     { dot: 'bg-green-500', label: 'Online',     text: 'text-green-600' },
+    OFFLINE:    { dot: 'bg-gray-400',  label: 'Offline',    text: 'text-gray-500' },
+    PAUSED:     { dot: 'bg-amber-500', label: 'Paused',     text: 'text-amber-600' },
+    FOCUS_MODE: { dot: 'bg-blue-500',  label: 'Focus Mode', text: 'text-blue-600' },
+  }[device.status] || { dot: 'bg-gray-300', label: device.status, text: 'text-gray-500' }
 
   return (
-    <div className="p-6 space-y-5 fade-up">
-      {toast && (
-        <Toast message={toast.message} type={toast.type} onClose={hideToast} />
+    <div className="bg-white rounded-2xl p-5 shadow-sm hover:shadow-md transition-all">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <Monitor size={16} className="text-gray-400" />
+          <span className="font-semibold text-gray-800 text-sm truncate max-w-28">
+            {device.assignedTo || device.name}
+          </span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <div className={`w-2 h-2 rounded-full ${statusConfig.dot} ${device.status === 'ONLINE' ? 'animate-pulse' : ''}`} />
+          <span className={`text-xs font-medium ${statusConfig.text}`}>{statusConfig.label}</span>
+        </div>
+      </div>
+
+      {/* Stats */}
+      <div className="space-y-2 mb-4">
+        <div className="flex justify-between items-center">
+          <span className="text-gray-400 text-xs">Screen time</span>
+          <span className="text-gray-700 text-xs font-medium">
+            {device.screenTimeFormatted || '0m'}
+          </span>
+        </div>
+        {device.topApp && (
+          <div className="flex justify-between items-center">
+            <span className="text-gray-400 text-xs">Top app</span>
+            <span className="text-gray-700 text-xs font-medium truncate max-w-24">{device.topApp}</span>
+          </div>
+        )}
+        {device.inFocus && (
+          <div className="flex items-center gap-1.5 bg-blue-50 rounded-lg px-2 py-1">
+            <Target size={11} className="text-blue-500" />
+            <span className="text-blue-600 text-xs font-medium">Focus active</span>
+          </div>
+        )}
+      </div>
+
+      {/* Focus control */}
+      <FocusControl
+        deviceId={device.id}
+        deviceName={device.assignedTo || device.name}
+        onSessionChange={onFocusChange}
+      />
+        </div>
+  )
+}
+
+// ── Alert row ─────────────────────────────────────────────────────────────────
+function AlertRow({ alert, onMarkRead }: {
+  alert: DashboardAlert
+  onMarkRead: (id: string) => void
+}) {
+  const cfg = SEVERITY[alert.severity] || SEVERITY.MEDIUM
+  return (
+    <div
+      onClick={() => !alert.read && onMarkRead(alert.id)}
+      className={`flex items-start gap-3 p-3 rounded-xl transition-all cursor-pointer hover:bg-gray-50 ${!alert.read ? 'bg-orange-50/50' : ''}`}>
+      <div className="mt-0.5">{cfg.icon}</div>
+      <div className="flex-1 min-w-0">
+        <p className="text-gray-700 text-xs font-medium leading-tight line-clamp-2">{alert.title}</p>
+        <p className="text-gray-400 text-xs mt-0.5">
+          {new Date(alert.triggeredAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+        </p>
+          </div>
+      {!alert.read && <div className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0 mt-1" />}
+            </div>
+  )
+}
+
+// ── Main dashboard ────────────────────────────────────────────────────────────
+export default function ParentDashboard() {
+  const [data, setData] = useState<ParentDashboard | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
+
+  const load = useCallback(async () => {
+    try {
+      const dashboard = await dashboardApi.getParent()
+      setData(dashboard)
+      setLastUpdated(new Date())
+    } catch (err) {
+      console.error('Dashboard load failed', err)
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    load()
+    // Auto-refresh every 30 seconds
+    const interval = setInterval(load, 30000)
+    return () => clearInterval(interval)
+  }, [load])
+
+  const handleMarkRead = async (id: string) => {
+    await alertsApi.markRead(id)
+    setData(prev => prev ? {
+      ...prev,
+      recentAlerts: prev.recentAlerts.map(a =>
+        a.id === id ? { ...a, read: true } : a),
+      stats: { ...prev.stats, unreadAlerts: Math.max(0, prev.stats.unreadAlerts - 1) }
+    } : prev)
+  }
+
+  if (loading) {
+    return (
+      <div className="p-4 md:p-6 space-y-4 md:space-y-5">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+          {[1,2,3,4].map(i => <div key={i} className="bg-white rounded-2xl h-28 animate-pulse shadow-sm" />)}
+            </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 md:gap-4">
+          {[1,2,3].map(i => <div key={i} className="bg-white rounded-2xl h-36 animate-pulse shadow-sm" />)}
+        </div>
+          </div>
+    )
+  }
+
+  if (!data) return (
+    <div className="p-6 flex items-center justify-center h-64">
+      <div className="text-center">
+        <p className="text-gray-500 font-medium">Failed to load dashboard</p>
+        <button onClick={load} className="mt-2 text-blue-500 text-sm underline">Retry</button>
+            </div>
+          </div>
+  )
+
+  const { stats, devices, recentAlerts } = data
+
+  return (
+    <div className="p-4 md:p-6 space-y-4 md:space-y-5 fade-up">
+
+      {/* ── Header ── */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-gray-900 font-bold text-lg md:text-xl">Overview</h1>
+          <p className="text-gray-400 text-xs mt-0.5">
+            {lastUpdated && `Updated ${lastUpdated.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}`}
+          </p>
+        </div>
+        <button onClick={load} className="p-2.5 bg-gray-100 hover:bg-gray-200 rounded-xl text-gray-500 transition-colors">
+          <RefreshCw size={16} />
+        </button>
+      </div>
+
+      {/* ── Stat cards ── */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+        <StatCard
+          icon={<Clock size={16} className="text-blue-600" />}
+          label="Screen Time Today"
+          value={stats.totalScreenTimeFormatted}
+          sub="All devices combined"
+          color="bg-blue-50"
+        />
+        <StatCard
+          icon={stats.activeDevices > 0
+            ? <Wifi size={16} className="text-green-600" />
+            : <WifiOff size={16} className="text-gray-400" />}
+          label="Active Devices"
+          value={`${stats.activeDevices} / ${stats.totalDevices}`}
+          sub="Online right now"
+          color={stats.activeDevices > 0 ? "bg-green-50" : "bg-gray-50"}
+        />
+        <StatCard
+          icon={<Target size={16} className="text-purple-600" />}
+          label="Focus Sessions"
+          value={stats.focusSessionsToday}
+          sub="Completed today"
+          color="bg-purple-50"
+        />
+        <StatCard
+          icon={<Shield size={16} className="text-red-600" />}
+          label="Blocked Attempts"
+          value={stats.blockedAttemptsToday}
+          sub="Apps blocked today"
+          color="bg-red-50"
+        />
+      </div>
+
+      {/* ── Engagement: Mood & Challenges (per device) ── */}
+      {devices.length > 0 && (
+        <div className="space-y-3">
+          <h2 className="font-semibold text-gray-800 text-sm flex items-center gap-2">
+            ⚡ Today&apos;s Challenges &amp; Mood
+          </h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {devices.slice(0, 3).map((device) => (
+              <div key={device.id} className="space-y-3">
+                <ChildChallengesWidget
+                  deviceId={device.id}
+                  childName={device.assignedTo || device.name}
+                />
+                <MoodTrendWidget
+                  deviceId={device.id}
+                  childName={device.assignedTo || device.name}
+                />
+              </div>
+            ))}
+          </div>
+        </div>
       )}
 
-      <div>
-        <h1 className="text-gray-900 text-2xl font-bold">Hi Meena 👋</h1>
-        <p className="text-gray-500 text-sm mt-0.5">
-          Here&apos;s your child&apos;s digital activity summary
-        </p>
-      </div>
+      {/* ── Main content: devices + alerts ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-5">
 
-      <div className="grid grid-cols-4 gap-4">
-        <div className="bg-white rounded-2xl p-4 shadow-sm flex items-center gap-4">
-          <div
-            className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0"
-            style={{ background: "#EFF6FF" }}
-          >
-            <Clock size={22} style={{ color: "#3B82F6" }} />
+        {/* Device grid — takes 2 cols */}
+        <div className="col-span-2 space-y-3">
+          <div className="flex items-center justify-between">
+            <h2 className="font-semibold text-gray-800 text-sm">Devices</h2>
+            <Link href="/parent/devices"
+              className="text-blue-500 text-xs flex items-center gap-1 hover:underline">
+              View all <ChevronRight size={12} />
+            </Link>
           </div>
-          <div>
-            <div className="text-gray-400 text-xs font-medium">
-              Screen Time Today
-            </div>
-            <div className="text-gray-900 text-xl font-bold mt-0.5">
-              4h 12m
-            </div>
-          </div>
-        </div>
-        <div className="bg-white rounded-2xl p-4 shadow-sm flex items-center gap-4">
-          <div
-            className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0"
-            style={{ background: "#F5F3FF" }}
-          >
-            <Smartphone size={22} style={{ color: "#7C3AED" }} />
-          </div>
-          <div>
-            <div className="text-gray-400 text-xs font-medium">
-              Most Used App
-            </div>
-            <div className="text-gray-900 text-xl font-bold mt-0.5">
-              YouTube
-            </div>
-          </div>
-        </div>
-        <div className="bg-white rounded-2xl p-4 shadow-sm flex items-center gap-4">
-          <div
-            className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0"
-            style={{ background: "#F0FDF4" }}
-          >
-            <Activity size={22} style={{ color: "#16A34A" }} />
-          </div>
-          <div>
-            <div className="text-gray-400 text-xs font-medium">
-              Focus Time
-            </div>
-            <div className="text-gray-900 text-xl font-bold mt-0.5">
-              1h 10m
-            </div>
-          </div>
-        </div>
-        <div className="bg-white rounded-2xl p-4 shadow-sm flex items-center gap-4">
-          <div
-            className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0"
-            style={{ background: "#FFF7ED" }}
-          >
-            <AlertTriangle size={22} style={{ color: "#EA580C" }} />
-          </div>
-          <div>
-            <div className="text-gray-400 text-xs font-medium">
-              Alerts Triggered
-            </div>
-            <div className="text-gray-900 text-xl font-bold mt-0.5">2</div>
-          </div>
-        </div>
-      </div>
 
-      <div className="grid grid-cols-2 gap-5">
-        <div className="bg-white rounded-2xl p-6 shadow-sm">
-          <h3 className="font-semibold text-gray-900 mb-5">
-            Top Apps by Time Today
-          </h3>
-          <ResponsiveContainer width="100%" height={200}>
-            <BarChart data={topApps} layout="vertical" barSize={20}>
-              <XAxis
-                type="number"
-                axisLine={false}
-                tickLine={false}
-                tick={{ fill: "#9CA3AF", fontSize: 11 }}
-              />
-              <YAxis
-                type="category"
-                dataKey="name"
-                axisLine={false}
-                tickLine={false}
-                tick={{ fill: "#6B7280", fontSize: 13 }}
-                width={70}
-              />
-              <Tooltip content={<CustomTooltip />} />
-              <Bar dataKey="time" radius={[0, 6, 6, 0]}>
-                {topApps.map((app, i) => (
-                  <Cell key={i} fill={app.color} />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-
-        <div className="bg-white rounded-2xl p-6 shadow-sm">
-          <h3 className="font-semibold text-gray-900 mb-4">
-            Activity Heatmap (This Week)
-          </h3>
-          <div className="overflow-x-auto">
-            <div className="flex gap-0.5">
-              <div className="flex flex-col gap-0.5 mr-1">
-                <div className="h-4 w-8" />
-                {days.map((d) => (
-                  <div
-                    key={d}
-                    className="h-4 w-8 text-gray-400 text-xs flex items-center"
-                  >
-                    {d}
-                  </div>
-                ))}
-              </div>
-              {heatmapData[0].map((_, hourIdx) => (
-                <div key={hourIdx} className="flex flex-col gap-0.5">
-                  <div className="h-4 w-4 text-gray-300 text-[10px] flex items-center justify-center">
-                    {hourIdx % 3 === 0 ? hours[hourIdx] : ""}
-                  </div>
-                  {heatmapData.map((dayData, dayIdx) => (
-                    <HeatmapCell
-                      key={dayIdx}
-                      intensity={dayData[hourIdx]?.intensity ?? 0}
-                    />
-                  ))}
-                </div>
+          {devices.length === 0 ? (
+            <div className="bg-white rounded-2xl p-8 shadow-sm text-center">
+              <Monitor size={32} className="text-gray-200 mx-auto mb-2" />
+              <p className="text-gray-400 text-sm">No devices registered yet</p>
+              <Link href="/parent/devices" className="text-blue-500 text-sm underline mt-1 inline-block">
+                Register a device
+              </Link>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4">
+              {devices.slice(0, 4).map(device => (
+                <DeviceCard key={device.id} device={device} onFocusChange={load} />
               ))}
-            </div>
           </div>
-          <div className="flex items-center gap-2 mt-3">
-            <span className="text-gray-400 text-xs">Low</span>
-            <div className="w-3 h-3 rounded-sm bg-gray-200" />
-            <div className="w-3 h-3 rounded-sm bg-amber-300" />
-            <div className="w-3 h-3 rounded-sm bg-orange-500" />
-            <div className="w-3 h-3 rounded-sm bg-red-500" />
-            <span className="text-gray-400 text-xs">High</span>
-          </div>
-        </div>
-      </div>
+          )}
 
-      <div className="grid grid-cols-3 gap-5">
-        <div
-          className="col-span-2 bg-white rounded-2xl p-6 shadow-sm border-l-4"
-          style={{ borderLeftColor: "#7C3AED" }}
-        >
-          <div className="flex items-center gap-3 mb-3">
-            <div
-              className="w-9 h-9 rounded-xl flex items-center justify-center"
-              style={{ background: "#F5F3FF" }}
-            >
-              <Brain size={18} style={{ color: "#7C3AED" }} />
-            </div>
-            <h3 className="font-semibold text-gray-900">AI Summary</h3>
-          </div>
-          <p className="text-gray-600 text-sm leading-relaxed">
-            Screen time is up{" "}
-            <span className="text-green-600 font-semibold">27% today</span>{" "}
-            compared to the weekly average. YouTube usage peaked between 3–5
-            PM. Consider enabling{" "}
-            <span className="font-semibold text-gray-800">
-              Wind-Down Mode at 9 PM
-            </span>{" "}
-            to help Aarav transition to bedtime.
-          </p>
-          <Link
-            href="/parent/insights"
-            className="mt-3 inline-flex items-center gap-1 text-blue-500 text-sm font-medium hover:text-blue-600"
-          >
-            View AI Suggestions <ArrowUpRight size={14} />
+          {devices.length > 4 && (
+            <Link href="/parent/devices"
+              className="block text-center text-blue-500 text-sm py-2 bg-white rounded-xl shadow-sm hover:bg-blue-50 transition-colors">
+              +{devices.length - 4} more devices →
           </Link>
+          )}
         </div>
 
+        {/* Alerts sidebar — 1 col */}
         <div className="space-y-3">
-          <button
-            onClick={() => setLimitOpen(true)}
-            className="w-full bg-white rounded-2xl p-4 shadow-sm flex items-center justify-between hover:shadow-md transition-all group"
-          >
-            <span className="font-medium text-gray-700">Set App Limit</span>
-            <ArrowUpRight
-              size={16}
-              className="text-gray-400 group-hover:text-gray-600"
-            />
-          </button>
-          <button
-            onClick={() => setAddDeviceOpen(true)}
-            className="w-full bg-white rounded-2xl p-4 shadow-sm flex items-center justify-between hover:shadow-md transition-all group"
-          >
-            <span className="flex items-center gap-2 font-medium text-gray-700">
-              <Plus size={16} className="text-gray-400" /> Add Device
+          <div className="flex items-center justify-between">
+            <h2 className="font-semibold text-gray-800 text-sm flex items-center gap-2">
+              <Bell size={14} />
+              Alerts
+              {stats.unreadAlerts > 0 && (
+                <span className="bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold">
+                  {stats.unreadAlerts > 9 ? '9+' : stats.unreadAlerts}
             </span>
-            <ArrowUpRight
-              size={16}
-              className="text-gray-400 group-hover:text-gray-600"
-            />
-          </button>
-          <Link
-            href="/parent/insights"
-            className="w-full py-3 rounded-2xl flex items-center justify-center gap-2 text-white font-medium text-sm block text-center"
-            style={{
-              background: "linear-gradient(135deg, #2563EB, #7C3AED)",
-            }}
-          >
-            <Brain size={16} /> View AI Suggestions
+              )}
+            </h2>
+            <Link href="/parent/rules"
+              className="text-blue-500 text-xs flex items-center gap-1 hover:underline">
+              View all <ChevronRight size={12} />
           </Link>
-        </div>
       </div>
 
-      <Modal
-        open={addDeviceOpen}
-        onClose={() => setAddDeviceOpen(false)}
-        title="Link New Device"
-      >
-        <p className="text-gray-500 text-sm mb-4">
-          Enter the 6-character code shown on the device after installing
-          KAVACH AI agent.
-        </p>
-        <input
-          value={deviceCode}
-          onChange={(e) => setDeviceCode(e.target.value.toUpperCase())}
-          maxLength={6}
-          placeholder="e.g. KV3X9A"
-          className="w-full border border-gray-200 rounded-xl px-4 py-3 text-center text-xl font-mono font-bold text-gray-800 tracking-widest focus:outline-none focus:ring-2 focus:ring-blue-500 mb-4"
-        />
-        <button
-          onClick={handleAddDevice}
-          className="w-full py-3 rounded-xl text-white font-medium"
-          style={{ background: "#2563EB" }}
-        >
-          Link Device
-        </button>
-      </Modal>
-
-      <Modal
-        open={limitOpen}
-        onClose={() => setLimitOpen(false)}
-        title="Set App Limit"
-      >
-        <div className="space-y-3">
-          {["YouTube", "Instagram", "Gaming Apps", "WhatsApp"].map((app) => (
-            <div
-              key={app}
-              className="flex items-center justify-between p-3 bg-gray-50 rounded-xl"
-            >
-              <span className="text-gray-700 font-medium text-sm">{app}</span>
-              <div className="flex items-center gap-2">
-                <input
-                  type="number"
-                  defaultValue={60}
-                  className="w-16 border border-gray-200 rounded-lg px-2 py-1 text-sm text-center"
-                />{" "}
-                <span className="text-gray-400 text-xs">min/day</span>
+          <div className="bg-white rounded-2xl shadow-sm divide-y divide-gray-50">
+            {recentAlerts.length === 0 ? (
+              <div className="p-6 text-center">
+                <p className="text-gray-300 text-2xl mb-1">✅</p>
+                <p className="text-gray-400 text-xs">No alerts right now</p>
               </div>
+            ) : (
+              recentAlerts.map(alert => (
+                <AlertRow key={alert.id} alert={alert} onMarkRead={handleMarkRead} />
+              ))
+            )}
             </div>
-          ))}
-          <button
-            onClick={() => {
-              setLimitOpen(false);
-              showToast("App limits updated!", "success");
-            }}
-            className="w-full py-3 rounded-xl text-white font-medium mt-2"
-            style={{ background: "#2563EB" }}
-          >
-            Save Limits
-          </button>
+
+          {/* Quick links */}
+          <div className="space-y-2">
+            {[
+              { href: '/parent/reports',  icon: '📊', label: 'View Reports' },
+              { href: '/parent/control',  icon: '🛡️', label: 'Manage Blocking' },
+              { href: '/parent/rules',    icon: '🔔', label: 'Alert Rules' },
+            ].map(link => (
+              <Link key={link.href} href={link.href}
+                className="flex items-center gap-3 bg-white rounded-xl px-4 py-3 shadow-sm hover:bg-gray-50 transition-colors">
+                <span>{link.icon}</span>
+                <span className="text-gray-700 text-sm font-medium">{link.label}</span>
+                <ChevronRight size={14} className="text-gray-400 ml-auto" />
+              </Link>
+            ))}
+          </div>
         </div>
-      </Modal>
+      </div>
     </div>
-  );
+  )
 }

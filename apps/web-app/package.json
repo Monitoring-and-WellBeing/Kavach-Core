@@ -7,7 +7,24 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "generate-icons": "node scripts/generate-icons.js",
+    "test": "NODE_PATH=../../node_modules:. jest",
+    "test:watch": "NODE_PATH=../../node_modules:. jest --watch",
+    "test:coverage": "NODE_PATH=../../node_modules:. jest --coverage",
+    "test:ci": "NODE_PATH=../../node_modules:. jest --coverage --ci --forceExit",
+    "test:auth": "NODE_PATH=../../node_modules:. jest --testPathPattern=01-auth",
+    "test:devices": "NODE_PATH=../../node_modules:. jest --testPathPattern=02-devices",
+    "test:reports": "NODE_PATH=../../node_modules:. jest --testPathPattern=05-reports",
+    "test:alerts": "NODE_PATH=../../node_modules:. jest --testPathPattern=06-alerts",
+    "test:blocking": "NODE_PATH=../../node_modules:. jest --testPathPattern=07-blocking",
+    "test:focus": "NODE_PATH=../../node_modules:. jest --testPathPattern=08-focus",
+    "test:goals": "NODE_PATH=../../node_modules:. jest --testPathPattern=09-goals",
+    "test:features": "NODE_PATH=../../node_modules:. jest --testPathPattern=features",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:headed": "playwright test --headed",
+    "prepare": "husky"
   },
   "dependencies": {
     "@kavach/shared-constants": "workspace:*",
@@ -34,15 +51,39 @@
     "zustand": "^4.5.2"
   },
   "devDependencies": {
+    "@babel/plugin-bugfix-firefox-class-in-computed-class-key": "^7.28.5",
+    "@babel/preset-env": "^7.29.0",
+    "@jest/test-sequencer": "29.7.0",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^14.3.1",
+    "@testing-library/user-event": "^14.6.1",
+    "@types/jest": "^29.5.14",
     "@types/js-cookie": "^3.0.6",
     "@types/node": "^20.12.3",
     "@types/react": "^18.2.74",
     "@types/react-dom": "^18.2.23",
     "autoprefixer": "^10.4.19",
+    "babel-jest": "^30.2.0",
     "eslint": "^8.57.0",
     "eslint-config-next": "^14.1.4",
+    "husky": "^9.1.7",
+    "jest": "^29.7.0",
+    "jest-environment-jsdom": "^29.7.0",
+    "lint-staged": "^15.5.2",
+    "msw": "1",
     "postcss": "^8.4.38",
+    "sharp": "^0.33.5",
     "tailwindcss": "^3.4.3",
+    "ts-jest": "^29.4.6",
     "typescript": "^5.4.3"
+  },
+  "lint-staged": {
+    "src/**/*.{ts,tsx}": [
+      "prettier --write",
+      "eslint --fix --max-warnings=0"
+    ],
+    "src/**/*.{ts,tsx,json,css}": [
+      "prettier --write"
+    ]
   }
 }

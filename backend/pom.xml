@@ -16,7 +16,7 @@
   <artifactId>kavach-backend</artifactId>
   <version>0.1.0</version>
   <name>kavach-backend</name>
-  <description>KAVACH AI — Student Safety & Discipline Monitoring Backend</description>
+  <description>KAVACH AI - Student Safety &amp; Discipline Monitoring Backend</description>
 
   <properties>
     <java.version>17</java.version>
@@ -44,7 +44,7 @@
     </dependency>
     <dependency>
       <groupId>org.springframework.boot</groupId>
-      <artifactId>spring-boot-starter-websocket</artifactId>
+      <artifactId>spring-boot-starter-actuator</artifactId>
     </dependency>
 
     <!-- Database -->
@@ -91,6 +91,34 @@
       <version>${springdoc.version}</version>
     </dependency>
 
+    <!-- Razorpay -->
+    <dependency>
+      <groupId>com.razorpay</groupId>
+      <artifactId>razorpay-java</artifactId>
+      <version>1.4.5</version>
+    </dependency>
+
+    <!-- Cloudflare R2 / AWS S3 SDK (S3-compatible) -->
+    <dependency>
+      <groupId>software.amazon.awssdk</groupId>
+      <artifactId>s3</artifactId>
+      <version>2.25.0</version>
+    </dependency>
+
+    <!-- Rate Limiting -->
+    <dependency>
+      <groupId>com.bucket4j</groupId>
+      <artifactId>bucket4j-core</artifactId>
+      <version>8.10.1</version>
+    </dependency>
+
+    <!-- Logging (JSON for production) -->
+    <dependency>
+      <groupId>net.logstash.logback</groupId>
+      <artifactId>logstash-logback-encoder</artifactId>
+      <version>7.4</version>
+    </dependency>
+
     <!-- Test -->
     <dependency>
       <groupId>org.springframework.boot</groupId>
@@ -101,6 +129,19 @@
       <groupId>org.springframework.security</groupId>
       <artifactId>spring-security-test</artifactId>
       <scope>test</scope>
+    </dependency>
+    <!-- H2 in-memory DB for repository tests -->
+    <dependency>
+      <groupId>com.h2database</groupId>
+      <artifactId>h2</artifactId>
+      <scope>test</scope>
+    </dependency>
+
+    <!-- OpenPDF — lightweight PDF generation for report exports -->
+    <dependency>
+      <groupId>com.github.librepdf</groupId>
+      <artifactId>openpdf</artifactId>
+      <version>1.3.43</version>
     </dependency>
   </dependencies>
 
@@ -117,6 +158,63 @@
             </exclude>
           </excludes>
         </configuration>
+      </plugin>
+      <!-- Flyway Maven plugin -->
+      <plugin>
+        <groupId>org.flywaydb</groupId>
+        <artifactId>flyway-maven-plugin</artifactId>
+        <version>9.22.3</version>
+        <configuration>
+          <url>${flyway.url:jdbc:postgresql://ep-silent-rice-a1yu2php.ap-southeast-1.aws.neon.tech/neondb?sslmode=require}</url>
+          <user>${flyway.user:neondb_owner}</user>
+          <password>${flyway.password:npg_MT7xyRk6nUQf}</password>
+          <locations>
+            <location>classpath:db/migration</location>
+          </locations>
+          <baselineOnMigrate>true</baselineOnMigrate>
+        </configuration>
+      </plugin>
+      <!-- JaCoCo coverage plugin -->
+      <plugin>
+        <groupId>org.jacoco</groupId>
+        <artifactId>jacoco-maven-plugin</artifactId>
+        <version>0.8.11</version>
+        <executions>
+          <execution>
+            <id>prepare-agent</id>
+            <goals>
+              <goal>prepare-agent</goal>
+            </goals>
+          </execution>
+          <execution>
+            <id>report</id>
+            <phase>test</phase>
+            <goals>
+              <goal>report</goal>
+            </goals>
+          </execution>
+          <execution>
+            <id>check</id>
+            <phase>verify</phase>
+            <goals>
+              <goal>check</goal>
+            </goals>
+            <configuration>
+              <rules>
+                <rule>
+                  <element>BUNDLE</element>
+                  <limits>
+                    <limit>
+                      <counter>LINE</counter>
+                      <value>COVEREDRATIO</value>
+                      <minimum>0.10</minimum>
+                    </limit>
+                  </limits>
+                </rule>
+              </rules>
+            </configuration>
+          </execution>
+        </executions>
       </plugin>
     </plugins>
   </build>

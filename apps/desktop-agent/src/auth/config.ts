@@ -1,20 +1,25 @@
 import fs from "fs/promises";
 import path from "path";
+import os from "os";
 
 const CONFIG_PATH = path.join(process.env.APPDATA || ".", "kavach-config.json");
 
 export interface AgentConfig {
   deviceLinked: boolean;
-  deviceId?: string;
-  deviceCode?: string;
-  authToken?: string;
+  deviceId?: string;          // UUID from backend after linking
+  deviceCode?: string;        // the 6-char code shown to user
+  authToken?: string;         // not used for agent — device uses deviceId
   tenantId?: string;
   apiUrl: string;
+  agentVersion: string;
+  hostname: string;
 }
 
 const defaultConfig: AgentConfig = {
   deviceLinked: false,
-  apiUrl: "http://localhost:8080/api/v1",
+  apiUrl: process.env.API_URL || 'http://localhost:8080',
+  agentVersion: '1.2.4',
+  hostname: os.hostname(),
 };
 
 export async function loadConfig(): Promise<AgentConfig> {

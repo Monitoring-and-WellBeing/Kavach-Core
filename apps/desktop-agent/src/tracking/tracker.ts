@@ -1,73 +1,168 @@
-import { exec } from "child_process";
-import { promisify } from "util";
+import { exec } from 'child_process'
+import { promisify } from 'util'
+import { classifyApp, AppCategory } from './categoryClassifier'
 
-const execAsync = promisify(exec);
+const execAsync = promisify(exec)
 
-export interface ActiveWindowLog {
-  appName: string;
-  windowTitle: string;
-  timestamp: string;
-  durationMs: number;
+export interface ActiveWindow {
+  processName: string
+  windowTitle: string
+  appName: string
+  category: AppCategory
 }
 
-let lastWindow: string = "";
-let windowStartTime: number = Date.now();
-
-export async function getActiveWindow(): Promise<{ app: string; title: string } | null> {
-  try {
-    if (process.platform === "win32") {
-      const script = `
-Add-Type @"
-using System;
-using System.Runtime.InteropServices;
-public class Win32 {
-  [DllImport("user32.dll")]
-  public static extern IntPtr GetForegroundWindow();
-  [DllImport("user32.dll")]
-  public static extern int GetWindowText(IntPtr hWnd, System.Text.StringBuilder text, int count);
-  [DllImport("user32.dll")]
-  public static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
+export interface UsageSession {
+  processName: string
+  appName: string
+  windowTitle: string
+  category: AppCategory
+  startedAt: Date
+  endedAt: Date
+  durationSeconds: number
 }
-"@
-$hwnd = [Win32]::GetForegroundWindow()
-$sb = New-Object System.Text.StringBuilder(256)
-[Win32]::GetWindowText($hwnd, $sb, 256) | Out-Null
+
+// ── Windows: get active window via PowerShell ─────────────────────────────────
+const PS_SCRIPT = `
+$hwnd = [System.Runtime.InteropServices.Marshal]::GetActiveWindow()
+if ($hwnd -eq 0) { $hwnd = (Get-Process | Where-Object {$_.MainWindowHandle -ne 0} | Select-Object -First 1).MainWindowHandle }
 $processId = 0
-[Win32]::GetWindowThreadProcessId($hwnd, [ref]$processId) | Out-Null
-$process = Get-Process -Id $processId -ErrorAction SilentlyContinue
-Write-Output "$($process.Name)|$($sb.ToString())"
-`;
-      const { stdout } = await execAsync(`powershell -Command "${script}"`);
-      const [app, title] = stdout.trim().split("|");
-      return { app: app || "Unknown", title: title || "" };
+$null = [System.Runtime.InteropServices.Marshal]::IsComObject($hwnd)
+Add-Type @"
+  using System;
+  using System.Runtime.InteropServices;
+  public class WinAPI {
+    [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();
+    [DllImport("user32.dll")] public static extern int GetWindowText(IntPtr h, System.Text.StringBuilder t, int c);
+    [DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(IntPtr h, out uint p);
+  }
+"@
+$h = [WinAPI]::GetForegroundWindow()
+$sb = New-Object System.Text.StringBuilder 512
+[WinAPI]::GetWindowText($h, $sb, 512) | Out-Null
+$pid2 = 0
+[WinAPI]::GetWindowThreadProcessId($h, [ref]$pid2) | Out-Null
+$proc = Get-Process -Id $pid2 -ErrorAction SilentlyContinue
+if ($proc) { Write-Output "$($proc.Name)|$($sb.ToString())" }
+`.trim()
+
+export async function getActiveWindow(): Promise<ActiveWindow | null> {
+  try {
+    if (process.platform !== 'win32') {
+      // macOS/Linux fallback for development
+      return {
+        processName: 'code.exe',
+        windowTitle: 'VS Code - Development',
+        appName: 'VS Code',
+        category: 'EDUCATION',
+      }
     }
-    return null;
+
+    const { stdout } = await execAsync(
+      `powershell -NonInteractive -WindowStyle Hidden -Command "${PS_SCRIPT.replace(/"/g, '\\"').replace(/\n/g, ' ')}"`,
+      { timeout: 3000 }
+    )
+
+    const parts = stdout.trim().split('|')
+    if (parts.length < 1 || !parts[0]) return null
+
+    const processName = parts[0].trim() + (parts[0].trim().endsWith('.exe') ? '' : '.exe')
+    const windowTitle = parts[1]?.trim() || ''
+    const { category, friendlyName } = classifyApp(processName, windowTitle)
+
+    return { processName, windowTitle, appName: friendlyName, category }
   } catch {
-    return null;
+    return null
   }
 }
 
-export async function startTracking(): Promise<ActiveWindowLog[]> {
-  const logs: ActiveWindowLog[] = [];
-  const current = await getActiveWindow();
+// ── Session aggregator ────────────────────────────────────────────────────────
+// Groups consecutive polls of the same app into one session
 
-  if (current && current.app !== lastWindow) {
-    if (lastWindow) {
-      logs.push({
-        appName: lastWindow,
-        windowTitle: "",
-        timestamp: new Date(windowStartTime).toISOString(),
-        durationMs: Date.now() - windowStartTime,
-      });
+interface InProgressSession {
+  processName: string
+  appName: string
+  windowTitle: string
+  category: AppCategory
+  startedAt: Date
+  lastSeen: Date
+}
+
+let currentSession: InProgressSession | null = null
+const completedSessions: UsageSession[] = []
+
+const SESSION_GAP_SECONDS = 10 // if same app not seen for 10s, end session
+
+export function recordWindow(window: ActiveWindow | null): UsageSession[] {
+  const now = new Date()
+  const flushed: UsageSession[] = []
+
+  if (!window) {
+    // Nothing active — close current session if open
+    if (currentSession) {
+      flushed.push(closeSession(currentSession, now))
+      currentSession = null
     }
-    lastWindow = current.app;
-    windowStartTime = Date.now();
+    return flushed
   }
 
-  return logs;
+  if (currentSession && currentSession.processName === window.processName) {
+    // Same app — extend session
+    currentSession.lastSeen = now
+    currentSession.windowTitle = window.windowTitle // update title in case it changed
+  } else {
+    // Different app — close previous session, start new one
+    if (currentSession) {
+      const duration = (now.getTime() - currentSession.startedAt.getTime()) / 1000
+      if (duration >= 3) { // ignore sessions under 3 seconds (accidental focus)
+        flushed.push(closeSession(currentSession, now))
+      }
+    }
+    currentSession = {
+      processName: window.processName,
+      appName: window.appName,
+      windowTitle: window.windowTitle,
+      category: window.category,
+      startedAt: now,
+      lastSeen: now,
+    }
+  }
+
+  return flushed
+}
+
+function closeSession(session: InProgressSession, endTime: Date): UsageSession {
+  const durationSeconds = Math.round(
+    (endTime.getTime() - session.startedAt.getTime()) / 1000
+  )
+  return {
+    processName: session.processName,
+    appName: session.appName,
+    windowTitle: session.windowTitle,
+    category: session.category,
+    startedAt: session.startedAt,
+    endedAt: endTime,
+    durationSeconds: Math.max(durationSeconds, 1),
+  }
+}
+
+// Force-flush current session (called before sync)
+export function flushCurrentSession(): UsageSession | null {
+  if (!currentSession) return null
+  const now = new Date()
+  const duration = (now.getTime() - currentSession.startedAt.getTime()) / 1000
+  if (duration < 3) return null
+  const session = closeSession(currentSession, now)
+  // Don't clear currentSession — it will continue after flush
+  currentSession = { ...currentSession, startedAt: now }
+  return session
+}
+
+// Legacy exports for backward compatibility (if needed)
+export async function startTracking(): Promise<UsageSession[]> {
+  const window = await getActiveWindow()
+  return recordWindow(window)
 }
 
 export function stopTracking(): void {
-  lastWindow = "";
-  windowStartTime = 0;
+  currentSession = null
 }

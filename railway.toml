@@ -1,0 +1,12 @@
+[build]
+buildCommand = "mvn clean package -DskipTests"
+
+[deploy]
+startCommand = "java -Xmx400m -Xss512k -jar target/kavach-backend-0.1.0.jar --spring.profiles.active=prod"
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 3
+
+[deploy.healthcheck]
+# Waits up to 120 s for the app to start (Spring Boot + Flyway migrations take ~30-60 s)
+healthcheckPath = "/actuator/health"
+healthcheckTimeout = 120

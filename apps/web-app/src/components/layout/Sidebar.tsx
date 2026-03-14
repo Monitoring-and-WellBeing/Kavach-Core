@@ -172,6 +172,7 @@ export function Sidebar({ role, userName = "User", userEmail = "" }: SidebarProp
             <button
               onClick={logout}
               title="Logout"
+              aria-label="Logout"
               className="text-[#64748B] hover:text-red-400 transition-colors"
             >
               <LogOut className="w-4 h-4" />
@@ -181,6 +182,7 @@ export function Sidebar({ role, userName = "User", userEmail = "" }: SidebarProp
           <button
             onClick={logout}
             title="Logout"
+            aria-label="Logout"
             className="w-full flex justify-center text-[#64748B] hover:text-red-400 transition-colors p-1"
           >
             <LogOut className="w-5 h-5" />

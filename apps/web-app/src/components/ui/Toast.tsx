@@ -29,9 +29,9 @@ export function Toast({ message, type = "success", onClose }: ToastProps) {
 
   return (
     <div
-      className={`fixed bottom-6 right-6 z-[9999] flex items-center gap-3 bg-gray-900 border ${
+      className={`fixed bottom-20 md:bottom-6 left-4 right-4 md:left-auto md:right-6 md:max-w-sm z-[9999] flex items-center gap-3 bg-gray-900 border ${
         borders[type]
-      } rounded-xl px-4 py-3 shadow-2xl min-w-[280px] fade-up`}
+      } rounded-xl px-4 py-3 shadow-2xl fade-up`}
     >
       {icons[type]}
       <span className="text-white text-sm flex-1">{message}</span>
