@@ -3,7 +3,7 @@ services:
     name: kavach-backend
     runtime: java           # native Java runtime — no Docker/mise required
     rootDir: backend
-    buildCommand: chmod +x mvnw && ./mvnw clean package -DskipTests
+    buildCommand: mvn clean package -DskipTests
     startCommand: java $JAVA_OPTS -jar target/kavach-backend-0.1.0.jar -Dspring.profiles.active=prod
 
     # ── JVM tuning — fits inside Render's free/starter 512 MB RAM limit ────
