@@ -24,7 +24,7 @@
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:headed": "playwright test --headed",
-    "prepare": "husky"
+    "prepare": "husky || true"
   },
   "dependencies": {
     "@kavach/shared-constants": "workspace:*",
