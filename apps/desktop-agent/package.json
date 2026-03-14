@@ -5,10 +5,11 @@
   "author": "KAVACH AI",
   "main": "dist/main.js",
   "scripts": {
-    "dev": "ts-node src/main.ts",
+    "dev": "tsc && electron .",
     "build": "tsc",
     "pack": "electron-builder",
-    "build:full": "tsc && electron-builder"
+    "build:full": "tsc && electron-builder",
+    "test": "jest"
   },
   "dependencies": {
     "@kavach/shared-types": "workspace:*"
@@ -22,12 +23,5 @@
     "ts-jest": "^29.1.2",
     "ts-node": "^10.9.2",
     "typescript": "^5.4.3"
-  },
-  "scripts": {
-    "dev": "ts-node src/main.ts",
-    "build": "tsc",
-    "pack": "electron-builder",
-    "build:full": "tsc && electron-builder",
-    "test": "jest"
   }
 }

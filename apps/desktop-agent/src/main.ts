@@ -1,5 +1,6 @@
 import { app, BrowserWindow, ipcMain, Tray, Menu } from "electron";
 import path from "path";
+import fs from "fs";
 import { startTrackingLoop, stopTrackingLoop, isTrackingActive } from "./tracking/trackingLoop";
 import { loadConfig, saveConfig } from "./auth/config";
 import { EnforcementEngine } from "./enforcement/EnforcementEngine";
@@ -100,7 +101,8 @@ async function initializeAgent() {
 app.whenReady().then(async () => {
   const config = await loadConfig();
 
-  mainWindow = new BrowserWindow({
+  const iconPath = path.join(__dirname, "../assets/icon.png");
+  const windowOptions: Electron.BrowserWindowConstructorOptions = {
     width: 400,
     height: 500,
     show: !config.deviceLinked,
@@ -109,27 +111,38 @@ app.whenReady().then(async () => {
       contextIsolation: false,
     },
     title: "KAVACH AI Agent",
-    icon: path.join(__dirname, "../assets/icon.png"),
     frame: false,
     resizable: false,
-  });
+  };
+  if (fs.existsSync(iconPath)) {
+    windowOptions.icon = iconPath;
+  }
+
+  mainWindow = new BrowserWindow(windowOptions);
 
   mainWindow.loadFile(path.join(__dirname, "../renderer/index.html"));
 
-  // System tray
-  const trayIconPath = path.join(__dirname, "../assets/tray-icon.png");
-  tray = new Tray(trayIconPath);
-
-  const contextMenu = Menu.buildFromTemplate([
-    { label: "KAVACH AI — Active", enabled: false },
-    { type: "separator" },
-    { label: "Show Status", click: () => mainWindow?.show() },
-    { type: "separator" },
-    { label: "Quit", click: () => app.quit() },
-  ]);
-
-  tray.setContextMenu(contextMenu);
-  tray.setToolTip("KAVACH AI — Monitoring Active");
+  // System tray — optional; continue without tray if assets are missing
+  try {
+    const trayIconPath = path.join(__dirname, "../assets/tray-icon.png");
+    if (fs.existsSync(trayIconPath)) {
+      tray = new Tray(trayIconPath);
+      const contextMenu = Menu.buildFromTemplate([
+        { label: "KAVACH AI — Active", enabled: false },
+        { type: "separator" },
+        { label: "Show Status", click: () => mainWindow?.show() },
+        { type: "separator" },
+        { label: "Quit", click: () => app.quit() },
+      ]);
+      tray.setContextMenu(contextMenu);
+      tray.setToolTip("KAVACH AI — Monitoring Active");
+    } else {
+      console.warn("[main] Tray icon not found at", trayIconPath, "— running without system tray");
+    }
+  } catch (err: any) {
+    console.warn("[main] Could not create system tray:", err?.message ?? err, "— running without tray");
+    tray = null;
+  }
 
   // Initialize agent
   await initializeAgent();
