@@ -1,8 +1,8 @@
--- ═══════════════════════════════════════════════════════════════════════════
--- KAVACH AI — V23 Migration: Daily Challenges, Mood Check-ins & Engagement
--- ═══════════════════════════════════════════════════════════════════════════
+-- ==========================================================================
+-- KAVACH AI -- V23 Migration: Daily Challenges, Mood Check-ins & Engagement
+-- ==========================================================================
 
--- ─── MOOD CHECK-INS ──────────────────────────────────────────────────────────
+-- MOOD CHECK-INS -----------------------------------------------------------
 -- Student-submitted daily mood: 1=very bad, 2=bad, 3=neutral, 4=good, 5=great
 CREATE TABLE IF NOT EXISTS mood_checkins (
     id              UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -13,10 +13,10 @@ CREATE TABLE IF NOT EXISTS mood_checkins (
     checked_in_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_mood_device_date ON mood_checkins(device_id, checked_in_at DESC);
-CREATE INDEX idx_mood_tenant      ON mood_checkins(tenant_id, checked_in_at DESC);
+CREATE INDEX IF NOT EXISTS idx_mood_device_date ON mood_checkins(device_id, checked_in_at DESC);
+CREATE INDEX IF NOT EXISTS idx_mood_tenant      ON mood_checkins(tenant_id, checked_in_at DESC);
 
--- ─── XP TRANSACTIONS ─────────────────────────────────────────────────────────
+-- XP TRANSACTIONS ----------------------------------------------------------
 -- Tracks XP earned from challenges (supplementing badge XP)
 CREATE TABLE IF NOT EXISTS xp_transactions (
     id          UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -27,9 +27,9 @@ CREATE TABLE IF NOT EXISTS xp_transactions (
     created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_xp_transactions_device ON xp_transactions(device_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_xp_transactions_device ON xp_transactions(device_id, created_at DESC);
 
--- ─── CHALLENGE TEMPLATES ─────────────────────────────────────────────────────
+-- CHALLENGE TEMPLATES ------------------------------------------------------
 -- Admin-defined challenge definitions that get rotated daily
 CREATE TABLE IF NOT EXISTS challenge_templates (
     id              UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -46,7 +46,7 @@ CREATE TABLE IF NOT EXISTS challenge_templates (
     active          BOOLEAN      NOT NULL DEFAULT true
 );
 
--- ─── DAILY CHALLENGES ────────────────────────────────────────────────────────
+-- DAILY CHALLENGES ---------------------------------------------------------
 -- Per-device challenges assigned each day (3 per day: 2 easy/medium + 1 hard)
 CREATE TABLE IF NOT EXISTS daily_challenges (
     id              UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -62,10 +62,10 @@ CREATE TABLE IF NOT EXISTS daily_challenges (
     UNIQUE (device_id, template_id, challenge_date)
 );
 
-CREATE INDEX idx_challenges_device_date ON daily_challenges(device_id, challenge_date DESC);
-CREATE INDEX idx_challenges_tenant_date ON daily_challenges(tenant_id, challenge_date DESC);
+CREATE INDEX IF NOT EXISTS idx_challenges_device_date ON daily_challenges(device_id, challenge_date DESC);
+CREATE INDEX IF NOT EXISTS idx_challenges_tenant_date ON daily_challenges(tenant_id, challenge_date DESC);
 
--- ─── STREAK RECOVERY TOKENS ──────────────────────────────────────────────────
+-- STREAK RECOVERY TOKENS ---------------------------------------------------
 -- Tokens earned via achievements; used to recover a broken streak
 CREATE TABLE IF NOT EXISTS streak_recoveries (
     id                  UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -74,7 +74,7 @@ CREATE TABLE IF NOT EXISTS streak_recoveries (
     last_updated        TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- ─── SEED CHALLENGE TEMPLATES ────────────────────────────────────────────────
+-- SEED CHALLENGE TEMPLATES -------------------------------------------------
 INSERT INTO challenge_templates (title, description, challenge_type, target_value, xp_reward, icon, difficulty)
 VALUES
   ('Focus for 25 minutes',        'Complete one focused study session',                   'FOCUS_MINUTES',          25,  30,  '🎯', 'EASY'),

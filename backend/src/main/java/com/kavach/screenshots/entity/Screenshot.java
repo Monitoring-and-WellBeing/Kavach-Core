@@ -5,7 +5,6 @@ import lombok.*;
 import org.hibernate.annotations.GenericGenerator;
 
 import java.time.Instant;
-import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
@@ -46,5 +45,5 @@ public class Screenshot {
     private Instant capturedAt;
 
     @Column(name = "created_at", nullable = false, updatable = false)
-    private LocalDateTime createdAt = LocalDateTime.now();
+    private Instant createdAt = Instant.now();
 }

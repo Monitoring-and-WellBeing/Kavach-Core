@@ -1,12 +1,12 @@
--- ═══════════════════════════════════════════════════════════════
--- KAVACH AI — V7 Migration: Alerts System Schema
--- ═══════════════════════════════════════════════════════════════
+-- ================================================================
+-- KAVACH AI -- V7 Migration: Alerts System Schema
+-- ================================================================
 
 -- Drop old alerts table from V1 so this migration can rebuild it with new schema
 DROP TABLE IF EXISTS alerts CASCADE;
 
--- ─── ALERT RULES ─────────────────────────────────────────────────────────────
-CREATE TABLE alert_rules (
+-- ALERT RULES --------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS alert_rules (
     id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     tenant_id       UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
     created_by      UUID NOT NULL REFERENCES users(id),
@@ -35,15 +35,15 @@ CREATE TABLE alert_rules (
     notify_push     BOOLEAN DEFAULT TRUE,
     notify_email    BOOLEAN DEFAULT FALSE,
     notify_sms      BOOLEAN DEFAULT FALSE,
-    -- Cooldown — don't re-alert for same rule within X minutes
+    -- Cooldown: don't re-alert for same rule within X minutes
     cooldown_minutes INTEGER DEFAULT 60,
     last_triggered  TIMESTAMP,
     created_at      TIMESTAMP DEFAULT NOW(),
     updated_at      TIMESTAMP DEFAULT NOW()
 );
 
--- ─── ALERTS (triggered instances) ────────────────────────────────────────────
-CREATE TABLE alerts (
+-- ALERTS (triggered instances) ---------------------------------------------
+CREATE TABLE IF NOT EXISTS alerts (
     id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     tenant_id       UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
     rule_id         UUID REFERENCES alert_rules(id) ON DELETE SET NULL,
@@ -60,15 +60,15 @@ CREATE TABLE alerts (
     triggered_at    TIMESTAMP DEFAULT NOW()
 );
 
--- ─── INDEXES ─────────────────────────────────────────────────────────────────
-CREATE INDEX idx_alert_rules_tenant  ON alert_rules(tenant_id);
-CREATE INDEX idx_alert_rules_active  ON alert_rules(is_active, tenant_id);
-CREATE INDEX idx_alerts_tenant       ON alerts(tenant_id);
-CREATE INDEX idx_alerts_is_read      ON alerts(tenant_id, is_read, triggered_at DESC);
-CREATE INDEX idx_alerts_device_time  ON alerts(device_id, triggered_at DESC);
-CREATE INDEX idx_alerts_triggered    ON alerts(triggered_at DESC);
+-- INDEXES ------------------------------------------------------------------
+CREATE INDEX IF NOT EXISTS idx_alert_rules_tenant  ON alert_rules(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_alert_rules_active  ON alert_rules(is_active, tenant_id);
+CREATE INDEX IF NOT EXISTS idx_alerts_tenant       ON alerts(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_alerts_is_read      ON alerts(tenant_id, is_read, triggered_at DESC);
+CREATE INDEX IF NOT EXISTS idx_alerts_device_time  ON alerts(device_id, triggered_at DESC);
+CREATE INDEX IF NOT EXISTS idx_alerts_triggered    ON alerts(triggered_at DESC);
 
--- ─── SEED DEMO RULES ─────────────────────────────────────────────────────────
+-- SEED DEMO RULES ----------------------------------------------------------
 -- Using actual tenant and user IDs from seed data
 INSERT INTO alert_rules (tenant_id, created_by, name, rule_type, config, severity, notify_push, cooldown_minutes)
 VALUES
@@ -100,7 +100,7 @@ VALUES
    '{"appName":"YouTube","thresholdMinutes":45}',
    'MEDIUM', TRUE, 90);
 
--- ─── SEED DEMO ALERTS ────────────────────────────────────────────────────────
+-- SEED DEMO ALERTS ---------------------------------------------------------
 INSERT INTO alerts (tenant_id, device_id, rule_type, severity, title, message, metadata, is_read, triggered_at)
 VALUES
   ('a1b2c3d4-e5f6-7890-abcd-ef1234567890',

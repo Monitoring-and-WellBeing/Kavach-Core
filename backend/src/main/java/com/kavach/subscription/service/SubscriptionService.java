@@ -43,6 +43,7 @@ public class SubscriptionService {
     private String webhookSecret;
 
     // ── Get current subscription ──────────────────────────────────────────────
+    @Transactional
     public SubscriptionDto getCurrentSubscription(UUID tenantId) {
         Subscription sub = subRepo.findByTenantId(tenantId)
             .orElseThrow(() -> new RuntimeException("No subscription found for tenant"));
