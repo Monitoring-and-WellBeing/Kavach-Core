@@ -13,7 +13,13 @@ if [ -z "$JAVA_HOME" ]; then
   fi
 fi
 
-MAVEN_OPTS="$MAVEN_OPTS -Dmaven.multiModuleProjectDirectory=$MAVEN_PROJECTBASEDIR"
+# Set MAVEN_PROJECTBASEDIR if not already set
+if [ -z "$MAVEN_PROJECTBASEDIR" ]; then
+  # Get the directory where this script is located
+  SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+  MAVEN_PROJECTBASEDIR="$SCRIPT_DIR"
+fi
+
 MAVEN_WRAPPER_JAR=".mvn/wrapper/maven-wrapper.jar"
 WRAPPER_PROPERTIES=".mvn/wrapper/maven-wrapper.properties"
 
@@ -29,8 +35,14 @@ if [ ! -f "$MAVEN_WRAPPER_JAR" ]; then
 fi
 
 # Use Maven Wrapper main class (avoids needing a Main-Class manifest entry)
-exec "$JAVA_HOME/bin/java" \
-  $JAVA_OPTS \
-  -classpath "$MAVEN_WRAPPER_JAR" \
-  org.apache.maven.wrapper.MavenWrapperMain \
-  "$@"
+# Pass the multiModuleProjectDirectory property directly to Java
+# Note: We use exec with proper argument handling for paths with spaces
+if [ -n "$JAVA_OPTS" ] && [ -n "$MAVEN_OPTS" ]; then
+  exec "$JAVA_HOME/bin/java" $JAVA_OPTS $MAVEN_OPTS -Dmaven.multiModuleProjectDirectory="$MAVEN_PROJECTBASEDIR" -classpath "$MAVEN_WRAPPER_JAR" org.apache.maven.wrapper.MavenWrapperMain "$@"
+elif [ -n "$JAVA_OPTS" ]; then
+  exec "$JAVA_HOME/bin/java" $JAVA_OPTS -Dmaven.multiModuleProjectDirectory="$MAVEN_PROJECTBASEDIR" -classpath "$MAVEN_WRAPPER_JAR" org.apache.maven.wrapper.MavenWrapperMain "$@"
+elif [ -n "$MAVEN_OPTS" ]; then
+  exec "$JAVA_HOME/bin/java" $MAVEN_OPTS -Dmaven.multiModuleProjectDirectory="$MAVEN_PROJECTBASEDIR" -classpath "$MAVEN_WRAPPER_JAR" org.apache.maven.wrapper.MavenWrapperMain "$@"
+else
+  exec "$JAVA_HOME/bin/java" -Dmaven.multiModuleProjectDirectory="$MAVEN_PROJECTBASEDIR" -classpath "$MAVEN_WRAPPER_JAR" org.apache.maven.wrapper.MavenWrapperMain "$@"
+fi

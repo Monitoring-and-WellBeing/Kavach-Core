@@ -1,9 +1,9 @@
--- ═══════════════════════════════════════════════════════════════
--- KAVACH AI — V10 Migration: Achievements & Gamification
--- ═══════════════════════════════════════════════════════════════
+-- ================================================================
+-- KAVACH AI -- V10 Migration: Achievements & Gamification
+-- ================================================================
 
--- ─── BADGE DEFINITIONS ───────────────────────────────────────────────────────
-CREATE TABLE badges (
+-- BADGE DEFINITIONS --------------------------------------------------------
+CREATE TABLE IF NOT EXISTS badges (
     id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     code        VARCHAR(50) UNIQUE NOT NULL,
     name        VARCHAR(100) NOT NULL,
@@ -23,8 +23,8 @@ CREATE TABLE badges (
     is_active   BOOLEAN DEFAULT TRUE
 );
 
--- ─── EARNED BADGES ───────────────────────────────────────────────────────────
-CREATE TABLE student_badges (
+-- EARNED BADGES ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS student_badges (
     id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     device_id   UUID NOT NULL REFERENCES devices(id) ON DELETE CASCADE,
     tenant_id   UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
@@ -33,10 +33,12 @@ CREATE TABLE student_badges (
     UNIQUE(device_id, badge_id)  -- can't earn same badge twice
 );
 
-CREATE INDEX idx_student_badges_device ON student_badges(device_id, earned_at DESC);
-CREATE INDEX idx_student_badges_tenant ON student_badges(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_student_badges_device ON student_badges(device_id, earned_at DESC);
+CREATE INDEX IF NOT EXISTS idx_student_badges_tenant ON student_badges(tenant_id);
 
--- ─── SEED BADGE DEFINITIONS ──────────────────────────────────────────────────
+-- SEED BADGE DEFINITIONS ---------------------------------------------------
+-- ON CONFLICT (code) DO NOTHING guards against duplicate-key failure on re-run
+-- (badges.code has a UNIQUE constraint)
 INSERT INTO badges (code, name, description, icon, category, tier, criteria, xp_reward)
 VALUES
   -- FOCUS badges
@@ -90,4 +92,5 @@ VALUES
    '💯', 'MILESTONE', 'BRONZE', '{"type":"total_xp","threshold":100}', 25),
 
   ('xp_500',           'XP Hoarder',        'Earn 500 XP total',
-   '💎', 'MILESTONE', 'GOLD',   '{"type":"total_xp","threshold":500}', 100);
+   '💎', 'MILESTONE', 'GOLD',   '{"type":"total_xp","threshold":500}', 100)
+ON CONFLICT (code) DO NOTHING;

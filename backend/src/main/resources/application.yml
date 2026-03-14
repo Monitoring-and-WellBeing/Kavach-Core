@@ -1,9 +1,20 @@
 spring:
   datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/kavach_db}
-    username: ${SPRING_DATASOURCE_USERNAME:kavach}
-    password: ${SPRING_DATASOURCE_PASSWORD:kavach123}
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://ep-silent-rice-a1yu2php-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=require}
+    # WARNING: SPRING_DATASOURCE_USERNAME and SPRING_DATASOURCE_PASSWORD MUST be set
+    # via environment variables in production. The fallback values below are for local
+    # development only and must NEVER be committed or used in production.
+    username: ${SPRING_DATASOURCE_USERNAME:neondb_owner}
+    password: ${SPRING_DATASOURCE_PASSWORD:CHANGE_ME_IN_PROD}
     driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 5
+      minimum-idle: 1
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+      keepalive-time: 300000
+
   jpa:
     hibernate:
       ddl-auto: validate
@@ -12,12 +23,20 @@ spring:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
         format_sql: false
+
   flyway:
     enabled: true
     locations: classpath:db/migration
     baseline-on-migrate: true
+    out-of-order: false
+    validate-on-migrate: true
+    # Flyway uses spring.datasource credentials by default.
+    # Do NOT set separate flyway.url / flyway.user / flyway.password here —
+    # they would override datasource env vars and leak credentials.
+
   security:
     cors:
+      # CORS_ORIGINS must be set in production; localhost fallback is dev-only
       allowed-origins: ${CORS_ORIGINS:http://localhost:3000,http://localhost:3001}
 
 server:
@@ -25,12 +44,15 @@ server:
 
 kavach:
   jwt:
+    # WARNING: JWT_SECRET MUST be overridden in production with a strong 256-bit+ secret.
+    # The fallback below is for local development only.
     secret: ${JWT_SECRET:kavach-jwt-secret-key-minimum-256-bits-long-change-in-production-2024}
-    access-token-expiry: ${JWT_ACCESS_EXPIRY:900000}        # 15 minutes in ms
-    refresh-token-expiry: ${JWT_REFRESH_EXPIRY:604800000}    # 7 days in ms
+    access-token-expiry: ${JWT_ACCESS_EXPIRY:900000}
+    refresh-token-expiry: ${JWT_REFRESH_EXPIRY:604800000}
   ai:
     provider: gemini
     gemini:
+      # GEMINI_API_KEY must be set in production; no fallback is intentional
       api-key: ${GEMINI_API_KEY:}
       model: gemini-1.5-flash
 
@@ -51,14 +73,18 @@ r2:
   account-id: ${R2_ACCOUNT_ID:}
   access-key-id: ${R2_ACCESS_KEY_ID:}
   secret-access-key: ${R2_SECRET_ACCESS_KEY:}
+  # WARNING: R2_BUCKET_NAME fallback is a dev default; set R2_BUCKET_NAME in production.
   bucket-name: ${R2_BUCKET_NAME:kavach-screenshots}
 
 razorpay:
   key:
+    # WARNING: RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET MUST be overridden in production.
+    # The test key placeholders below must never be used in production.
     id: ${RAZORPAY_KEY_ID:rzp_test_XXXXXXXXXXXXXXXX}
     secret: ${RAZORPAY_KEY_SECRET:XXXXXXXXXXXXXXXXXXXXXXXX}
   webhook:
-    secret: ${RAZORPAY_WEBHOOK_SECRET:YOUR_WEBHOOK_SECRET_HERE}
+    # WARNING: RAZORPAY_WEBHOOK_SECRET MUST be overridden in production.
+    secret: ${RAZORPAY_WEBHOOK_SECRET:CHANGE_ME_IN_PROD}
 
 management:
   endpoints:

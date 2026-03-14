@@ -1,10 +1,10 @@
--- ═══════════════════════════════════════════════════════════════
--- KAVACH AI — Auth System Schema (V1)
--- ═══════════════════════════════════════════════════════════════
+-- ================================================================
+-- KAVACH AI -- Auth System Schema (V1)
+-- ================================================================
 
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
--- ─── TENANTS ────────────────────────────────────────────────────────────────
+-- TENANTS ------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS tenants (
     id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name         VARCHAR(255) NOT NULL,
@@ -16,7 +16,7 @@ CREATE TABLE IF NOT EXISTS tenants (
     created_at   TIMESTAMP DEFAULT NOW()
 );
 
--- ─── USERS ──────────────────────────────────────────────────────────────────
+-- USERS --------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS users (
     id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     tenant_id      UUID REFERENCES tenants(id) ON DELETE CASCADE,
@@ -31,7 +31,7 @@ CREATE TABLE IF NOT EXISTS users (
     updated_at     TIMESTAMP DEFAULT NOW()
 );
 
--- ─── REFRESH TOKENS ─────────────────────────────────────────────────────────
+-- REFRESH TOKENS -----------------------------------------------------------
 CREATE TABLE IF NOT EXISTS refresh_tokens (
     id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id    UUID REFERENCES users(id) ON DELETE CASCADE,
@@ -41,13 +41,13 @@ CREATE TABLE IF NOT EXISTS refresh_tokens (
     created_at TIMESTAMP DEFAULT NOW()
 );
 
--- ─── INDEXES ────────────────────────────────────────────────────────────────
+-- INDEXES ------------------------------------------------------------------
 CREATE INDEX IF NOT EXISTS idx_users_email   ON users(email);
 CREATE INDEX IF NOT EXISTS idx_users_tenant  ON users(tenant_id);
 CREATE INDEX IF NOT EXISTS idx_refresh_token ON refresh_tokens(token);
 CREATE INDEX IF NOT EXISTS idx_refresh_user  ON refresh_tokens(user_id);
 
--- ─── SEED DEMO DATA ─────────────────────────────────────────────────────────
+-- SEED DEMO DATA -----------------------------------------------------------
 INSERT INTO tenants (id, name, type, city, state, admin_email)
 VALUES ('a1b2c3d4-e5f6-7890-abcd-ef1234567890', 'Sunrise Academy', 'SCHOOL', 'Lucknow', 'Uttar Pradesh', 'admin@demo.com')
 ON CONFLICT DO NOTHING;
