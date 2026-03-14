@@ -16,9 +16,11 @@ CREATE TABLE IF NOT EXISTS daily_app_usage (
     app_category    VARCHAR(50) NOT NULL,      -- GAMING, SOCIAL, ENTERTAINMENT, etc.
     package_name    VARCHAR(255),              -- specific app (optional)
     duration_seconds INTEGER    NOT NULL DEFAULT 0,
-    last_updated    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    UNIQUE (device_id, usage_date, app_category, COALESCE(package_name, ''))
+    last_updated    TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_daily_app_usage_unique
+    ON daily_app_usage (device_id, usage_date, app_category, COALESCE(package_name, ''));
 
 CREATE INDEX idx_daily_usage_device_date
     ON daily_app_usage(device_id, usage_date DESC);

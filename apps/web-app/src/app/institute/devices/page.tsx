@@ -1,7 +1,8 @@
 'use client'
 import { useState, useEffect, useCallback } from 'react'
-import { Search, Download, Pause, Play, Zap, RefreshCw } from 'lucide-react'
+import { Search, Download, Pause, Play, Zap, RefreshCw, Plus, AlertCircle } from 'lucide-react'
 import { useToast, Toast } from '@/components/ui/Toast'
+import { Modal } from '@/components/ui/Modal'
 import { instituteDashboardApi, InstituteDevice } from '@/lib/instituteDashboard'
 import { devicesApi } from '@/lib/devices'
 import { formatMinutes, formatTime } from '@kavach/shared-utils'
@@ -20,6 +21,13 @@ export default function InstituteDevicesPage() {
   const [search, setSearch]     = useState('')
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [actioning, setActioning] = useState(false)
+  const [linkOpen, setLinkOpen] = useState(false)
+  const [code, setCode] = useState('')
+  const [deviceName, setDeviceName] = useState('')
+  const [assignedTo, setAssignedTo] = useState('')
+  const [linkLoading, setLinkLoading] = useState(false)
+  const [linkError, setLinkError] = useState('')
+  const [linkStep, setLinkStep] = useState<'form' | 'success'>('form')
   const { toast, showToast, hideToast } = useToast()
 
   const load = useCallback(async () => {
@@ -101,6 +109,38 @@ export default function InstituteDevicesPage() {
     }
   }
 
+  const handleLink = async () => {
+    if (code.length !== 6) {
+      setLinkError('Code must be exactly 6 characters')
+      return
+    }
+    setLinkLoading(true)
+    setLinkError('')
+    try {
+      await devicesApi.link(code.toUpperCase(), deviceName || undefined, assignedTo || undefined)
+      setLinkStep('success')
+      showToast('Device linked successfully!', 'success')
+    } catch (err: any) {
+      setLinkError(
+        err?.response?.data?.message ||
+        err?.response?.data?.error ||
+        'Invalid or expired code. Please try again.'
+      )
+    } finally {
+      setLinkLoading(false)
+    }
+  }
+
+  const closeLinkModal = () => {
+    setLinkOpen(false)
+    setCode('')
+    setDeviceName('')
+    setAssignedTo('')
+    setLinkError('')
+    setLinkStep('form')
+    load()
+  }
+
   const handleExportCSV = () => {
     const rows = [
       ['Device', 'Student', 'Status', 'Screen Time', 'Violations', 'Last Seen'],
@@ -148,6 +188,11 @@ export default function InstituteDevicesPage() {
               </button>
             </>
           )}
+          <button onClick={() => setLinkOpen(true)}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl text-white text-sm font-medium transition-all hover:opacity-90"
+            style={{ background: 'linear-gradient(135deg, #2563EB, #7C3AED)' }}>
+            <Plus size={16} /> Link New Device
+          </button>
           <button onClick={handleExportCSV}
             className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-gray-200 text-gray-700 text-sm font-medium hover:bg-gray-50">
             <Download size={16} /> Export CSV
@@ -193,7 +238,9 @@ export default function InstituteDevicesPage() {
                 {filtered.length === 0 ? (
                   <tr>
                     <td colSpan={8} className="px-4 py-8 text-center text-gray-400 text-sm">
-                      {devices.length === 0 ? 'No devices registered' : 'No matching devices'}
+                      {devices.length === 0
+                        ? 'No devices registered. Click "Link New Device" to register a device.'
+                        : 'No matching devices'}
                     </td>
                   </tr>
                 ) : (
@@ -253,6 +300,61 @@ export default function InstituteDevicesPage() {
           </div>
         )}
       </div>
+
+      {/* Link New Device Modal */}
+      <Modal open={linkOpen} onClose={closeLinkModal} title="Link New Device" size="sm">
+        {linkStep === 'form' ? (
+          <div className="space-y-4">
+            <p className="text-gray-500 text-sm">Enter the 6-character code shown on the device after installing KAVACH AI agent.</p>
+
+            <div>
+              <label className="text-gray-600 text-xs font-medium block mb-1.5">Device Code</label>
+              <input
+                value={code}
+                onChange={e => { setCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '')); setLinkError('') }}
+                maxLength={6}
+                placeholder="KV3X9A"
+                className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 text-center text-2xl font-mono font-bold text-gray-800 tracking-[0.3em] focus:outline-none focus:border-blue-500 transition-colors"
+              />
+              <p className="text-gray-400 text-xs mt-1 text-center">Code expires in 15 minutes</p>
+            </div>
+
+            <div>
+              <label className="text-gray-600 text-xs font-medium block mb-1.5">Device Name <span className="text-gray-400 font-normal">(optional)</span></label>
+              <input value={deviceName} onChange={e => setDeviceName(e.target.value)} placeholder="e.g. Lab PC — Row A1"
+                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            </div>
+
+            <div>
+              <label className="text-gray-600 text-xs font-medium block mb-1.5">Assigned To <span className="text-gray-400 font-normal">(optional)</span></label>
+              <input value={assignedTo} onChange={e => setAssignedTo(e.target.value)} placeholder="e.g. Rahul Sharma"
+                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            </div>
+
+            {linkError && (
+              <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-100 rounded-xl">
+                <AlertCircle size={14} className="text-red-500 flex-shrink-0" />
+                <span className="text-red-600 text-sm">{linkError}</span>
+              </div>
+            )}
+
+            <button onClick={handleLink} disabled={linkLoading || code.length !== 6}
+              className="w-full py-3 rounded-xl text-white font-medium text-sm transition-all disabled:opacity-50"
+              style={{ background: 'linear-gradient(135deg, #2563EB, #7C3AED)' }}>
+              {linkLoading ? 'Linking...' : 'Link Device'}
+            </button>
+          </div>
+        ) : (
+          <div className="text-center py-4">
+            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <span className="text-3xl">✅</span>
+            </div>
+            <h3 className="text-gray-900 font-semibold text-lg mb-2">Device Linked!</h3>
+            <p className="text-gray-500 text-sm mb-6">The device will appear as Online once the KAVACH agent starts sending heartbeats.</p>
+            <button onClick={closeLinkModal} className="w-full py-3 rounded-xl text-white font-medium" style={{ background: '#2563EB' }}>Done</button>
+          </div>
+        )}
+      </Modal>
     </div>
   )
 }

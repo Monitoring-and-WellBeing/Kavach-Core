@@ -56,7 +56,7 @@ CREATE INDEX IF NOT EXISTS idx_redemptions_device ON reward_redemptions(device_i
 INSERT INTO rewards (id, tenant_id, title, description, category, xp_cost, icon, created_by)
 SELECT
   gen_random_uuid(),
-  '11111111-1111-1111-1111-111111111111',
+  (SELECT tenant_id FROM users WHERE email = 'parent@demo.com' LIMIT 1),
   t.title, t.description, t.category::reward_category, t.xp_cost, t.icon,
   (SELECT id FROM users WHERE email = 'parent@demo.com' LIMIT 1)
 FROM (VALUES
