@@ -3,6 +3,7 @@ package com.kavach.security;
 import com.kavach.auth.JwtFilter;
 import com.kavach.config.RequestIdFilter;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
@@ -31,6 +32,14 @@ public class SecurityConfig {
 
     private final JwtFilter jwtFilter;
     private final RequestIdFilter requestIdFilter;
+
+    /**
+     * Comma-separated list of allowed CORS origins.
+     * Set CORS_ORIGINS env var in Railway/Vercel to include your frontend domain.
+     * Example: https://kavach.vercel.app,http://localhost:3000
+     */
+    @Value("${spring.security.cors.allowed-origins:http://localhost:3000,http://localhost:3001}")
+    private String corsOriginsRaw;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -97,15 +106,15 @@ public class SecurityConfig {
 
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
+        // Parse comma-separated origins from env var (trimmed, no blanks)
+        List<String> allowedOrigins = Arrays.stream(corsOriginsRaw.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .toList();
+
         CorsConfiguration config = new CorsConfiguration();
-        
-        // Read allowed origins from environment variable
-        String corsOriginsEnv = System.getenv().getOrDefault("CORS_ORIGINS",
-                "http://localhost:3000,http://localhost:3001");
-        List<String> allowedOrigins = Arrays.asList(corsOriginsEnv.split(","));
         config.setAllowedOrigins(allowedOrigins);
-        
-        config.setAllowedMethods(List.of("GET","POST","PUT","DELETE","PATCH","OPTIONS"));
+        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
         config.setAllowCredentials(true);
         config.setMaxAge(3600L); // Cache preflight for 1 hour

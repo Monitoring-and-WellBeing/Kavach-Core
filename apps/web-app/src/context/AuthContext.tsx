@@ -53,8 +53,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const token = localStorage.getItem('kavach_access_token')
     if (token) {
       api.get('/auth/me')
-        .then(res => setUser(res.data))
-        .catch(() => localStorage.clear())
+        .then(res => {
+          localStorage.setItem('kavach_user_profile', JSON.stringify(res.data))
+          setUser(res.data)
+        })
+        .catch(() => {
+          localStorage.removeItem('kavach_access_token')
+          localStorage.removeItem('kavach_refresh_token')
+          localStorage.removeItem('kavach_user_profile')
+        })
         .finally(() => setLoading(false))
     } else {
       setLoading(false)
@@ -65,6 +72,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { data } = await api.post('/auth/login', { email, password })
     localStorage.setItem('kavach_access_token', data.accessToken)
     localStorage.setItem('kavach_refresh_token', data.refreshToken)
+    localStorage.setItem('kavach_user_profile', JSON.stringify(data.user))
     setUser(data.user)
     router.push(ROLE_ROUTES[data.user.role] || '/')
   }, [router])
@@ -73,6 +81,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { data } = await api.post('/auth/signup', signupData)
     localStorage.setItem('kavach_access_token', data.accessToken)
     localStorage.setItem('kavach_refresh_token', data.refreshToken)
+    localStorage.setItem('kavach_user_profile', JSON.stringify(data.user))
     setUser(data.user)
     router.push('/institute')
   }, [router])
@@ -81,6 +90,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try { await api.post('/auth/logout') } catch {}
     localStorage.removeItem('kavach_access_token')
     localStorage.removeItem('kavach_refresh_token')
+    localStorage.removeItem('kavach_user_profile')
+    localStorage.removeItem('kavach_token') // legacy key — clear for safety
     setUser(null)
     router.push('/')
   }, [router])

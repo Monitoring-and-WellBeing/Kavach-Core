@@ -1,7 +1,7 @@
 'use client'
 import { useParams, useRouter } from 'next/navigation'
 import { useState, useEffect, useCallback } from 'react'
-import { ArrowLeft, Monitor, Clock, Shield, AlertTriangle, Camera, RefreshCw } from 'lucide-react'
+import { ArrowLeft, Monitor, Clock, Shield, Camera, RefreshCw } from 'lucide-react'
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Cell } from 'recharts'
 import { useToast, Toast } from '@/components/ui/Toast'
 import { devicesApi, Device } from '@/lib/devices'
@@ -38,7 +38,7 @@ export default function DeviceDetailPage() {
   const { id } = useParams<{ id: string }>()
   const router = useRouter()
   const [activeTab, setActiveTab] = useState<(typeof tabs)[number]>('Overview')
-  const { toast, showToast, hideToast } = useToast()
+  const { toast, hideToast } = useToast()
 
   // ── State ──────────────────────────────────────────────────────────────────
   const [device, setDevice]   = useState<Device | null>(null)

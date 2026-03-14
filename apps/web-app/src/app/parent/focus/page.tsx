@@ -13,7 +13,7 @@ import { Plus, X } from "lucide-react";
 
 export default function FocusPage() {
   const { devices } = useDevices();
-  const { active, remaining, elapsedSeconds, totalSeconds, progress, startFocus, endFocus } = useFocusMode();
+  const { active, elapsedSeconds, totalSeconds, startFocus, endFocus } = useFocusMode();
   const addToast = useUIStore((s) => s.addToast);
 
   const [selectedDevice, setSelectedDevice] = useState(devices[0]?.id || "");

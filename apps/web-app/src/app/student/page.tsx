@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect, useCallback } from 'react'
-import { Target, Flame, Clock, BookOpen, Gamepad2,
+import { Target, Clock, BookOpen,
          Play, Square, ChevronRight, TrendingUp } from 'lucide-react'
 import Link from 'next/link'
 import { BarChart, Bar, XAxis, ResponsiveContainer, Cell } from 'recharts'
@@ -95,7 +95,6 @@ function ActiveFocusBanner({
 
 // ── Mini bar chart ────────────────────────────────────────────────────────────
 function WeeklyMiniChart({ data }: { data: StudentDashboard['weeklyData'] }) {
-  const max = Math.max(...data.map(d => d.screenTimeSeconds), 1)
   const today = new Date().toISOString().slice(0, 10)
 
   return (

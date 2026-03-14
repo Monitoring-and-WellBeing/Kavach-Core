@@ -2,9 +2,8 @@ import { useState, useEffect, useCallback } from "react";
 import { insightsApi, DeviceInsight } from "@/lib/insights";
 import { devicesApi, Device } from "@/lib/devices";
 
-export interface InsightWithDevice extends DeviceInsight {
-  // convenience alias kept for component compatibility
-}
+// convenience alias kept for component compatibility
+export type InsightWithDevice = DeviceInsight;
 
 export function useInsights() {
   const [insights, setInsights] = useState<DeviceInsight[]>([]);

@@ -22,21 +22,6 @@ const CAT_COLORS: Record<string, string> = {
   OTHER: 'bg-gray-100 text-gray-600',
 }
 
-function SkeletonCard({ height = 'h-48' }: { height?: string }) {
-  return (
-    <div className={`bg-white rounded-2xl shadow-sm ${height} animate-pulse`}>
-      <div className="p-5">
-        <div className="h-4 bg-gray-100 rounded w-1/3 mb-3" />
-        <div className="h-3 bg-gray-100 rounded w-1/4 mb-6" />
-        <div className="space-y-2">
-          <div className="h-3 bg-gray-100 rounded" />
-          <div className="h-3 bg-gray-100 rounded w-4/5" />
-          <div className="h-3 bg-gray-100 rounded w-3/5" />
-        </div>
-      </div>
-    </div>
-  )
-}
 
 export default function ReportsPage() {
   const { devices } = useDevices()

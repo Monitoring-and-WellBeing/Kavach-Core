@@ -1,6 +1,6 @@
 "use client";
 
-import { Pause, Play, Focus, RefreshCw } from "lucide-react";
+import { Pause, Play, Focus } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Device, DeviceStatus } from "@kavach/shared-types";
 

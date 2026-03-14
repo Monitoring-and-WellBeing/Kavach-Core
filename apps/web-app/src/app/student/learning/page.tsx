@@ -6,17 +6,15 @@ import { studentDashboardApi } from '@/lib/studentDashboard'
 import { studyBuddyApi, TopicSummary } from '@/lib/insights'
 
 export default function LearningHub() {
-  const { toast, showToast, hideToast } = useToast()
+  const { toast, hideToast } = useToast()
   const [topics, setTopics]   = useState<TopicSummary | null>(null)
   const [loading, setLoading] = useState(true)
-  const [studentId, setStudentId] = useState<string | null>(null)
 
   useEffect(() => {
     studentDashboardApi.get()
       .then(async dash => {
         // studentId is derived from the device's assigned user — use deviceId for now
         const sId = dash.deviceId ?? null
-        setStudentId(sId)
         if (sId) {
           const t = await studyBuddyApi.getTopics(sId)
           setTopics(t)

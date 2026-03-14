@@ -1,21 +1,51 @@
 {
   "appId": "com.kavach.desktop-agent",
   "productName": "KAVACH AI Agent",
+  "copyright": "Copyright © 2024 KAVACH AI",
   "directories": {
-    "output": "dist"
+    "output": "dist-build",
+    "buildResources": "assets"
   },
   "files": [
     "dist/**/*",
+    "renderer/**/*",
     "package.json"
+  ],
+  "extraResources": [
+    {
+      "from": "assets",
+      "to": "assets",
+      "filter": ["**/*"]
+    }
   ],
   "mac": {
     "category": "public.app-category.utilities",
-    "target": "dmg"
+    "target": [
+      { "target": "dmg", "arch": ["x64", "arm64"] }
+    ],
+    "icon": "assets/icon.png",
+    "identity": null
   },
   "win": {
-    "target": "nsis"
+    "target": [
+      { "target": "nsis", "arch": ["x64"] }
+    ],
+    "icon": "assets/icon.ico",
+    "publisherName": "KAVACH AI"
+  },
+  "nsis": {
+    "oneClick": true,
+    "perMachine": false,
+    "installerIcon": "assets/icon.ico",
+    "uninstallerIcon": "assets/icon.ico",
+    "shortcutName": "KAVACH AI Agent",
+    "runAfterFinish": true,
+    "deleteAppDataOnUninstall": false
   },
   "linux": {
-    "target": "AppImage"
-  }
+    "target": ["AppImage"],
+    "icon": "assets/icon.png",
+    "category": "Utility"
+  },
+  "publish": null
 }

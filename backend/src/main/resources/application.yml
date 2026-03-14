@@ -31,12 +31,12 @@ spring:
     out-of-order: false
     validate-on-migrate: true
     # Flyway uses spring.datasource credentials by default.
-    # Do NOT set separate flyway.url / flyway.user / flyway.password here —
-    # they would override datasource env vars and leak credentials.
+    # Do NOT set separate flyway.url / flyway.user / flyway.password here.
 
   security:
     cors:
-      # CORS_ORIGINS must be set in production; localhost fallback is dev-only
+      # CORS_ORIGINS must be set in Railway/Vercel in production; localhost fallback is dev-only.
+      # Format: comma-separated list, e.g. https://kavach.vercel.app,http://localhost:3000
       allowed-origins: ${CORS_ORIGINS:http://localhost:3000,http://localhost:3001}
 
 server:
@@ -47,8 +47,8 @@ kavach:
     # WARNING: JWT_SECRET MUST be overridden in production with a strong 256-bit+ secret.
     # The fallback below is for local development only.
     secret: ${JWT_SECRET:kavach-jwt-secret-key-minimum-256-bits-long-change-in-production-2024}
-    access-token-expiry: ${JWT_ACCESS_EXPIRY:900000}
-    refresh-token-expiry: ${JWT_REFRESH_EXPIRY:604800000}
+    access-token-expiry: ${JWT_ACCESS_EXPIRY:900000}        # 15 minutes in ms
+    refresh-token-expiry: ${JWT_REFRESH_EXPIRY:604800000}    # 7 days in ms
   ai:
     provider: gemini
     gemini:
@@ -65,6 +65,7 @@ springdoc:
     enabled: true
     operationsSorter: alpha
     tagsSorter: alpha
+    enabled: true
 
 logging:
   level:
@@ -81,7 +82,6 @@ r2:
 razorpay:
   key:
     # WARNING: RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET MUST be overridden in production.
-    # The test key placeholders below must never be used in production.
     id: ${RAZORPAY_KEY_ID:rzp_test_XXXXXXXXXXXXXXXX}
     secret: ${RAZORPAY_KEY_SECRET:XXXXXXXXXXXXXXXXXXXXXXXX}
   webhook:

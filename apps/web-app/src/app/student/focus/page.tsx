@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { Target, Play, Square, CheckCircle, Clock } from 'lucide-react'
+import { Play, Square, CheckCircle, Clock } from 'lucide-react'
 import { focusApi, FocusSession } from '@/lib/focus'
 import { useAuth } from '@/context/AuthContext'
 import { studentDashboardApi } from '@/lib/studentDashboard'
@@ -15,7 +15,7 @@ const PRESETS = [
 type Phase = 'idle' | 'active' | 'done'
 
 export default function StudentFocusPage() {
-  const { user } = useAuth()
+  useAuth()
   const [phase, setPhase] = useState<Phase>('idle')
   const [selected, setSelected] = useState(25)
   const [session, setSession] = useState<FocusSession | null>(null)

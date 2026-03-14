@@ -2,6 +2,7 @@ import React, { useEffect } from 'react'
 import { AppState, Platform } from 'react-native'
 import { StatusBar } from 'expo-status-bar'
 import * as Notifications from 'expo-notifications'
+import { SafeAreaProvider } from 'react-native-safe-area-context'
 import { AuthProvider, useAuth } from './src/context/AuthContext'
 import AppNavigator from './src/navigation/AppNavigator'
 
@@ -100,8 +101,10 @@ export default function App() {
   }, [])
 
   return (
-    <AuthProvider>
-      <AppWithSync />
-    </AuthProvider>
+    <SafeAreaProvider>
+      <AuthProvider>
+        <AppWithSync />
+      </AuthProvider>
+    </SafeAreaProvider>
   )
 }
