@@ -26,7 +26,7 @@ jobs:
         with:
           node-version: '20'
           cache: 'pnpm'
-          cache-dependency-path: apps/web-app/pnpm-lock.yaml
+          cache-dependency-path: '**/pnpm-lock.yaml'
 
       - name: Install dependencies
         run: pnpm install
@@ -66,11 +66,11 @@ jobs:
           cache: 'maven'
 
       - name: Run tests with JaCoCo
-        run: ./mvnw verify jacoco:report
+        run: mvn verify jacoco:report -B
 
       - name: SonarCloud Scan
         run: |
-          ./mvnw sonar:sonar \
+          mvn sonar:sonar -B \
             -Dsonar.projectKey=${{ secrets.SONAR_PROJECT_KEY_BACKEND }} \
             -Dsonar.organization=${{ secrets.SONAR_ORG }} \
             -Dsonar.host.url=https://sonarcloud.io \
@@ -97,13 +97,13 @@ jobs:
         with:
           node-version: '20'
           cache: 'pnpm'
-          cache-dependency-path: apps/mobile/package.json
+          cache-dependency-path: '**/pnpm-lock.yaml'
 
       - name: Install dependencies
         run: pnpm install
 
       - name: Run tests with coverage
-        run: pnpm test --coverage --ci --forceExit
+        run: pnpm test:coverage
 
   desktop-agent-test:
     name: Desktop Agent Tests
@@ -124,13 +124,13 @@ jobs:
         with:
           node-version: '20'
           cache: 'pnpm'
-          cache-dependency-path: apps/desktop-agent/package.json
+          cache-dependency-path: '**/pnpm-lock.yaml'
 
       - name: Install dependencies
         run: pnpm install
 
-      - name: Type check
-        run: pnpm type-check
+      - name: Build (type check)
+        run: pnpm build
 
-      - name: Run tests with coverage
-        run: pnpm test --coverage --ci --forceExit
+      - name: Run tests
+        run: pnpm test
