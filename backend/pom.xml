@@ -159,6 +159,21 @@
           </excludes>
         </configuration>
       </plugin>
+      <!-- Flyway Maven plugin -->
+      <plugin>
+        <groupId>org.flywaydb</groupId>
+        <artifactId>flyway-maven-plugin</artifactId>
+        <version>9.22.3</version>
+        <configuration>
+          <url>${flyway.url:jdbc:postgresql://ep-silent-rice-a1yu2php.ap-southeast-1.aws.neon.tech/neondb?sslmode=require}</url>
+          <user>${flyway.user:neondb_owner}</user>
+          <password>${flyway.password:npg_MT7xyRk6nUQf}</password>
+          <locations>
+            <location>classpath:db/migration</location>
+          </locations>
+          <baselineOnMigrate>true</baselineOnMigrate>
+        </configuration>
+      </plugin>
       <!-- JaCoCo coverage plugin -->
       <plugin>
         <groupId>org.jacoco</groupId>

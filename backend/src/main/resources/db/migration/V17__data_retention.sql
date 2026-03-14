@@ -1,6 +1,6 @@
--- ═══════════════════════════════════════════════════════════════
--- KAVACH AI — V17 Migration: Data Retention Policy
--- ═══════════════════════════════════════════════════════════════
+-- ================================================================
+-- KAVACH AI -- V17 Migration: Data Retention Policy
+-- ================================================================
 
 -- Create archive table for old activity logs
 CREATE TABLE IF NOT EXISTS activity_logs_archive (LIKE activity_logs INCLUDING ALL);

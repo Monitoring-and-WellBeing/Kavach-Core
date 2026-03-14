@@ -1,12 +1,12 @@
--- ═══════════════════════════════════════════════════════════════
--- KAVACH AI — V6 Migration: Focus Mode Schema
--- ═══════════════════════════════════════════════════════════════
+-- ================================================================
+-- KAVACH AI -- V6 Migration: Focus Mode Schema
+-- ================================================================
 
 -- Drop old focus_sessions table from V1 so this migration can rebuild it with new schema
 DROP TABLE IF EXISTS focus_sessions CASCADE;
 
--- ─── FOCUS SESSIONS ──────────────────────────────────────────────────────────
-CREATE TABLE focus_sessions (
+-- FOCUS SESSIONS -----------------------------------------------------------
+CREATE TABLE IF NOT EXISTS focus_sessions (
     id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     tenant_id       UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
     device_id       UUID NOT NULL REFERENCES devices(id) ON DELETE CASCADE,
@@ -28,10 +28,10 @@ CREATE TABLE focus_sessions (
     created_at      TIMESTAMP DEFAULT NOW()
 );
 
--- ─── FOCUS APP WHITELIST ──────────────────────────────────────────────────────
+-- FOCUS APP WHITELIST ------------------------------------------------------
 -- Apps allowed during focus mode (per tenant)
--- During focus, ONLY whitelisted apps are allowed — everything else is blocked
-CREATE TABLE focus_whitelist (
+-- During focus, ONLY whitelisted apps are allowed; everything else is blocked
+CREATE TABLE IF NOT EXISTS focus_whitelist (
     id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     tenant_id    UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
     process_name VARCHAR(255) NOT NULL,
@@ -40,13 +40,13 @@ CREATE TABLE focus_whitelist (
     UNIQUE(tenant_id, process_name)
 );
 
--- ─── INDEXES ─────────────────────────────────────────────────────────────────
-CREATE INDEX idx_focus_device        ON focus_sessions(device_id, status);
-CREATE INDEX idx_focus_tenant        ON focus_sessions(tenant_id, started_at DESC);
-CREATE INDEX idx_focus_active        ON focus_sessions(status, ends_at);
-CREATE INDEX idx_whitelist_tenant    ON focus_whitelist(tenant_id);
+-- INDEXES ------------------------------------------------------------------
+CREATE INDEX IF NOT EXISTS idx_focus_device        ON focus_sessions(device_id, status);
+CREATE INDEX IF NOT EXISTS idx_focus_tenant        ON focus_sessions(tenant_id, started_at DESC);
+CREATE INDEX IF NOT EXISTS idx_focus_active        ON focus_sessions(status, ends_at);
+CREATE INDEX IF NOT EXISTS idx_whitelist_tenant    ON focus_whitelist(tenant_id);
 
--- ─── DEFAULT WHITELIST APPS (study-safe apps) ────────────────────────────────
+-- DEFAULT WHITELIST APPS (study-safe apps) ---------------------------------
 -- These are seeded per demo tenant
 INSERT INTO focus_whitelist (tenant_id, process_name, app_name)
 VALUES
@@ -59,9 +59,10 @@ VALUES
   ('a1b2c3d4-e5f6-7890-abcd-ef1234567890', 'sumatrapdf.exe',   'Sumatra PDF'),
   ('a1b2c3d4-e5f6-7890-abcd-ef1234567890', 'onenote.exe',      'OneNote'),
   ('a1b2c3d4-e5f6-7890-abcd-ef1234567890', 'calculator.exe',   'Calculator'),
-  ('a1b2c3d4-e5f6-7890-abcd-ef1234567890', 'explorer.exe',     'File Explorer');
+  ('a1b2c3d4-e5f6-7890-abcd-ef1234567890', 'explorer.exe',     'File Explorer')
+ON CONFLICT (tenant_id, process_name) DO NOTHING;
 
--- ─── SEED DEMO COMPLETED SESSION ─────────────────────────────────────────────
+-- SEED DEMO COMPLETED SESSION ----------------------------------------------
 INSERT INTO focus_sessions (tenant_id, device_id, initiated_role, title, duration_minutes,
   started_at, ends_at, ended_at, status, end_reason)
 VALUES
@@ -75,7 +76,7 @@ VALUES
 
   ('a1b2c3d4-e5f6-7890-abcd-ef1234567890',
    'd1111111-1111-1111-1111-111111111111',
-   'STUDENT', 'Pomodoro — Math', 25,
+   'STUDENT', 'Pomodoro -- Math', 25,
    NOW() - INTERVAL '1 hour',
    NOW() - INTERVAL '35 minutes',
    NOW() - INTERVAL '35 minutes',

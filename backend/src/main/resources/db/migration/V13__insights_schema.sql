@@ -1,12 +1,12 @@
--- ═══════════════════════════════════════════════════════════════
--- KAVACH AI — V9 Migration: AI Insights Schema
--- ═══════════════════════════════════════════════════════════════
+-- ================================================================
+-- KAVACH AI -- V9 Migration: AI Insights Schema
+-- ================================================================
 
 -- Drop old ai_insights table if it exists (from V3)
 DROP TABLE IF EXISTS ai_insights CASCADE;
 
--- ─── AI INSIGHTS ─────────────────────────────────────────────────────────────
-CREATE TABLE ai_insights (
+-- AI INSIGHTS --------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS ai_insights (
     id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     tenant_id       UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
     device_id       UUID NOT NULL REFERENCES devices(id) ON DELETE CASCADE,
@@ -24,5 +24,5 @@ CREATE TABLE ai_insights (
     data_to         TIMESTAMP        -- end of data window used
 );
 
-CREATE INDEX idx_insights_device ON ai_insights(device_id, generated_at DESC);
-CREATE INDEX idx_insights_tenant ON ai_insights(tenant_id, generated_at DESC);
+CREATE INDEX IF NOT EXISTS idx_insights_device ON ai_insights(device_id, generated_at DESC);
+CREATE INDEX IF NOT EXISTS idx_insights_tenant ON ai_insights(tenant_id, generated_at DESC);
