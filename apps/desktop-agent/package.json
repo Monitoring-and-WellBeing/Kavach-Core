@@ -7,8 +7,14 @@
   "scripts": {
     "dev": "ts-node src/main.ts",
     "build": "tsc",
+    "build:full": "tsc && electron-builder",
     "pack": "electron-builder",
-    "build:full": "tsc && electron-builder"
+    "dist:win": "tsc && electron-builder --win",
+    "dist:mac": "tsc && electron-builder --mac",
+    "test": "jest",
+    "test:coverage": "jest --coverage",
+    "lint": "tsc --noEmit",
+    "type-check": "tsc --noEmit"
   },
   "dependencies": {
     "@kavach/shared-types": "workspace:*"
@@ -22,12 +28,5 @@
     "ts-jest": "^29.1.2",
     "ts-node": "^10.9.2",
     "typescript": "^5.4.3"
-  },
-  "scripts": {
-    "dev": "ts-node src/main.ts",
-    "build": "tsc",
-    "pack": "electron-builder",
-    "build:full": "tsc && electron-builder",
-    "test": "jest"
   }
 }

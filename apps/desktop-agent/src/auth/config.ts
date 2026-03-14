@@ -15,9 +15,12 @@ export interface AgentConfig {
   hostname: string;
 }
 
+// API_URL is baked into the build via electron-builder's extraMetadata / env injection.
+// In production builds this env var is set to the Railway backend URL.
+// The localhost fallback is for local development ONLY — never ships in production.
 const defaultConfig: AgentConfig = {
   deviceLinked: false,
-  apiUrl: process.env.API_URL || 'http://localhost:8080',
+  apiUrl: process.env.API_URL || 'https://kavach-core-production.up.railway.app',
   agentVersion: '1.2.4',
   hostname: os.hostname(),
 };
