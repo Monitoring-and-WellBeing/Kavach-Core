@@ -3,6 +3,7 @@ package com.kavach.security;
 import com.kavach.auth.JwtFilter;
 import com.kavach.users.UserService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -22,6 +23,7 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import java.util.Arrays;
 import java.util.List;
 
 @Configuration
@@ -31,6 +33,14 @@ import java.util.List;
 public class SecurityConfig {
 
     private final JwtFilter jwtFilter;
+
+    /**
+     * Comma-separated list of allowed CORS origins.
+     * Set CORS_ORIGINS env var in Railway/Vercel to include your frontend domain.
+     * Example: https://kavach.vercel.app,http://localhost:3000
+     */
+    @Value("${spring.security.cors.allowed-origins:http://localhost:3000,http://localhost:3001}")
+    private String corsOriginsRaw;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -58,14 +68,15 @@ public class SecurityConfig {
 
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
+        // Parse comma-separated origins from env var (trimmed, no blanks)
+        List<String> allowedOrigins = Arrays.stream(corsOriginsRaw.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .toList();
+
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(List.of(
-            "http://localhost:3000",
-            "http://localhost:3001",
-            "capacitor://localhost",
-            "ionic://localhost"
-        ));
-        config.setAllowedMethods(List.of("GET","POST","PUT","DELETE","PATCH","OPTIONS"));
+        config.setAllowedOrigins(allowedOrigins);
+        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
         config.setAllowCredentials(true);
 

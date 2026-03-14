@@ -8,19 +8,21 @@ export const api = axios.create({
   withCredentials: false,
 })
 
-// Attach token to every request
+// Attach token to every request (guard against SSR — localStorage is browser-only)
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('kavach_access_token')
-  if (token) config.headers.Authorization = `Bearer ${token}`
+  if (typeof window !== 'undefined') {
+    const token = localStorage.getItem('kavach_access_token')
+    if (token) config.headers.Authorization = `Bearer ${token}`
+  }
   return config
 })
 
-// Auto-refresh on 401
+// Auto-refresh on 401 (guard against SSR)
 api.interceptors.response.use(
   res => res,
   async err => {
     const original = err.config
-    if (err.response?.status === 401 && !original._retry) {
+    if (err.response?.status === 401 && !original._retry && typeof window !== 'undefined') {
       original._retry = true
       const refreshToken = localStorage.getItem('kavach_refresh_token')
       if (refreshToken) {
@@ -31,7 +33,8 @@ api.interceptors.response.use(
           original.headers.Authorization = `Bearer ${data.accessToken}`
           return api(original)
         } catch {
-          localStorage.clear()
+          localStorage.removeItem('kavach_access_token')
+          localStorage.removeItem('kavach_refresh_token')
           window.location.href = '/'
         }
       }

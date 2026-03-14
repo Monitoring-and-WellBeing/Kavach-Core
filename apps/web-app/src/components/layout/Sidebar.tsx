@@ -24,7 +24,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { useUIStore } from "@/store/uiStore";
-import { logout } from "@/lib/auth";
+import { useAuth } from "@/context/AuthContext";
 
 type NavItem = {
   label: string;
@@ -73,6 +73,7 @@ interface SidebarProps {
 export function Sidebar({ role, userName = "User", userEmail = "" }: SidebarProps) {
   const pathname = usePathname();
   const { sidebarCollapsed, toggleSidebar } = useUIStore();
+  const { logout } = useAuth();
 
   const navItems =
     role === "parent"

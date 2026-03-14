@@ -29,6 +29,9 @@ kavach:
 spring:
   security:
     cors:
+      # CORS_ORIGINS must be set as a Railway/Vercel env var in production.
+      # Format: comma-separated list of allowed origins (no trailing slash).
+      # Example: https://kavach.vercel.app,https://kavach-git-dev.vercel.app
       allowed-origins: ${CORS_ORIGINS:http://localhost:3000,http://localhost:3001}
 
 springdoc:
