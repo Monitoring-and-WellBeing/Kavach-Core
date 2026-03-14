@@ -65,10 +65,9 @@ logging:
     org.springframework.web: WARN
     org.hibernate: WARN
 
-# Swagger / OpenAPI docs -- enabled so frontend and mobile teams can integrate.
+# Swagger / OpenAPI docs -- enabled for API integration.
 springdoc:
   api-docs:
     enabled: true
   swagger-ui:
     enabled: true
-    path: /swagger-ui/index.html
