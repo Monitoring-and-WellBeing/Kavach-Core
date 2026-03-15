@@ -65,7 +65,6 @@ springdoc:
     enabled: true
     operationsSorter: alpha
     tagsSorter: alpha
-    enabled: true
 
 logging:
   level:
