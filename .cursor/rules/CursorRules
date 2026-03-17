@@ -4,19 +4,13 @@ description: KAVACH AI master Cursor prompt for deep, end-to-end architecture an
 globs: *
 ---
 
-# KAVACH AI — Master Cursor Prompt
+# KAVACH AI — 
 ## End-to-End System Understanding: Theory → Architecture → Implementation Flow
 
----
-
-> **HOW TO USE THIS PROMPT**
-> Paste this entire prompt into Cursor's AI chat (CMD+L or CMD+I).
-> Cursor will read your actual codebase and answer with grounded, file-specific responses.
-> Run it once. Then use the follow-up prompts at the bottom to drill into specific areas.
 
 ---
 
-## THE PROMPT (paste everything below this line into Cursor)
+
 
 ---
 
