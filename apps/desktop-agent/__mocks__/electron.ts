@@ -26,7 +26,6 @@ export const Tray = jest.fn().mockImplementation(() => ({
   setToolTip: jest.fn(),
 }))
 
-export const Menu = {
   buildFromTemplate: jest.fn(() => ({
     items: [],
   })),

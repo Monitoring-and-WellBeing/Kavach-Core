@@ -8,6 +8,7 @@ import com.kavach.blocking.repository.BlockRuleRepository;
 import com.kavach.blocking.repository.BlockingViolationRepository;
 import com.kavach.devices.repository.DeviceRepository;
 import com.kavach.enforcement.repository.EnforcementStateRepository;
+import com.kavach.rules.Rule;
 import com.kavach.sse.SseRegistry;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -15,6 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
@@ -96,6 +98,62 @@ public class BlockingService {
         // ── Notify device(s) via SSE ──────────────────────────────────────────
         pushRulesUpdated(tenantId, req.getDeviceId());
         return toDto(rule);
+    }
+
+    /**
+     * Creates a BlockRule from an institute Rule (rules table) so the desktop agent receives it via GET /enforcement/state.
+     * Called by RuleController after saving a Rule when the rule type is a blocking type.
+     */
+    @Transactional
+    public void createBlockRuleFromInstituteRule(Rule rule, UUID userId) {
+        String blockRuleType = mapRuleTypeToBlockRuleType(rule.getType());
+        if (blockRuleType == null) return;
+
+        BlockRule.BlockRuleBuilder builder = BlockRule.builder()
+                .tenantId(rule.getTenantId())
+                .createdBy(userId)
+                .name(rule.getName())
+                .ruleType(blockRuleType)
+                .target(rule.getTarget() != null && !rule.getTarget().isBlank() ? rule.getTarget() : "ALL")
+                .appliesTo(rule.getDeviceId() != null ? "SPECIFIC_DEVICE" : "ALL_DEVICES")
+                .deviceId(rule.getDeviceId())
+                .showMessage(true)
+                .blockMessage("This app has been blocked by your parent/institute.")
+                .active("ACTIVE".equals(rule.getStatus()))
+                .sourceRuleId(rule.getId());
+
+        if (rule.getScheduleStart() != null && rule.getScheduleEnd() != null && rule.getScheduleDays() != null
+                && !rule.getScheduleStart().isBlank() && !rule.getScheduleEnd().isBlank()) {
+            try {
+                builder.scheduleEnabled(true)
+                        .scheduleDays(rule.getScheduleDays())
+                        .scheduleStart(LocalTime.parse(rule.getScheduleStart()))
+                        .scheduleEnd(LocalTime.parse(rule.getScheduleEnd()));
+            } catch (Exception e) {
+                log.warn("[blocking] Could not parse rule schedule, creating without schedule: {}", e.getMessage());
+            }
+        }
+
+        BlockRule blockRule = builder.build();
+        ruleRepo.save(blockRule);
+
+        deviceRepo.findByTenantIdAndActiveTrue(rule.getTenantId()).forEach(d -> {
+            d.setRulesUpdatedAt(LocalDateTime.now());
+            deviceRepo.save(d);
+        });
+        enforcementStateRepository.incrementVersionForTenant(rule.getTenantId());
+        pushRulesUpdated(rule.getTenantId(), rule.getDeviceId());
+    }
+
+    private static String mapRuleTypeToBlockRuleType(String ruleType) {
+        if (ruleType == null) return null;
+        return switch (ruleType) {
+            case "CATEGORY_BLOCK" -> "CATEGORY";
+            case "WEBSITE_BLOCK" -> "WEBSITE";
+            case "APP_LIMIT" -> "APP";
+            case "SCHEDULE_BLOCK" -> "CATEGORY";
+            default -> null;
+        };
     }
 
     @Transactional

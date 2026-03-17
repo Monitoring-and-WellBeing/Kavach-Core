@@ -65,4 +65,8 @@ public class BlockRule {
 
     @Column(name = "updated_at")
     private LocalDateTime updatedAt = LocalDateTime.now();
+
+    /** When set, this BlockRule was created from an institute Rule (rules table); deleted when that Rule is deleted. */
+    @Column(name = "source_rule_id")
+    private UUID sourceRuleId;
 }

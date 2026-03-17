@@ -145,6 +145,13 @@ export default function InstituteDashboard() {
   }, [])
 
   useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const token = localStorage.getItem('kavach_access_token')
+      if (!token) {
+        window.location.href = '/login'
+        return
+      }
+    }
     load()
     const interval = setInterval(load, 30000)
     return () => clearInterval(interval)

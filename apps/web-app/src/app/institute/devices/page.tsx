@@ -114,13 +114,32 @@ export default function InstituteDevicesPage() {
       setLinkError('Code must be exactly 6 characters')
       return
     }
+    if (typeof window !== 'undefined') {
+      const token = localStorage.getItem('kavach_access_token')
+      if (!token) {
+        showToast('Session expired. Please log in again.', 'error')
+        window.location.href = '/login'
+        return
+      }
+    }
     setLinkLoading(true)
     setLinkError('')
     try {
       await devicesApi.link(code.toUpperCase(), deviceName || undefined, assignedTo || undefined)
       setLinkStep('success')
       showToast('Device linked successfully!', 'success')
+      await load()
     } catch (err: any) {
+      const status = err?.response?.status
+      if (status === 401 || status === 403) {
+        setLinkError('Session expired, please log in again.')
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('kavach_access_token')
+          localStorage.removeItem('kavach_refresh_token')
+          window.location.href = '/login'
+        }
+        return
+      }
       setLinkError(
         err?.response?.data?.message ||
         err?.response?.data?.error ||

@@ -1,5 +1,6 @@
 package com.kavach.rules;
 
+import com.kavach.blocking.service.BlockingService;
 import com.kavach.sse.SseRegistry;
 import com.kavach.users.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -17,6 +18,7 @@ import java.util.UUID;
 public class RuleController {
 
     private final RuleService ruleService;
+    private final BlockingService blockingService;
     private final SseRegistry sseRegistry;
     private final UserRepository userRepository;
 
@@ -31,6 +33,11 @@ public class RuleController {
         Rule created = ruleService.create(rule);
         UUID tenantId = resolveTenantId(email, created.getTenantId());
         if (tenantId != null) {
+            if (isBlockingType(created.getType())) {
+                userRepository.findByEmail(email)
+                        .map(u -> u.getId())
+                        .ifPresent(userId -> blockingService.createBlockRuleFromInstituteRule(created, userId));
+            }
             Map<String, Object> payload = Map.of("action", "created",
                     "ruleId", created.getId().toString(), "ts", System.currentTimeMillis());
             sseRegistry.sendToTenantDevices(tenantId, "rules_updated", payload);
@@ -106,5 +113,10 @@ public class RuleController {
         return userRepository.findByEmail(email)
                 .map(u -> u.getTenantId())
                 .orElse(fallback);
+    }
+
+    private static boolean isBlockingType(String type) {
+        return "CATEGORY_BLOCK".equals(type) || "WEBSITE_BLOCK".equals(type)
+                || "APP_LIMIT".equals(type) || "SCHEDULE_BLOCK".equals(type);
     }
 }

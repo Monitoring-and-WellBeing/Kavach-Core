@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useCallback } from "react";
+import { fetchEventSource } from "@microsoft/fetch-event-source";
 
 const API_BASE =
   (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080").replace(
@@ -8,8 +9,22 @@ const API_BASE =
     ""
   );
 
+const TOKEN_KEY = "kavach_access_token";
+const REFRESH_TOKEN_KEY = "kavach_refresh_token";
+const LOGIN_PATH = "/login";
+
+function clearTokensAndRedirect(): void {
+  if (typeof window === "undefined") return;
+  localStorage.removeItem(TOKEN_KEY);
+  localStorage.removeItem(REFRESH_TOKEN_KEY);
+  if (!window.location.pathname.includes(LOGIN_PATH)) {
+    window.location.href = LOGIN_PATH;
+  }
+}
+
 /**
- * useSSE — lightweight EventSource hook with auto-reconnect.
+ * useSSE — SSE hook using fetch with Authorization header (no token in URL).
+ * Uses @microsoft/fetch-event-source so the JWT is sent in the header.
  *
  * @param path     - SSE endpoint path, e.g. "/api/v1/sse/tenant"
  * @param handlers - map of SSE event name → callback(data: unknown)
@@ -20,10 +35,10 @@ export function useSSE(
   handlers: Record<string, (data: unknown) => void>,
   enabled = true
 ): void {
-  const esRef = useRef<EventSource | null>(null);
   const handlersRef = useRef(handlers);
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Keep handlers ref fresh without recreating the connection on every render
   useEffect(() => {
     handlersRef.current = handlers;
   });
@@ -31,41 +46,69 @@ export function useSSE(
   const connect = useCallback(() => {
     if (!enabled || typeof window === "undefined") return;
 
-    const url = `${API_BASE}${path}`;
-    const es = new EventSource(url, { withCredentials: true });
-    esRef.current = es;
+    const token = localStorage.getItem(TOKEN_KEY);
+    if (!token) {
+      clearTokensAndRedirect();
+      return;
+    }
 
-    // Wire up named event listeners lazily via the ref so new callbacks work
-    const forward =
-      (event: string) =>
-      (e: Event): void => {
-        const handler = handlersRef.current[event];
+    const url = `${API_BASE}${path}`;
+    const abortController = new AbortController();
+    abortControllerRef.current = abortController;
+
+    fetchEventSource(url, {
+      signal: abortController.signal,
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      openWhenHidden: false,
+      onopen(response) {
+        if (
+          !response.ok &&
+          (response.status === 401 || response.status === 403)
+        ) {
+          clearTokensAndRedirect();
+          throw new Error("Unauthorized");
+        }
+      },
+      onmessage(ev) {
+        const eventName = ev.event ?? "message";
+        const handler = handlersRef.current[eventName];
         if (!handler) return;
         try {
-          handler(JSON.parse((e as MessageEvent).data));
+          handler(JSON.parse(ev.data));
         } catch {
-          handler((e as MessageEvent).data);
+          handler(ev.data);
         }
-      };
-
-    // Register each named event the caller cares about
-    Object.keys(handlers).forEach((event) => {
-      es.addEventListener(event, forward(event));
+      },
+      onerror(err) {
+        const status =
+          err && typeof err === "object" && "status" in err
+            ? (err as { status?: number }).status
+            : undefined;
+        if (status === 401 || status === 403) {
+          clearTokensAndRedirect();
+          throw err;
+        }
+        // Reconnect after 5 s for other errors (network blips, server restarts)
+        reconnectTimeoutRef.current = setTimeout(connect, 5_000);
+      },
+    }).catch(() => {
+      // Connection closed or aborted — no-op
     });
-
-    es.onerror = () => {
-      es.close();
-      esRef.current = null;
-      // Reconnect after 5 s — handles network blips and server restarts
-      setTimeout(connect, 5_000);
-    };
-  }, [path, enabled]); // handlers intentionally excluded (stable via ref)
+  }, [path, enabled]);
 
   useEffect(() => {
     connect();
     return () => {
-      esRef.current?.close();
-      esRef.current = null;
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+        abortControllerRef.current = null;
+      }
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+        reconnectTimeoutRef.current = null;
+      }
     };
   }, [connect]);
 }
