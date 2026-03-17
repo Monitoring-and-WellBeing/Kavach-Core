@@ -90,6 +90,7 @@ export default function InstituteReportsPage() {
     education: Math.round((d.byCategory?.["EDUCATION"] ?? 0) / 60),
     gaming:    Math.round((d.byCategory?.["GAMING"] ?? 0) / 60),
     social:    Math.round((d.byCategory?.["SOCIAL_MEDIA"] ?? 0) / 60),
+    other:     Math.round((d.byCategory?.["OTHER"] ?? 0) / 60),
   })) ?? [];
 
   const pieData = categories?.categories.map(c => ({

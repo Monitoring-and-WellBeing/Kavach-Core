@@ -1,9 +1,9 @@
--- ═══════════════════════════════════════════════════════════════
--- KAVACH AI — V9 Migration: Goals System Schema
--- ═══════════════════════════════════════════════════════════════
+-- ================================================================
+-- KAVACH AI -- V9 Migration: Goals System Schema
+-- ================================================================
 
--- ─── GOALS ───────────────────────────────────────────────────────────────────
-CREATE TABLE goals (
+-- GOALS --------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS goals (
     id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     tenant_id       UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
     device_id       UUID NOT NULL REFERENCES devices(id) ON DELETE CASCADE,
@@ -20,8 +20,8 @@ CREATE TABLE goals (
     created_at      TIMESTAMP DEFAULT NOW()
 );
 
--- ─── GOAL PROGRESS ───────────────────────────────────────────────────────────
-CREATE TABLE goal_progress (
+-- GOAL PROGRESS ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS goal_progress (
     id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     goal_id         UUID NOT NULL REFERENCES goals(id) ON DELETE CASCADE,
     device_id       UUID NOT NULL REFERENCES devices(id) ON DELETE CASCADE,
@@ -33,12 +33,12 @@ CREATE TABLE goal_progress (
     UNIQUE(goal_id, period_date)
 );
 
-CREATE INDEX idx_goals_device    ON goals(device_id, is_active);
-CREATE INDEX idx_goals_tenant    ON goals(tenant_id);
-CREATE INDEX idx_progress_goal   ON goal_progress(goal_id, period_date DESC);
-CREATE INDEX idx_progress_device ON goal_progress(device_id, period_date DESC);
+CREATE INDEX IF NOT EXISTS idx_goals_device    ON goals(device_id, is_active);
+CREATE INDEX IF NOT EXISTS idx_goals_tenant    ON goals(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_progress_goal   ON goal_progress(goal_id, period_date DESC);
+CREATE INDEX IF NOT EXISTS idx_progress_device ON goal_progress(device_id, period_date DESC);
 
--- ─── SEED DEMO GOALS ─────────────────────────────────────────────────────────
+-- SEED DEMO GOALS ----------------------------------------------------------
 INSERT INTO goals (tenant_id, device_id, created_by, title, goal_type, period, target_value)
 VALUES
   ('a1b2c3d4-e5f6-7890-abcd-ef1234567890',

@@ -5,7 +5,7 @@ import { useToast, Toast } from '@/components/ui/Toast'
 import { Modal } from '@/components/ui/Modal'
 import { instituteDashboardApi, InstituteDevice } from '@/lib/instituteDashboard'
 import { devicesApi } from '@/lib/devices'
-import { formatMinutes, formatTime } from '@kavach/shared-utils'
+import { formatTime } from '@kavach/shared-utils'
 import { DeviceStatus } from '@kavach/shared-types'
 
 const statusColors: Record<DeviceStatus, string> = {

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { clsx } from "clsx";
-import { Shield, Menu, X, LogOut } from "lucide-react";
+import { Shield, LogOut } from "lucide-react";
 import {
   LayoutDashboard,
   Monitor,
@@ -70,7 +70,7 @@ interface SidebarProps {
   userEmail?: string;
 }
 
-export function Sidebar({ role, userName = "User", userEmail = "" }: SidebarProps) {
+export function Sidebar({ role, userName = "User", userEmail: _userEmail = "" }: SidebarProps) {
   const pathname = usePathname();
   const { sidebarCollapsed, toggleSidebar } = useUIStore();
   const { logout } = useAuth();

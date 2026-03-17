@@ -3,8 +3,8 @@ package com.kavach.screenshots.entity;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.time.Instant;
 import java.time.LocalTime;
-import java.time.LocalDateTime;
 import java.util.UUID;
 
 /**
@@ -51,5 +51,5 @@ public class ScreenshotSettings {
     private boolean studentNotified = false;
 
     @Column(name = "updated_at", nullable = false)
-    private LocalDateTime updatedAt = LocalDateTime.now();
+    private Instant updatedAt = Instant.now();
 }

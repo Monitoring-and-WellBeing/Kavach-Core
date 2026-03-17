@@ -1,22 +1,33 @@
 -- ============================================================
--- V20 — Rewards & Redemptions System
+-- V20 -- Rewards & Redemptions System
 -- ============================================================
 
-CREATE TYPE reward_category AS ENUM (
-  'SCREEN_TIME',
-  'OUTING',
-  'FOOD_TREAT',
-  'PURCHASE',
-  'PRIVILEGE',
-  'CUSTOM'
-);
+-- Guard against "type already exists" error on partial re-run
+DO $$
+BEGIN
+  CREATE TYPE reward_category AS ENUM (
+    'SCREEN_TIME',
+    'OUTING',
+    'FOOD_TREAT',
+    'PURCHASE',
+    'PRIVILEGE',
+    'CUSTOM'
+  );
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
 
-CREATE TYPE redemption_status AS ENUM (
-  'PENDING',
-  'APPROVED',
-  'DENIED',
-  'FULFILLED'
-);
+DO $$
+BEGIN
+  CREATE TYPE redemption_status AS ENUM (
+    'PENDING',
+    'APPROVED',
+    'DENIED',
+    'FULFILLED'
+  );
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
 
 CREATE TABLE IF NOT EXISTS rewards (
   id           UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -52,7 +63,16 @@ CREATE INDEX IF NOT EXISTS idx_redemptions_tenant ON reward_redemptions(tenant_i
 CREATE INDEX IF NOT EXISTS idx_redemptions_student ON reward_redemptions(student_user_id);
 CREATE INDEX IF NOT EXISTS idx_redemptions_device ON reward_redemptions(device_id);
 
--- ── Seed predefined rewards for the demo tenant ───────────────────────────────
+-- Ensure demo tenant exists before inserting rewards ----------------------
+-- NOTE: This seeds a SEPARATE demo tenant (11111111-...) distinct from the
+--       main demo tenant (a1b2c3d4-...).  V26 removes the rewards seeded
+--       here but intentionally leaves this tenant record; if full cleanup
+--       is required, delete manually or extend V26.
+INSERT INTO tenants (id, name, type, admin_email, created_at)
+VALUES ('11111111-1111-1111-1111-111111111111', 'Demo Academy', 'COACHING', 'admin@demo.com', NOW())
+ON CONFLICT (id) DO NOTHING;
+
+-- Seed predefined rewards for the demo tenant -----------------------------
 INSERT INTO rewards (id, tenant_id, title, description, category, xp_cost, icon, created_by)
 SELECT
   gen_random_uuid(),
@@ -64,7 +84,7 @@ FROM (VALUES
   ('Pizza night',              'Choose your favourite pizza for dinner','FOOD_TREAT',  350, '🍕'),
   ('Park outing',              'A trip to the park or playground',    'OUTING',      400, '🌳'),
   ('Stay up 30 min late',      'On a Friday or Saturday night',       'PRIVILEGE',   300, '🌙'),
-  ('Book of your choice',      'Pick any book up to ₹500',            'PURCHASE',    500, '📚'),
+  ('Book of your choice',      'Pick any book up to Rs.500',          'PURCHASE',    500, '📚'),
   ('Game of your choice',      'Pick any mobile game (parent approves)','PURCHASE',  800, '🎮')
 ) AS t(title, description, category, xp_cost, icon)
 WHERE EXISTS (SELECT 1 FROM users WHERE email = 'parent@demo.com')

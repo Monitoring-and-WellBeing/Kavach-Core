@@ -1,8 +1,8 @@
 -- ============================================================
--- V19 — Location tracking, geo-fences, mobile app usage
+-- V21 -- Location tracking, geo-fences, mobile app usage
 -- ============================================================
 
--- ── Device GPS locations ──────────────────────────────────────────────────────
+-- Device GPS locations ----------------------------------------------------
 CREATE TABLE IF NOT EXISTS device_locations (
   id            UUID            PRIMARY KEY DEFAULT gen_random_uuid(),
   device_id     UUID            NOT NULL REFERENCES devices(id) ON DELETE CASCADE,
@@ -16,13 +16,13 @@ CREATE TABLE IF NOT EXISTS device_locations (
   synced_at     TIMESTAMPTZ     NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_location_device_time
+CREATE INDEX IF NOT EXISTS idx_location_device_time
   ON device_locations(device_id, recorded_at DESC);
 
-CREATE INDEX idx_location_tenant_time
+CREATE INDEX IF NOT EXISTS idx_location_tenant_time
   ON device_locations(tenant_id, recorded_at DESC);
 
--- ── Geo-fence zones (defined by parents / admins) ────────────────────────────
+-- Geo-fence zones (defined by parents / admins) ---------------------------
 CREATE TABLE IF NOT EXISTS geo_fences (
   id             UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
   tenant_id      UUID         NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
@@ -35,10 +35,10 @@ CREATE TABLE IF NOT EXISTS geo_fences (
   created_at     TIMESTAMPTZ  NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_geofence_tenant
+CREATE INDEX IF NOT EXISTS idx_geofence_tenant
   ON geo_fences(tenant_id) WHERE active = TRUE;
 
--- ── Geo-fence enter/exit events ───────────────────────────────────────────────
+-- Geo-fence enter/exit events ---------------------------------------------
 CREATE TABLE IF NOT EXISTS geo_fence_events (
   id           UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
   device_id    UUID        NOT NULL REFERENCES devices(id) ON DELETE CASCADE,
@@ -49,10 +49,10 @@ CREATE TABLE IF NOT EXISTS geo_fence_events (
   notified_at  TIMESTAMPTZ
 );
 
-CREATE INDEX idx_geofence_events_device
+CREATE INDEX IF NOT EXISTS idx_geofence_events_device
   ON geo_fence_events(device_id, occurred_at DESC);
 
--- ── Mobile app-usage stats (from Android UsageStatsManager) ──────────────────
+-- Mobile app-usage stats (from Android UsageStatsManager) -----------------
 CREATE TABLE IF NOT EXISTS mobile_app_usage (
   id            UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
   device_id     UUID         NOT NULL REFERENCES devices(id) ON DELETE CASCADE,
@@ -66,8 +66,8 @@ CREATE TABLE IF NOT EXISTS mobile_app_usage (
   recorded_at   TIMESTAMPTZ  NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_mobile_usage_device
+CREATE INDEX IF NOT EXISTS idx_mobile_usage_device
   ON mobile_app_usage(device_id, period_start DESC);
 
-CREATE INDEX idx_mobile_usage_tenant
+CREATE INDEX IF NOT EXISTS idx_mobile_usage_tenant
   ON mobile_app_usage(tenant_id, period_start DESC);

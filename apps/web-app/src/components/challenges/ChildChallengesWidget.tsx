@@ -1,6 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
-import { Zap, CheckCircle2, Circle } from 'lucide-react'
+import { Zap, CheckCircle2 } from 'lucide-react'
 import { challengesParentApi, ChildChallenge } from '@/lib/challenges'
 
 const DIFFICULTY_COLOR: Record<string, string> = {

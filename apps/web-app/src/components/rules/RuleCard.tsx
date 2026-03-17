@@ -3,7 +3,7 @@
 import { Rule, RuleType, RuleStatus } from "@kavach/shared-types";
 import { Toggle } from "@/components/ui/Toggle";
 import { Button } from "@/components/ui/Button";
-import { Trash2, Clock, Calendar, Tag } from "lucide-react";
+import { Trash2, Clock, Calendar } from "lucide-react";
 import { clsx } from "clsx";
 import { formatDate } from "@kavach/shared-utils";
 

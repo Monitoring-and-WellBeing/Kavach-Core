@@ -1,6 +1,7 @@
 node_modules/
 .next/
 dist/
+dist-build/
 out/
 .env
 .env.local
@@ -10,3 +11,9 @@ target/
 *.class
 .mvn/
 .turbo/
+
+# next-pwa generated service worker files (generated at build time, do not commit)
+apps/web-app/public/sw.js
+apps/web-app/public/sw.js.map
+apps/web-app/public/workbox-*.js
+apps/web-app/public/workbox-*.js.map

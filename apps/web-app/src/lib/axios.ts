@@ -8,7 +8,7 @@ export const api: AxiosInstance = axios.create({
   timeout: 10000,
 })
 
-// ── Attach JWT to every request ──────────────────────────────────────────────
+// ── Attach JWT to every request (guard against SSR — localStorage is browser-only) ──
 api.interceptors.request.use((config) => {
   if (typeof window !== 'undefined') {
     const token = localStorage.getItem('kavach_access_token')
@@ -19,7 +19,7 @@ api.interceptors.request.use((config) => {
   return config
 })
 
-// ── Auto-refresh on 401 ───────────────────────────────────────────────────────
+// ── Auto-refresh on 401 (guard against SSR) ──────────────────────────────────
 api.interceptors.response.use(
   (res) => res,
   async (err) => {
@@ -45,13 +45,15 @@ api.interceptors.response.use(
           } catch {
             localStorage.removeItem('kavach_access_token')
             localStorage.removeItem('kavach_refresh_token')
+            localStorage.removeItem('kavach_user_profile')
             if (!window.location.pathname.includes('/login')) {
               window.location.href = '/login'
             }
           }
         } else {
-          // No refresh token - clear access token and redirect
+          // No refresh token — clear access token and redirect to login
           localStorage.removeItem('kavach_access_token')
+          localStorage.removeItem('kavach_user_profile')
           if (!window.location.pathname.includes('/login')) {
             window.location.href = '/login'
           }

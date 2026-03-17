@@ -153,16 +153,13 @@ public class DeviceService {
     @Transactional
     public void markStaleDevicesOffline() {
         LocalDateTime threshold = LocalDateTime.now().minusMinutes(2);
-        deviceRepo.findAll().stream()
-                .filter(d -> d.isActive()
-                        && d.getStatus() == DeviceStatus.ONLINE
-                        && d.getLastSeen() != null
-                        && d.getLastSeen().isBefore(threshold))
-                .forEach(d -> {
-                    d.setStatus(DeviceStatus.OFFLINE);
-                    d.setUpdatedAt(LocalDateTime.now());
-                    deviceRepo.save(d);
-                });
+        // Use a scoped query instead of findAll() to avoid loading every device
+        // across all tenants into heap.
+        deviceRepo.findOnlineDevicesLastSeenBefore(threshold).forEach(d -> {
+            d.setStatus(DeviceStatus.OFFLINE);
+            d.setUpdatedAt(LocalDateTime.now());
+            deviceRepo.save(d);
+        });
     }
 
     // ── Helper: update status ─────────────────────────────────────────────────

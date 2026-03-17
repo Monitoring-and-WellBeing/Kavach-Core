@@ -7,9 +7,14 @@
   "scripts": {
     "dev": "tsc && electron .",
     "build": "tsc",
-    "pack": "electron-builder",
     "build:full": "tsc && electron-builder",
-    "test": "jest"
+    "pack": "electron-builder",
+    "dist:win": "tsc && electron-builder --win",
+    "dist:mac": "tsc && electron-builder --mac",
+    "test": "jest",
+    "test:coverage": "jest --coverage",
+    "lint": "tsc --noEmit",
+    "type-check": "tsc --noEmit"
   },
   "dependencies": {
     "@kavach/shared-types": "workspace:*"

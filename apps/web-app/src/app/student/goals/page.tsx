@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { Plus, Target, RefreshCw, Trash2 } from 'lucide-react'
+import { Plus, RefreshCw, Trash2 } from 'lucide-react'
 import { Modal } from '@/components/ui/Modal'
 import { useToast, Toast } from '@/components/ui/Toast'
 import { goalsApi, Goal, GoalType, GOAL_TYPE_CONFIG } from '@/lib/goals'

@@ -1,9 +1,9 @@
--- ═══════════════════════════════════════════════════════════════
--- KAVACH AI — V8 Migration: App & Site Blocking Schema
--- ═══════════════════════════════════════════════════════════════
+-- ================================================================
+-- KAVACH AI -- V8 Migration: App & Site Blocking Schema
+-- ================================================================
 
--- ─── BLOCK RULES ─────────────────────────────────────────────────────────────
-CREATE TABLE block_rules (
+-- BLOCK RULES --------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS block_rules (
     id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     tenant_id       UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
     created_by      UUID NOT NULL REFERENCES users(id),
@@ -11,7 +11,7 @@ CREATE TABLE block_rules (
     rule_type       VARCHAR(30) NOT NULL CHECK (rule_type IN (
                       'APP',        -- block specific app by process name
                       'CATEGORY',   -- block entire category (GAMING, SOCIAL_MEDIA, etc.)
-                      'WEBSITE',    -- block domain (future — browser extension)
+                      'WEBSITE',    -- block domain (future: browser extension)
                       'KEYWORD'     -- block window title containing keyword
                     )),
     -- target: process name / category / domain / keyword
@@ -33,9 +33,9 @@ CREATE TABLE block_rules (
     updated_at       TIMESTAMP DEFAULT NOW()
 );
 
--- ─── BLOCKING VIOLATIONS ─────────────────────────────────────────────────────
+-- BLOCKING VIOLATIONS ------------------------------------------------------
 -- Every time the agent blocks an app, it logs here
-CREATE TABLE blocking_violations (
+CREATE TABLE IF NOT EXISTS blocking_violations (
     id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     tenant_id       UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
     device_id       UUID NOT NULL REFERENCES devices(id) ON DELETE CASCADE,
@@ -47,13 +47,13 @@ CREATE TABLE blocking_violations (
     attempted_at    TIMESTAMP DEFAULT NOW()
 );
 
--- ─── INDEXES ─────────────────────────────────────────────────────────────────
-CREATE INDEX idx_block_rules_tenant   ON block_rules(tenant_id, is_active);
-CREATE INDEX idx_block_rules_device   ON block_rules(device_id);
-CREATE INDEX idx_violations_device    ON blocking_violations(device_id, attempted_at DESC);
-CREATE INDEX idx_violations_tenant    ON blocking_violations(tenant_id, attempted_at DESC);
+-- INDEXES ------------------------------------------------------------------
+CREATE INDEX IF NOT EXISTS idx_block_rules_tenant   ON block_rules(tenant_id, is_active);
+CREATE INDEX IF NOT EXISTS idx_block_rules_device   ON block_rules(device_id);
+CREATE INDEX IF NOT EXISTS idx_violations_device    ON blocking_violations(device_id, attempted_at DESC);
+CREATE INDEX IF NOT EXISTS idx_violations_tenant    ON blocking_violations(tenant_id, attempted_at DESC);
 
--- ─── SEED DEMO BLOCK RULES ───────────────────────────────────────────────────
+-- SEED DEMO BLOCK RULES ----------------------------------------------------
 -- Using actual tenant and user IDs from seed data
 INSERT INTO block_rules (tenant_id, created_by, name, rule_type, target, applies_to, show_message)
 VALUES

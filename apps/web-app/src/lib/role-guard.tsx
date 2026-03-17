@@ -1,29 +1,28 @@
-"use client";
+'use client'
 
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { Role } from "@kavach/shared-types";
-import { useAuth } from "@/context/AuthContext";
+import { useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import { useAuth } from '@/context/AuthContext'
 
 interface RoleGuardProps {
-  allowedRoles: Role[];
-  children: React.ReactNode;
+  allowedRoles: string[]
+  children: React.ReactNode
 }
 
 export function RoleGuard({ allowedRoles, children }: RoleGuardProps) {
-  const router = useRouter();
-  const { user, loading } = useAuth();
+  const router = useRouter()
+  const { user, loading } = useAuth()
 
   useEffect(() => {
-    if (loading) return;
+    if (loading) return
     if (!user) {
-      router.push("/login");
-      return;
+      router.push('/')
+      return
     }
-    if (!allowedRoles.includes(user.role as Role)) {
-      router.push("/");
+    if (allowedRoles.length > 0 && !allowedRoles.includes(user.role)) {
+      router.push('/')
     }
-  }, [user, loading, allowedRoles, router]);
+  }, [user, loading, allowedRoles, router])
 
-  return <>{children}</>;
+  return <>{children}</>
 }
