@@ -1,7 +1,7 @@
 'use client'
 import { useParams, useRouter } from 'next/navigation'
 import { useState, useEffect, useCallback } from 'react'
-import { ArrowLeft, Monitor, Clock, Shield, Camera, RefreshCw } from 'lucide-react'
+import { ArrowLeft, Monitor, Clock, Shield, Camera, RefreshCw, Activity } from 'lucide-react'
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Cell } from 'recharts'
 import { useToast, Toast } from '@/components/ui/Toast'
 import { devicesApi, Device } from '@/lib/devices'
@@ -9,8 +9,9 @@ import { reportsApi, AppUsage, WeeklyReport } from '@/lib/reports'
 import { blockingApi, BlockRule } from '@/lib/blocking'
 import { alertsApi, AlertItem } from '@/lib/alerts'
 import { ScreenshotGallery } from '@/components/screenshots/ScreenshotGallery'
+import { DeviceActivityLog } from '@/components/devices/DeviceActivityLog'
 
-const tabs = ['Overview', 'App Usage', 'Rules', 'Alerts', 'Screenshots'] as const
+const tabs = ['Overview', 'App Usage', 'Rules', 'Alerts', 'Live Monitor', 'Screenshots'] as const
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 function formatSeconds(s: number) {
@@ -141,11 +142,17 @@ export default function DeviceDetailPage() {
       <div className="flex gap-2 border-b border-gray-200 overflow-x-auto">
         {tabs.map(tab => (
           <button key={tab} onClick={() => setActiveTab(tab)}
-            className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 whitespace-nowrap ${
+            className={`flex items-center gap-1.5 px-4 py-2 text-sm font-medium transition-colors border-b-2 whitespace-nowrap ${
               activeTab === tab
                 ? 'border-blue-500 text-blue-600'
                 : 'border-transparent text-gray-500 hover:text-gray-700'
             }`}>
+            {tab === 'Live Monitor' && (
+              <span className="relative flex h-1.5 w-1.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-green-500" />
+              </span>
+            )}
             {tab}
           </button>
         ))}
@@ -327,6 +334,24 @@ export default function DeviceDetailPage() {
                   </div>
                 ))
               )}
+            </div>
+          )}
+
+          {/* ── Live Monitor ────────────────────────────────────────────────── */}
+          {activeTab === 'Live Monitor' && (
+            <div className="bg-white rounded-2xl p-5 shadow-sm space-y-4">
+              <div className="flex items-center gap-2">
+                <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-blue-50">
+                  <Activity size={18} className="text-blue-500" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-gray-900 text-sm">Enforcement Activity</h3>
+                  <p className="text-xs text-gray-400">
+                    Real-time log of blocked apps, URLs, and focus violations
+                  </p>
+                </div>
+              </div>
+              <DeviceActivityLog deviceId={device.id} />
             </div>
           )}
 

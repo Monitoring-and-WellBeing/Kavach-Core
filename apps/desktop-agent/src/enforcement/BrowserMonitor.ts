@@ -29,11 +29,20 @@ export class BrowserMonitor {
   private checkInterval: NodeJS.Timeout | null = null
   private urlRules: UrlBlockRule[] = []
 
+  /**
+   * Per-pattern cooldown: prevents sending Ctrl+W on every 2-second tick.
+   * Without this, PowerShell spawns every 2 s to send keystrokes, causing
+   * visible screen flicker / focus stealing on the student's machine.
+   */
+  private blockCooldown = new Map<string, number>()
+  private readonly BLOCK_COOLDOWN_MS = 10_000  // 10 s between close-attempts per pattern
+
   /** Browsers whose window titles we monitor */
   private readonly MONITORED_BROWSERS = ['chrome', 'msedge', 'firefox', 'brave']
 
   setRules(rules: UrlBlockRule[]): void {
     this.urlRules = rules
+    this.blockCooldown.clear()  // reset cooldowns when rules change
   }
 
   start(): void {
@@ -67,6 +76,11 @@ export class BrowserMonitor {
       })
 
       if (blockedRule) {
+        const now = Date.now()
+        const lastBlock = this.blockCooldown.get(blockedRule.pattern) ?? 0
+        if (now - lastBlock < this.BLOCK_COOLDOWN_MS) continue
+
+        this.blockCooldown.set(blockedRule.pattern, now)
         logger.info(`[BrowserMonitor] Blocked URL pattern "${blockedRule.pattern}" in title: ${title}`)
         await this.closeBlockedTab()
         this.reportUrlBlock(blockedRule.pattern, title)
