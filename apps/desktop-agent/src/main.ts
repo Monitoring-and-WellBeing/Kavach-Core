@@ -142,8 +142,8 @@ app.whenReady().then(async () => {
   tray.setContextMenu(contextMenu);
   tray.setToolTip("KAVACH AI — Monitoring Active");
 
-  // Initialize agent
-  await initializeAgent();
+  // Register all IPC handlers before initializeAgent() so the renderer never
+  // invokes a handler that hasn't been registered yet (race condition fix).
 
   // IPC: renderer requests a new link code (step 1 of linking flow)
   ipcMain.handle("generate-link-code", async () => {
@@ -199,6 +199,9 @@ app.whenReady().then(async () => {
       version: AGENT_VERSION,
     };
   });
+
+  // Initialize agent after handlers are registered
+  await initializeAgent();
 });
 
 // Graceful shutdown

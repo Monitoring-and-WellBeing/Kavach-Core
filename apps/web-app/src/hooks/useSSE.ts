@@ -31,8 +31,12 @@ export function useSSE(
   const connect = useCallback(() => {
     if (!enabled || typeof window === "undefined") return;
 
-    const url = `${API_BASE}${path}`;
-    const es = new EventSource(url, { withCredentials: true });
+    // EventSource cannot set custom headers, so the JWT is passed as a
+    // query parameter. JwtFilter accepts ?token= as a fallback for SSE.
+    const jwt = localStorage.getItem("kavach_access_token");
+    if (!jwt) return; // not authenticated — skip connecting
+    const url = `${API_BASE}${path}?token=${encodeURIComponent(jwt)}`;
+    const es = new EventSource(url);
     esRef.current = es;
 
     // Wire up named event listeners lazily via the ref so new callbacks work
