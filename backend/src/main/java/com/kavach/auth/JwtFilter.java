@@ -24,13 +24,19 @@ public class JwtFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest req, HttpServletResponse res, FilterChain chain)
             throws ServletException, IOException {
 
+        // Primary: Bearer token in Authorization header
+        // Fallback: ?token= query parameter — used by EventSource (SSE) which
+        // cannot set custom headers, so the JWT is passed as a query param instead.
         String authHeader = req.getHeader("Authorization");
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+        String token;
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            token = authHeader.substring(7);
+        } else if (req.getParameter("token") != null) {
+            token = req.getParameter("token");
+        } else {
             chain.doFilter(req, res);
             return;
         }
-
-        String token = authHeader.substring(7);
         if (!jwtService.isTokenValid(token)) {
             // Token was provided but is expired or tampered — return 401 explicitly.
             // Without this, Spring Security falls through to anonymous auth and returns
