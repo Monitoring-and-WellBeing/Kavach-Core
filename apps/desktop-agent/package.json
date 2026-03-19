@@ -3,6 +3,10 @@
   "version": "1.2.4",
   "description": "KAVACH AI Desktop Monitoring Agent",
   "author": "KAVACH AI",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Monitoring-and-WellBeing/Kavach-Core"
+  },
   "main": "dist/main.js",
   "scripts": {
     "dev": "ts-node src/main.ts",

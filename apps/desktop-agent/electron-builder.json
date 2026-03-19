@@ -52,6 +52,8 @@
   },
   "publish": {
     "provider": "github",
+    "owner": "Monitoring-and-WellBeing",
+    "repo": "Kavach-Core",
     "releaseType": "draft"
   }
 }
