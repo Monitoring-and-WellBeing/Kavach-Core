@@ -165,9 +165,11 @@
         <artifactId>flyway-maven-plugin</artifactId>
         <version>9.22.3</version>
         <configuration>
-          <url>${flyway.url:jdbc:postgresql://ep-silent-rice-a1yu2php.ap-southeast-1.aws.neon.tech/neondb?sslmode=require}</url>
-          <user>${flyway.user:neondb_owner}</user>
-          <password>${flyway.password:npg_MT7xyRk6nUQf}</password>
+          <!-- Flyway Maven plugin is NOT run during normal builds; only when explicitly invoked -->
+          <skip>${flyway.skip:true}</skip>
+          <url>${env.SPRING_DATASOURCE_URL}</url>
+          <user>${env.SPRING_DATASOURCE_USERNAME}</user>
+          <password>${env.SPRING_DATASOURCE_PASSWORD}</password>
           <locations>
             <location>classpath:db/migration</location>
           </locations>

@@ -21,6 +21,10 @@ const ALLOW = [
 module.exports = {
   preset: 'jest-expo',
 
+  // Async effects + cold module-load overhead on first test in each file can
+  // exceed the default 5 s. 15 s gives enough headroom without masking real hangs.
+  testTimeout: 15000,
+
   setupFilesAfterEnv: ['<rootDir>/jest.setup.ts'],
 
   transformIgnorePatterns: [

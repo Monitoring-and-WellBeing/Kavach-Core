@@ -31,7 +31,8 @@
       { "target": "nsis", "arch": ["x64"] }
     ],
     "icon": "assets/icon.ico",
-    "publisherName": "KAVACH AI"
+    "publisherName": "KAVACH AI",
+    "artifactName": "KAVACH-Agent-Setup-${version}.exe"
   },
   "nsis": {
     "oneClick": true,
@@ -40,12 +41,19 @@
     "uninstallerIcon": "assets/icon.ico",
     "shortcutName": "KAVACH AI Agent",
     "runAfterFinish": true,
-    "deleteAppDataOnUninstall": false
+    "deleteAppDataOnUninstall": false,
+    "createDesktopShortcut": false,
+    "createStartMenuShortcut": true
   },
   "linux": {
     "target": ["AppImage"],
     "icon": "assets/icon.png",
     "category": "Utility"
   },
-  "publish": null
+  "publish": {
+    "provider": "github",
+    "owner": "Monitoring-and-WellBeing",
+    "repo": "Kavach-Core",
+    "releaseType": "draft"
+  }
 }

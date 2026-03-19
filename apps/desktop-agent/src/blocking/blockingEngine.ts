@@ -1,4 +1,5 @@
 import { loadConfig } from '../auth/config'
+import { logger } from '../logger'
 
 export interface AgentBlockRule {
   id: string
@@ -27,7 +28,7 @@ function resetAppTimeTrackingIfNeeded(): void {
   if (today !== lastResetDate) {
     appTimeToday.clear()
     lastResetDate = today
-    console.log('[time-limit] Reset app time tracking for new day')
+    logger.info('[time-limit] Reset app time tracking for new day')
   }
 }
 
@@ -51,7 +52,7 @@ export async function refreshBlockRules(): Promise<void> {
       const rulesChanged = lastUpdated !== null && currentLastUpdated !== lastUpdated
       
       if (rulesChanged) {
-        console.log('[rules] Rules updated at', currentLastUpdated, '- reloading immediately')
+        logger.info('[rules] Rules updated at', currentLastUpdated)
       }
       
       // Update cached rules and metadata
@@ -61,12 +62,12 @@ export async function refreshBlockRules(): Promise<void> {
       
       // If rules changed, log it
       if (rulesChanged) {
-        console.log('[rules] Loaded', cachedRules.length, 'active rules')
+        logger.info(`[rules] Loaded ${cachedRules.length} active rules`)
       }
     }
   } catch (err) {
     // Keep using cached rules on network failure
-    console.debug('[rules] Failed to refresh rules, using cached:', err)
+    logger.debug('[rules] Failed to refresh rules, using cached', String(err))
   }
 }
 

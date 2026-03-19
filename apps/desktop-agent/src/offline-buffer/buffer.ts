@@ -2,6 +2,7 @@ import fs from 'fs/promises'
 import path from 'path'
 import os from 'os'
 import { UsageSession } from '../tracking/tracker'
+import { logger } from '../logger'
 
 const BUFFER_PATH = path.join(
   process.env.APPDATA || os.homedir(),
@@ -36,13 +37,13 @@ export async function bufferSessions(deviceId: string, sessions: UsageSession[])
     const combined = [...existing, ...newLogs]
     
     if (combined.length > MAX_BUFFER_SIZE) {
-      console.warn(`[buffer] Buffer size (${combined.length}) exceeds MAX_BUFFER_SIZE (${MAX_BUFFER_SIZE}), dropping oldest entries`)
+      logger.warn(`[buffer] Buffer size (${combined.length}) exceeds MAX_BUFFER_SIZE (${MAX_BUFFER_SIZE}), dropping oldest entries`)
     }
     
     const trimmed = combined.slice(-MAX_BUFFER_SIZE)
     await fs.writeFile(BUFFER_PATH, JSON.stringify(trimmed))
   } catch (err) {
-    console.error('[buffer] Failed to write offline buffer:', err)
+    logger.error('[buffer] Failed to write offline buffer', String(err))
   }
 }
 

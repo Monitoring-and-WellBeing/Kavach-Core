@@ -5,6 +5,7 @@
 // server offset.
 
 import { loadConfig } from '../auth/config'
+import { logger } from '../logger'
 
 class TimeSyncService {
   /** ms delta: serverTime = Date.now() + serverTimeOffset */
@@ -37,10 +38,10 @@ class TimeSyncService {
       this.serverTimeOffset = serverTime - (localBefore + networkLatency)
       this.lastSync = Date.now()
 
-      console.debug(`[TimeSync] Offset: ${this.serverTimeOffset}ms (latency ${networkLatency.toFixed(0)}ms)`)
+      logger.debug(`[TimeSync] Offset: ${this.serverTimeOffset}ms (latency ${networkLatency.toFixed(0)}ms)`)
     } catch {
       // Keep previous offset — enforcement continues with last known good value
-      console.debug('[TimeSync] Sync failed — using cached offset')
+      logger.debug('[TimeSync] Sync failed — using cached offset')
     }
   }
 

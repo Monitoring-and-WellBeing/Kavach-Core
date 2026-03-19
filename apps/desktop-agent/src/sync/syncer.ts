@@ -1,6 +1,7 @@
 import { UsageSession } from '../tracking/tracker'
 import { bufferSessions, readBuffer, clearBuffer } from '../offline-buffer/buffer'
 import { loadConfig } from '../auth/config'
+import { logger } from '../logger'
 
 export interface ActivityLogPayload {
   deviceId: string
@@ -31,7 +32,7 @@ export async function syncSessions(sessions: UsageSession[]): Promise<boolean> {
   const config = await loadConfig()
 
   if (!config.deviceLinked || !config.deviceId) {
-    console.log('[syncer] Device not linked, skipping sync')
+    logger.info('[syncer] Device not linked, skipping sync')
     return false
   }
 
@@ -39,7 +40,7 @@ export async function syncSessions(sessions: UsageSession[]): Promise<boolean> {
 
   // Guard: prevent concurrent syncs
   if (isSyncing) {
-    console.debug('[syncer] Sync already in progress, skipping')
+    logger.debug('[syncer] Sync already in progress, skipping')
     return false
   }
 
@@ -77,7 +78,7 @@ export async function syncSessions(sessions: UsageSession[]): Promise<boolean> {
     // Success: reset failure count and flush buffer
     failureCount = 0
     lastSyncTime = Date.now()
-    console.log('[syncer] Sync succeeded, resetting failure count')
+    logger.info('[syncer] Sync succeeded, resetting failure count')
 
     // After successful sync, flush the offline buffer too
     await flushOfflineBuffer(config.deviceId, config.apiUrl)
@@ -93,14 +94,14 @@ export async function syncSessions(sessions: UsageSession[]): Promise<boolean> {
 
     if (isNetworkError) {
       failureCount++
-      console.warn('[syncer] Network error, failure count:', failureCount)
+      logger.warn('[syncer] Network error, failure count', failureCount)
 
       if (failureCount >= 3) {
-        console.warn('[syncer] 3+ consecutive failures, will use backoff interval (5 min)')
+        logger.warn('[syncer] 3+ consecutive failures, will use backoff interval (5 min)')
       }
     }
 
-    console.error('[syncer] Sync failed, buffering:', err)
+    logger.error('[syncer] Sync failed, buffering', String(err))
     
     // Keep buffer intact — don't clear on failure
     await bufferSessions(config.deviceId, sessions)
@@ -119,7 +120,7 @@ export function getSyncInterval(): number {
 // Reset failure count (called when connection is restored)
 export function resetFailureCount(): void {
   if (failureCount > 0) {
-    console.log('[syncer] Connection restored, resetting failure count')
+    logger.info('[syncer] Connection restored, resetting failure count')
     failureCount = 0
   }
 }
@@ -134,10 +135,10 @@ async function flushOfflineBuffer(deviceId: string, apiUrl: string): Promise<voi
     : buffered
 
   if (buffered.length > MAX_BUFFER_SIZE) {
-    console.warn(`[syncer] Buffer exceeded MAX_BUFFER_SIZE (${MAX_BUFFER_SIZE}), dropping ${buffered.length - MAX_BUFFER_SIZE} oldest entries`)
+    logger.warn(`[syncer] Buffer exceeded MAX_BUFFER_SIZE (${MAX_BUFFER_SIZE}), dropping ${buffered.length - MAX_BUFFER_SIZE} oldest entries`)
   }
 
-  console.log(`[syncer] Flushing ${logsToFlush.length} buffered logs`)
+  logger.info(`[syncer] Flushing ${logsToFlush.length} buffered logs`)
 
   const payload: ActivityLogPayload = {
     deviceId,
@@ -163,10 +164,10 @@ async function flushOfflineBuffer(deviceId: string, apiUrl: string): Promise<voi
     if (response.ok) {
       await clearBuffer()
       resetFailureCount() // Connection restored
-      console.log('[syncer] Buffer flushed successfully, connection restored')
+      logger.info('[syncer] Buffer flushed successfully, connection restored')
     }
-  } catch (err) {
+  } catch {
     // Leave buffer intact — try again next cycle
-    console.debug('[syncer] Buffer flush failed, will retry next cycle')
+    logger.debug('[syncer] Buffer flush failed, will retry next cycle')
   }
 }

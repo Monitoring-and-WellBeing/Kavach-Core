@@ -15,6 +15,7 @@
 import { exec } from 'child_process'
 import { promisify } from 'util'
 import { loadConfig } from '../auth/config'
+import { logger } from '../logger'
 
 const execAsync = promisify(exec)
 
@@ -48,10 +49,10 @@ export class SelfProtection {
     if (this.watchdogInterval) return
     this.watchdogInterval = setInterval(() => {
       this.detectKillTools().catch(err =>
-        console.debug('[SelfProtection] Detection error:', err)
+        logger.debug('[SelfProtection] Detection error', String(err))
       )
     }, 3000)
-    console.log('[SelfProtection] Watchdog started')
+    logger.info('[SelfProtection] Watchdog started')
   }
 
   stop(): void {
@@ -79,7 +80,7 @@ export class SelfProtection {
         nowRunning.add(tool)
         if (!this.activeKillTools.has(tool)) {
           // New detection — report once per open-event, not every 3 s
-          console.warn(`[SelfProtection] Kill-tool opened: ${tool}`)
+          logger.warn(`[SelfProtection] Kill-tool opened: ${tool}`)
           this.activeKillTools.add(tool)
         await this.reportKillToolDetected(tool)
         }
@@ -116,7 +117,7 @@ export class SelfProtection {
       })
     } catch {
       // Non-critical: log locally if backend is unreachable
-      console.warn(`[SelfProtection] Could not report kill-tool event for ${toolName}`)
+      logger.warn(`[SelfProtection] Could not report kill-tool event for ${toolName}`)
     }
   }
 
@@ -139,9 +140,9 @@ export class SelfProtection {
     return new Promise(resolve => {
       exec(regCmd, err => {
         if (err) {
-          console.error('[SelfProtection] Startup registration failed:', err.message)
+          logger.error('[SelfProtection] Startup registration failed', err.message)
         } else {
-          console.log('[SelfProtection] Registered for Windows startup (HKCU Run key)')
+          logger.info('[SelfProtection] Registered for Windows startup (HKCU Run key)')
         }
         resolve()
       })

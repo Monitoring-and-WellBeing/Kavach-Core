@@ -15,6 +15,7 @@
 import { exec } from 'child_process'
 import { promisify } from 'util'
 import { loadConfig } from '../auth/config'
+import { logger } from '../logger'
 
 const execAsync = promisify(exec)
 
@@ -39,10 +40,10 @@ export class BrowserMonitor {
     if (this.checkInterval) return
     this.checkInterval = setInterval(() => {
       this.checkActiveBrowserUrl().catch(err =>
-        console.debug('[BrowserMonitor] Check error:', err)
+        logger.debug('[BrowserMonitor] Check error', String(err))
       )
     }, 2000)
-    console.log('[BrowserMonitor] Started')
+    logger.info('[BrowserMonitor] Started')
   }
 
   stop(): void {
@@ -66,7 +67,7 @@ export class BrowserMonitor {
       })
 
       if (blockedRule) {
-        console.log(`[BrowserMonitor] Blocked URL pattern "${blockedRule.pattern}" in title: ${title}`)
+        logger.info(`[BrowserMonitor] Blocked URL pattern "${blockedRule.pattern}" in title: ${title}`)
         await this.closeBlockedTab()
         this.reportUrlBlock(blockedRule.pattern, title)
       }

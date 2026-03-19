@@ -1,27 +1,46 @@
 import fs from "fs/promises";
 import path from "path";
 import os from "os";
+import { AGENT_VERSION } from "../version";
+import { BUILD_API_URL } from "../buildTime";
 
-const CONFIG_PATH = path.join(process.env.APPDATA || ".", "kavach-config.json");
+const CONFIG_PATH = path.join(process.env.APPDATA || os.homedir(), "kavach-config.json");
 
 export interface AgentConfig {
   deviceLinked: boolean;
-  deviceId?: string;          // UUID from backend after linking
-  deviceCode?: string;        // the 6-char code shown to user
-  authToken?: string;         // not used for agent — device uses deviceId
+  deviceId?: string;
+  deviceCode?: string;
+  authToken?: string;
   tenantId?: string;
   apiUrl: string;
   agentVersion: string;
   hostname: string;
 }
 
-// API_URL is baked into the build via electron-builder's extraMetadata / env injection.
-// In production builds this env var is set to the Railway backend URL.
-// The localhost fallback is for local development ONLY — never ships in production.
+/**
+ * Resolves the API base URL at runtime.
+ *
+ * Priority:
+ *   1. BUILD_API_URL — injected at packaging time by scripts/write-build-config.cjs
+ *   2. API_URL env var — set by developer for local dev
+ *
+ * If neither is set the agent cannot communicate with the backend.
+ * This deliberately fails loudly so the misconfiguration is caught immediately.
+ */
+function resolveApiUrl(): string {
+  if (BUILD_API_URL) return BUILD_API_URL;
+  if (process.env.API_URL) return process.env.API_URL;
+  throw new Error(
+    "[KAVACH] No API URL configured. " +
+    "Run `pnpm write-config` (CI) or set API_URL in apps/desktop-agent/.env (local dev). " +
+    "See env.example for reference."
+  );
+}
+
 const defaultConfig: AgentConfig = {
   deviceLinked: false,
-  apiUrl: process.env.API_URL || 'https://kavach-core-production.up.railway.app',
-  agentVersion: '1.2.4',
+  apiUrl: resolveApiUrl(),
+  agentVersion: AGENT_VERSION,
   hostname: os.hostname(),
 };
 

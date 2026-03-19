@@ -15,6 +15,7 @@ import { timeSync } from './TimeSync'
 import { loadConfig } from '../auth/config'
 import { ScreenshotCapture } from '../screenshots/ScreenshotCapture'
 import { activeAppUsage } from './UsageTracker'
+import { logger } from '../logger'
 
 const execAsync = promisify(exec)
 
@@ -98,10 +99,10 @@ export class EnforcementEngine {
     // 2-second cadence: fast enough to catch re-launches, low enough CPU impact
     this.enforcementInterval = setInterval(() => {
       this.enforce().catch(err =>
-        console.error('[Enforcement] Enforce cycle error:', err)
+        logger.error('[Enforcement] Enforce cycle error', String(err))
       )
     }, 2000)
-    console.log('[Enforcement] Engine started')
+    logger.info('[Enforcement] Engine started')
   }
 
   stop(): void {
@@ -109,7 +110,7 @@ export class EnforcementEngine {
       clearInterval(this.enforcementInterval)
       this.enforcementInterval = null
     }
-    console.log('[Enforcement] Engine stopped')
+    logger.info('[Enforcement] Engine stopped')
   }
 
   // ── Private: main enforcement cycle ────────────────────────────────────────
@@ -176,7 +177,7 @@ export class EnforcementEngine {
         await execAsync(`taskkill /F /PID ${proc.pid} /T`, { timeout: 5000 })
       }
 
-      console.log(`[Enforcement] Killed ${proc.name} (PID ${proc.pid}) — rule ${rule.id}`)
+      logger.info(`[Enforcement] Killed ${proc.name} (PID ${proc.pid}) — rule ${rule.id}`)
       this.showBlockNotification(proc.name, rule)
       this.reportEvent(proc.name, rule.id, 'BLOCKED')
 
@@ -194,7 +195,7 @@ export class EnforcementEngine {
       ) {
         // Edge case 3: process running as admin — agent can't kill it.
         // Fallback: cover it with a full-screen blocking overlay.
-        console.warn(`[Enforcement] Access denied for ${proc.name} — showing overlay`)
+        logger.warn(`[Enforcement] Access denied for ${proc.name} — showing overlay`)
         this.showBlockOverlay(proc.name, rule)
         this.reportEvent(proc.name, rule.id, 'OVERLAY_SHOWN')
 
@@ -210,9 +211,9 @@ export class EnforcementEngine {
         err.message?.includes('No such process')
       ) {
         // Process exited between our list and the kill — harmless
-        console.debug(`[Enforcement] ${proc.name} already exited`)
+        logger.debug(`[Enforcement] ${proc.name} already exited`)
       } else {
-        console.error(`[Enforcement] Kill failed for ${proc.name}:`, err.message)
+        logger.error(`[Enforcement] Kill failed for ${proc.name}`, err.message)
       }
     }
   }
@@ -356,7 +357,7 @@ export class EnforcementEngine {
         const { stdout } = await execAsync('tasklist /FO CSV /NH', { timeout: 8000 })
         return parseTasklistOutput(stdout)
       } catch (err) {
-        console.error('[Enforcement] Could not enumerate processes:', err)
+        logger.error('[Enforcement] Could not enumerate processes', String(err))
         return []
       }
     }

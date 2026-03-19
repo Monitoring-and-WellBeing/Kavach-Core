@@ -13,6 +13,7 @@ import { EnforcementEngine, BlockingRule, TimeLimitStatus, TimeLimitEntry } from
 import { BrowserMonitor } from './BrowserMonitor'
 import { loadConfig } from '../auth/config'
 import { activeAppUsage } from './UsageTracker'
+import { logger } from '../logger'
 
 // EventSource is available in the Electron main process via Node 18+.
 // If not globally available, polyfill with node-fetch-based SSE.
@@ -80,7 +81,7 @@ export class RuleSync {
   private async connectSse(): Promise<void> {
     // EventSource is available in Electron renderer or via Node 18+ global
     if (typeof EventSource === 'undefined') {
-      console.warn('[RuleSync] EventSource not available — SSE disabled, polling only')
+      logger.warn('[RuleSync] EventSource not available — SSE disabled, polling only')
       return
     }
     try {
@@ -95,18 +96,18 @@ export class RuleSync {
       this.sseConnected = false
 
       es.addEventListener('rules_updated', () => {
-        console.log('[RuleSync] SSE rules_updated — triggering immediate full sync')
+        logger.info('[RuleSync] SSE rules_updated — triggering immediate full sync')
         this.fullSync()
       })
 
       es.addEventListener('focus_start', (e: MessageEvent) => {
-        console.log('[RuleSync] SSE focus_start:', e.data)
+        logger.info('[RuleSync] SSE focus_start', e.data)
         // Trigger a full sync so focus whitelist is refreshed immediately
         this.fullSync()
       })
 
       es.addEventListener('focus_end', (e: MessageEvent) => {
-        console.log('[RuleSync] SSE focus_end:', e.data)
+        logger.info('[RuleSync] SSE focus_end', e.data)
         this.fullSync()
       })
 
@@ -119,9 +120,9 @@ export class RuleSync {
       }
 
       this.sseConnected = true
-      console.log('[RuleSync] SSE connected to', url)
+      logger.info('[RuleSync] SSE connected to', url)
     } catch (err) {
-      console.warn('[RuleSync] SSE connect failed:', String(err))
+      logger.warn('[RuleSync] SSE connect failed', String(err))
       this.sseReconnectTimer = setTimeout(() => this.connectSse(), 10_000)
     }
   }
@@ -171,7 +172,7 @@ export class RuleSync {
         { signal: AbortSignal.timeout(8000) }
       )
       if (!res.ok) {
-        console.warn(`[RuleSync] Bad response: ${res.status}`)
+        logger.warn(`[RuleSync] Bad response: ${res.status}`)
         return
       }
 
@@ -208,12 +209,12 @@ export class RuleSync {
         .map(r => ({ id: r.id, pattern: r.target, action: 'BLOCK' as const }))
       this.browserMonitor.setRules(urlRules)
 
-      console.log(
+      logger.info(
         `[RuleSync] Synced — version ${data.rulesVersion}, ` +
         `${rules.length} rules, focus: ${data.focusModeActive}`
       )
     } catch (err) {
-      console.error('[RuleSync] Full sync failed — retaining cached rules:', String(err))
+      logger.error('[RuleSync] Full sync failed — retaining cached rules', String(err))
     }
   }
 

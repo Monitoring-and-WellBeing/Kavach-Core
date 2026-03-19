@@ -1,0 +1,588 @@
+---
+alwaysApply: true
+---
+
+# KAVACH AI — Monorepo Coding Standards & Enforcement Rules
+# ==============================================================
+# Applies to ALL contributors, ALL branches, ALL apps in this monorepo.
+# Non-compliance = PR rejection. No exceptions.
+# Maintained by: TL / @Prateek Saxena
+# ==============================================================
+
+## MONOREPO OVERVIEW
+
+This is a **pnpm + Turborepo** monorepo. All apps share the same repo.
+Understand the full system before touching anything:
+
+```
+Kavach-Core/
+├── apps/
+│   ├── web-app/         → Next.js 14 App Router — Parent/Institute/Student web dashboard (PWA)
+│   ├── desktop-agent/   → Electron — Silent enforcement agent on student Windows PC
+│   └── mobile/          → Expo 51 / React Native — Student Android enforcement + wellness app
+├── backend/             → Spring Boot 3 / Java 17 — REST API, JWT auth, PostgreSQL
+└── packages/
+    ├── shared-types/    → Canonical TypeScript enums + interfaces shared across all apps
+    ├── shared-constants/→ App-wide constants (plan limits, presets, category maps)
+    └── shared-utils/    → Shared utility functions
+```
+
+---
+
+## ROLE & BEHAVIOUR
+
+You are a senior full-stack engineer embedded in this monorepo. At all times:
+- Enforce every rule in this file without being asked.
+- Proactively flag violations and apply fixes where possible.
+- Prefer readable, maintainable, and testable code over clever code.
+- When generating code, match the folder structure, file naming, and patterns
+  already established per-app (each app has its own conventions — read them below).
+- Never introduce new libraries, patterns, or approaches not already in use
+  unless explicitly asked AND justified in the PR description.
+- Never touch [packages/shared-types/src/index.ts](mdc:packages/shared-types/src/index.ts) without
+  understanding the downstream impact on ALL three client apps + backend DTOs.
+
+---
+
+# ──────────────────────────────────────────────────────────────────────────────
+# SECTION A — SHARED / MONOREPO-WIDE RULES
+# ──────────────────────────────────────────────────────────────────────────────
+
+## A1. Shared Packages (`packages/`)
+
+- **`@kavach/shared-types`** is the single source of truth for all enums and interfaces.
+  Always import from this package rather than redefining types locally in any app.
+  Current core types (DO NOT re-declare in app code):
+  `Role`, `Device`, `DeviceStatus`, `DeviceType`, `AppCategory`, `Rule`, `RuleType`,
+  `Alert`, `AlertType`, `AlertSeverity`, `FocusSession`, `Subscription`, `PlanType`,
+  `User`, `StudentProfile`, `Tenant`, `AIInsight`, `Badge`, `BadgeType`
+
+- **`@kavach/shared-constants`** holds app-wide constants:
+  `APP_CATEGORIES`, `BLOCKED_CATEGORIES_DEFAULT`, `PLAN_LIMITS`, `FOCUS_PRESETS`,
+  `WEEK_DAYS`, `DEVICE_LINK_CODE_LENGTH`. Use them — do not duplicate.
+
+- **`@kavach/shared-utils`** holds utility functions. Add new utilities here if
+  they are needed by ≥ 2 apps.
+
+- All packages export raw TypeScript — they are transpiled by Next.js
+  (`transpilePackages` in [apps/web-app/next.config.js](mdc:apps/web-app/next.config.js))
+  and consumed directly by Electron (tsc) and Expo (Metro bundler).
+  Do NOT add a build step or compile to JS inside `packages/`.
+
+## A2. TypeScript (All Apps)
+
+- `strict: true` is ON in every `tsconfig.json`. No implicit `any`.
+- No `any` unless justified with an inline comment explaining why it cannot be avoided.
+- All public function signatures must be fully typed (params + return type).
+- Prefer types from `@kavach/shared-types` over local re-declarations.
+- Use `unknown` instead of `any` when the shape is genuinely unknown, then narrow.
+
+Naming conventions (non-negotiable across all apps):
+
+| Construct          | Convention           | Example                     |
+|--------------------|----------------------|-----------------------------|
+| Components / Classes | PascalCase         | `DeviceCard`, `RuleSync`    |
+| Variables / params | camelCase            | `deviceList`, `focusScore`  |
+| Constants          | UPPER_SNAKE_CASE     | `MAX_RETRY_COUNT`           |
+| Hooks              | `use` + camelCase    | `useDevices`, `useFocusMode`|
+| Files (TS/TSX)     | PascalCase for classes/components, camelCase for modules | `EnforcementEngine.ts`, `axios.ts` |
+| Enums              | PascalCase           | `Role.STUDENT`              |
+
+## A3. Environment Variables
+
+- **No hardcoded URLs, API keys, tokens, or credentials** anywhere in source code — ever.
+- All env config goes in `.env` files. `.env` files MUST be in `.gitignore`.
+  Each app has an `env.example` — keep it updated when you add a new variable.
+- When adding a new `process.env.*` reference in web-app, also add a fallback
+  in [apps/web-app/next.config.js](mdc:apps/web-app/next.config.js) `env: {}` block so Vercel builds don't crash.
+- Known env variables per app:
+
+  **web-app**: `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_SHOW_DEMO_CREDENTIALS`, `NEXT_OUTPUT`, `SKIP_PWA`
+  **desktop-agent**: `KAVACH_API_URL` (from [apps/desktop-agent/env.example](mdc:apps/desktop-agent/env.example))
+  **mobile**: see [apps/mobile/env.example](mdc:apps/mobile/env.example)
+  **backend**: `SPRING_DATASOURCE_URL`, `JWT_SECRET`, `CORS_ORIGINS`, etc.
+
+## A4. Security & Production Safety
+
+- No `console.log` in production code anywhere in the monorepo.
+  Desktop agent uses a file logger; web-app and mobile should use a logger utility.
+- Sanitize all user inputs before processing or sending to APIs.
+- Tokens are stored in `localStorage` (web) and `AsyncStorage` (mobile) — never log them.
+- Backend: all requests MUST go through JWT filter (`JwtFilter.java`).
+  Tenant isolation is enforced by extracting `tenantId` from the JWT claim in every service.
+
+## A5. Git, Branching & PR Rules
+
+Branch naming:
+```
+feat/<feature-name>       → New features
+fix/<issue-name>          → Bug fixes
+refactor/<module-name>    → Refactors
+hotfix/<issue-name>       → Production hotfixes
+```
+
+PR rules:
+- ALL PRs target the `dev` branch. **Never directly to `main`.**
+- Maximum 2 commits per PR. Squash if needed.
+- Maximum 5 bug fixes OR 1 feature/refactor per PR.
+- No self-merging — all PRs reviewed by @Prateek Saxena.
+- Only TL can merge into `main`.
+- CI pipeline (`ci.yml`) MUST be green before merge.
+  It runs: type-check, lint, jest (web-app + mobile + desktop-agent), Maven tests (backend).
+
+Every PR MUST include:
+```
+✅ Clear description of what changed and why
+✅ Screenshots (if any UI changes)
+✅ API contract changes documented (if backend changes)
+✅ Test coverage update confirmed
+✅ No new `any` types without justification
+✅ Shared package changes impact noted
+```
+
+🚫 DO NOT TOUCH: `main` branch directly. Husky is configured (`husky || true`).
+
+---
+
+# ──────────────────────────────────────────────────────────────────────────────
+# SECTION B — WEB-APP (Next.js 14 App Router + PWA)
+# ──────────────────────────────────────────────────────────────────────────────
+
+Reference: [apps/web-app/](mdc:apps/web-app)
+
+## B1. Folder Structure (Strictly Enforced)
+
+```
+apps/web-app/src/
+├── app/                         ← Next.js App Router pages ONLY — no logic here
+│   ├── (auth)/login/page.tsx    ← Auth pages (unauthenticated)
+│   ├── (auth)/signup/page.tsx
+│   ├── parent/                  ← Parent portal pages
+│   ├── institute/               ← Institute admin portal pages
+│   ├── student/                 ← Student portal pages
+│   └── layout.tsx               ← Root layout with QueryProvider + AuthProvider
+├── components/                  ← Reusable UI components (NOT page-specific)
+├── context/                     ← React context providers (AuthContext only here)
+├── hooks/                       ← ALL data-fetching hooks (use*.ts)
+├── lib/                         ← Service layer: API call functions + axios instance
+│   ├── axios.ts                 ← Axios instance with JWT interceptors — DO NOT bypass
+│   ├── auth.ts                  ← Auth helpers (getStoredUser, logout)
+│   └── <domain>.ts              ← Domain API functions (devices.ts, blocking.ts, etc.)
+├── store/                       ← Zustand stores only
+├── styles/                      ← Global CSS only (globals.css)
+└── __tests__/                   ← All Jest unit tests
+    ├── features/                ← Feature-level tests
+    └── mocks/                   ← MSW handlers + mock data
+```
+
+Rules:
+- **No direct API calls inside components** — ever. Components consume data only through hooks.
+- **No direct axios/fetch calls inside hooks** — hooks call `src/lib/<domain>.ts` functions.
+- The call chain is strictly: `page.tsx` → `hooks/use<Domain>.ts` → `lib/<domain>.ts` → `lib/axios.ts`
+- No business logic in `app/*/page.tsx` files — delegate to hooks and lib functions.
+- No mock or dummy data in production code.
+
+## B2. API Integration (Call Chain — Never Skip Steps)
+
+```
+lib/axios.ts           → Axios instance with base URL + JWT interceptor + 401 auto-refresh
+lib/<domain>.ts        → Domain API functions (e.g. lib/devices.ts exports fetchDevices())
+hooks/use<Domain>.ts   → TanStack Query hooks wrapping lib functions
+components/            → Consume hooks, render data
+```
+
+Rules:
+- Use **TanStack Query v5** (`@tanstack/react-query`) for ALL async API state.
+  Never use `useEffect` + `useState` for data fetching.
+- Every API interaction MUST handle loading, error, and empty/no-data states.
+- Access tokens are managed exclusively via `lib/axios.ts` interceptors.
+  Never manually add `Authorization` headers anywhere else.
+- Never silently swallow errors — surface them to the user via toast or error UI.
+- `lib/axios.ts` base URL comes from `NEXT_PUBLIC_API_URL` — never hardcode.
+
+## B3. UI / Component Standards
+
+- Components must NOT exceed **200 lines**. Refactor if exceeded.
+- No inline styles — ever. Use **Tailwind CSS only**.
+  Do NOT mix Tailwind and CSS Modules in the same component.
+- All `<input>` elements MUST have a matching `<label>` via `htmlFor` + `id`.
+- Use **Radix UI** primitives for dialogs, dropdowns, selects, switches, tabs, toasts.
+  Do not introduce new UI libraries unless justified.
+- Use **Recharts** for all charts. Do not introduce Highcharts, Chart.js, etc.
+- Use **Lucide React** for icons. Do not mix icon libraries.
+- Use **`clsx`** or **`tailwind-merge`** for conditional class composition.
+- PWA-specific: the service worker is managed by `next-pwa`. Do NOT manually edit
+  `public/sw.js` or `public/workbox-*.js` — they are auto-generated and gitignored.
+
+## B4. Routing & Auth
+
+- Role-based routing: `parent/*`, `institute/*`, `student/*` are protected by role guards.
+- Auth state lives exclusively in `context/AuthContext.tsx`.
+  Read it via the `useAuth()` hook. Never re-implement auth state elsewhere.
+- JWT tokens are stored in `localStorage` under keys:
+  `kavach_access_token`, `kavach_refresh_token`, `kavach_user_profile`.
+  Never use a different key name.
+- SSR guard: always check `typeof window !== 'undefined'` before accessing `localStorage`.
+
+## B5. State Management
+
+- Server state (API data): TanStack Query only.
+- Client/UI state (local ephemeral): `useState` / `useReducer`.
+- Global client state (shared across components): **Zustand** (`src/store/`).
+  Do not use Redux or Context for UI state.
+
+## B6. Testing (Web-App)
+
+- Framework: **Jest 29 + React Testing Library + MSW v1**.
+- All test files go in `src/__tests__/features/` (component/hook tests)
+  or `src/__tests__/mocks/` (MSW handlers).
+- MSW server uses `setupServer` from `msw/node` (not `msw/browser`).
+- Run tests: `pnpm test` (unit), `pnpm test:e2e` (Playwright).
+- Every new hook and lib function MUST have a corresponding test.
+- Test behaviour, not implementation. Do not test internal state.
+- No `console.log` in test files.
+- CI runs `pnpm test:ci` — ensure tests pass with `--forceExit`.
+
+## B7. PWA Notes
+
+- `next-pwa@5.6.0` is configured in [apps/web-app/next.config.js](mdc:apps/web-app/next.config.js).
+- PWA is disabled in `development` (`NODE_ENV === 'development'`) and when `SKIP_PWA=true`.
+- Runtime caching covers: Next.js static assets, API responses (dashboard/devices/alerts/goals/badges),
+  page navigations (`/parent/*`), Google Fonts.
+- Do NOT add new runtime cache patterns without reviewing cache invalidation impact.
+
+---
+
+# ──────────────────────────────────────────────────────────────────────────────
+# SECTION C — DESKTOP AGENT (Electron + TypeScript)
+# ──────────────────────────────────────────────────────────────────────────────
+
+Reference: [apps/desktop-agent/](mdc:apps/desktop-agent)
+
+## C1. Folder Structure
+
+```
+apps/desktop-agent/src/
+├── main.ts                    ← Electron entry — starts enforcement stack in correct order
+├── auth/config.ts             ← Device config load/save (deviceId, API URL, token)
+├── enforcement/
+│   ├── EnforcementEngine.ts   ← 2-second kill loop — CORE enforcement logic
+│   ├── RuleSync.ts            ← 30s rule version polling + usage reporting
+│   ├── BrowserMonitor.ts      ← Chrome/Edge URL watcher
+│   ├── UsageTracker.ts        ← Per-app time accumulation
+│   ├── processParser.ts       ← WMIC / tasklist output parsing
+│   └── TimeSync.ts            ← Server time sync (anti-clock-manipulation)
+├── blocking/
+│   ├── blockingEngine.ts      ← Secondary blocking logic
+│   ├── processKiller.ts       ← Process kill helpers
+│   └── violationReporter.ts   ← Reports enforcement events to backend
+├── focus/focusEnforcer.ts     ← Focus mode specific logic
+├── offline-buffer/            ← Queue usage/events when API is unreachable
+├── protection/SelfProtection.ts ← Tamper detection + Windows startup registry
+├── rule-engine/               ← Rule evaluation helpers
+├── screenshots/ScreenshotCapture.ts ← Periodic screenshot capture + upload
+├── sync/deviceRegistration.ts ← Device link code generation + polling
+├── tracking/trackingLoop.ts   ← Main activity tracking loop
+└── __tests__/                 ← Jest tests for core modules
+```
+
+## C2. Critical Architecture Rules
+
+- **Enforcement stack startup order is strictly defined** in `main.ts`:
+  1. `TimeSync.sync()` — server time first (schedule checks depend on it)
+  2. `EnforcementEngine` — create instance
+  3. `ScreenshotCapture` — create instance
+  4. `BrowserMonitor` — create instance
+  5. `RuleSync(deviceId, engine, browserMonitor)` — fetches rules immediately
+  6. Start enforcement loop
+  7. Start browser URL monitor
+  8. Start self-protection watchdog
+  9. Register Windows startup key
+  **Do NOT reorder these steps.**
+
+- The 2-second enforcement loop (`EnforcementEngine`) is the heart of the agent.
+  It scans running processes and kills any that match blocking rules.
+  Changes to this loop require a performance review.
+
+- `RuleSync` diffs `rulesVersion` from the backend before applying updates —
+  do NOT remove this version check.
+
+- All API calls use the base URL from `auth/config.ts` (loaded from disk/env).
+  Never hardcode `localhost` or any URL.
+
+- The agent compiles TypeScript to `dist/` (`tsc`). The entry point is `dist/main.js`.
+  Do not import from `dist/` inside `src/` — that's a circular dependency.
+
+## C3. Testing (Desktop Agent)
+
+- Framework: **Jest 29 + ts-jest**.
+- Tests live in `src/__tests__/`.
+- Run: `pnpm test` or `pnpm test:coverage`.
+- CI compiles (`pnpm build`) then runs tests (`pnpm test`).
+- Electron IPC and native modules must be mocked — see `__mocks__/electron.ts`.
+- Never test against real OS APIs in unit tests.
+
+## C4. Build & Distribution
+
+- Build: `pnpm build` (tsc only) or `pnpm build:full` (tsc + electron-builder).
+- Distribution targets: `dist:win` (Windows NSIS) and `dist:mac`.
+- `electron-builder.json` controls app packaging — do not change `appId` without coordinating.
+- Never commit `dist/` or `dist-build/` — they are gitignored.
+
+---
+
+# ──────────────────────────────────────────────────────────────────────────────
+# SECTION D — MOBILE APP (Expo 51 / React Native)
+# ──────────────────────────────────────────────────────────────────────────────
+
+Reference: [apps/mobile/](mdc:apps/mobile)
+
+## D1. Folder Structure
+
+```
+apps/mobile/src/
+├── screens/                   ← Screen components (one per route)
+│   ├── LoginScreen.tsx
+│   ├── DashboardScreen.tsx
+│   ├── FocusScreen.tsx
+│   ├── AchievementsScreen.tsx
+│   ├── RewardsScreen.tsx
+│   └── StudyBuddyScreen.tsx
+├── components/                ← Reusable UI components
+├── context/AuthContext.tsx    ← Auth state (JWT + deviceId)
+├── navigation/AppNavigator.tsx← React Navigation stack/tab navigator
+├── lib/                       ← API call functions (one file per domain)
+│   ├── axios.ts               ← Axios instance with JWT interceptor
+│   ├── auth.ts                ← Login/logout/me API calls
+│   ├── studentApi.ts          ← Student dashboard data
+│   ├── focusApi.ts            ← Focus session API
+│   ├── badgesApi.ts           ← Badges/achievements API
+│   └── ...                    ← One file per API domain
+├── enforcement/
+│   ├── RuleSync.ts            ← Rule fetching/caching via AsyncStorage
+│   └── OverlayManager.ts      ← Overlay display logic
+├── tasks/
+│   ├── AppWatcherTask.ts      ← Background enforcement (expo-task-manager, 15s cycle)
+│   ├── UsageCollectorTask.ts  ← Background usage reporting
+│   ├── GeoFenceTask.ts        ← Location-based enforcement
+│   └── LocationTask.ts        ← Location tracking
+├── permissions/               ← Permission request flows (PACKAGE_USAGE_STATS, etc.)
+└── __tests__/                 ← Jest tests
+    ├── context/
+    ├── lib/
+    └── screens/
+```
+
+## D2. Critical Architecture Rules
+
+- **`AppWatcherTask`** (15-second cycle) is the enforcement backbone on Android.
+  It queries `UsageStatsManager` (native module) for the foreground app and
+  cross-checks against `RuleSync` cached rules. Do not change the task name
+  `KAVACH_APP_WATCHER` — it is registered at app launch.
+
+- **Background tasks** use `expo-task-manager` + `expo-background-fetch`.
+  Register tasks in `App.tsx` on login. Never register inside a component render.
+
+- **Rule caching** is done via `AsyncStorage`. Rules are cached under a fixed key by `RuleSync`.
+  Always read rules from the cache in background tasks — never make a live API call
+  inside the 15-second loop unless the version is stale.
+
+- **Auth tokens** are stored in `AsyncStorage` (not SecureStore — see existing `auth.ts`).
+  Token keys must match what `lib/axios.ts` reads. Do not introduce new key names.
+
+- **Overlays** (red/blue/amber) are implemented via native modules and `OverlayManager.ts`.
+  Do not attempt to replicate overlay logic with React Native Modals — they cannot
+  render over other apps.
+
+- Android requires `PACKAGE_USAGE_STATS` and `SYSTEM_ALERT_WINDOW` permissions.
+  Handle permission denial gracefully — never crash if they are not granted.
+
+## D3. UI Standards (Mobile)
+
+- Use **React Navigation** for all navigation. No Expo Router in this app.
+- Use **Victory Native** for charts (`victory-native`).
+- Use `@expo/vector-icons` for icons.
+- No inline styles — use StyleSheet.create() for all styles.
+- Components must NOT exceed 200 lines. Refactor screens into sub-components.
+
+## D4. Testing (Mobile)
+
+- Framework: **Jest + jest-expo + @testing-library/react-native**.
+- Tests live in `src/__tests__/`.
+- Run: `pnpm test` or `pnpm test:coverage`.
+- Native modules (`UsageStatsManager`, `OverlayModule`) must be mocked.
+- Background task logic must be testable without the native task runner.
+- CI runs `pnpm test:coverage` — ensure tests pass in the `ubuntu-latest` CI environment.
+
+## D5. Build & Distribution
+
+- Local dev: `pnpm start` or `pnpm android`.
+- EAS builds: `pnpm build:android` (preview) or `pnpm build:android:prod` (production).
+- Never commit `android/` or `ios/` native directories — use `expo prebuild` to generate them.
+
+---
+
+# ──────────────────────────────────────────────────────────────────────────────
+# SECTION E — BACKEND (Spring Boot 3 / Java 17)
+# ──────────────────────────────────────────────────────────────────────────────
+
+Reference: [backend/](mdc:backend)
+
+## E1. Folder Structure
+
+```
+backend/src/main/java/com/kavach/
+├── auth/                      ← JWT filter, auth controller, token service
+├── config/                    ← App config beans (RequestIdFilter, etc.)
+├── security/SecurityConfig.java ← Spring Security chain (CORS, JWT, roles)
+└── <domain>/                  ← One package per domain (device, blocking, focus, etc.)
+    ├── <Domain>Controller.java ← REST controller (@RestController)
+    ├── <Domain>Service.java    ← Business logic
+    ├── <Domain>Repository.java ← Spring Data JPA repository
+    └── <Domain>Dto.java        ← Request/Response DTOs (never expose JPA entity directly)
+```
+
+## E2. API Rules
+
+- All endpoints are prefixed with `/api/v1/`.
+- All protected endpoints require a valid JWT — enforced by `JwtFilter.java`.
+- `SUPER_ADMIN`, `INSTITUTE_ADMIN`, `IT_HEAD`, `PRINCIPAL`, `PARENT`, `STUDENT`
+  are the valid roles. Enforce role checks with `@PreAuthorize` or service-level checks.
+- **Never expose JPA entities directly in API responses** — always use DTOs.
+- Tenant isolation: every service method MUST scope DB queries to the `tenantId`
+  extracted from the JWT. Never trust a tenant ID passed in the request body.
+- Increment `rulesVersion` in `EnforcementState` whenever blocking rules change —
+  this triggers desktop agent and mobile re-sync.
+
+## E3. CORS
+
+- Allowed origins are controlled by the `CORS_ORIGINS` environment variable
+  (read in [backend/src/main/java/com/kavach/security/SecurityConfig.java](mdc:backend/src/main/java/com/kavach/security/SecurityConfig.java)).
+- All `OPTIONS` preflight requests are explicitly permitted via
+  `.requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()` — do not remove this.
+- When deploying to a new frontend URL, add it to `CORS_ORIGINS` in the Railway dashboard.
+
+## E4. Database & Migrations
+
+- ORM: Spring Data JPA / Hibernate.
+- Schema is managed via SQL migration scripts in `src/main/resources/` (not Flyway/Liquibase).
+- Never drop or alter a column in a migration without a corresponding data migration.
+
+## E5. Testing (Backend)
+
+- Framework: **JUnit 5 + Spring Boot Test + Mockito**.
+- Tests live in `backend/src/test/`.
+- CI runs `mvn verify jacoco:report -B` which executes all tests and generates coverage.
+- SonarCloud scans run on CI — maintain code quality gates.
+- Every new service method MUST have a corresponding unit test.
+
+## E6. Configuration
+
+- Application config is in [backend/src/main/resources/application.yml](mdc:backend/src/main/resources/application.yml).
+- No duplicate YAML keys — YAML is strict about duplicate keys at the same level
+  (this caused a Railway crash — see the `springdoc.swagger-ui.enabled` incident).
+- Secrets (JWT secret, DB password) MUST come from environment variables, not hardcoded.
+
+---
+
+# ──────────────────────────────────────────────────────────────────────────────
+# SECTION F — TURBOREPO + BUILD PIPELINE
+# ──────────────────────────────────────────────────────────────────────────────
+
+Reference: [turbo.json](mdc:turbo.json)
+
+## F1. Pipeline Tasks
+
+| Task         | What it does                                  |
+|--------------|-----------------------------------------------|
+| `build`      | Compiles all apps (depends on `^build`)       |
+| `dev`        | Starts all dev servers (persistent, no cache) |
+| `lint`       | ESLint on all packages (depends on `^lint`)   |
+| `type-check` | `tsc --noEmit` on all packages                |
+| `test`       | Jest on all packages (no cache)               |
+
+- `lint` and `type-check` are **separate tasks from `build`** by design.
+  The web-app Vercel build skips them (`ignoreDuringBuilds: true`) to prevent hangs.
+  They run via CI (`ci.yml`) instead.
+
+## F2. Running Tasks
+
+```bash
+# Root-level (runs across all apps via Turborepo)
+pnpm dev              → Start all dev servers
+pnpm build            → Build all apps
+pnpm lint             → Lint all apps
+pnpm type-check       → Type-check all apps
+
+# App-specific
+pnpm --filter web-app dev
+pnpm --filter desktop-agent build
+pnpm --filter kavach-student-mobile test
+```
+
+## F3. Vercel Deployment
+
+- Deployed via root [vercel.json](mdc:vercel.json):
+  - Build command: `turbo run build --filter=web-app`
+  - Output directory: `.next` (relative to `apps/web-app`)
+  - Install command: `pnpm install`
+- Vercel root directory MUST be set to the **repo root** (not `apps/web-app`).
+- PWA files (`sw.js`, `workbox-*.js`) are generated at build time — gitignored.
+- `prepare` script is `husky || true` to prevent Husky crashing on Vercel.
+
+---
+
+# ──────────────────────────────────────────────────────────────────────────────
+# SECTION G — AUTOMATED REVIEW CHECKLIST
+# ──────────────────────────────────────────────────────────────────────────────
+
+When reviewing or generating code, confirm every item below.
+Flag anything that fails. Fix what can be auto-fixed.
+
+## All Apps
+- [ ] No `console.log` in production code
+- [ ] No `any` types without inline justification comment
+- [ ] No hardcoded API URLs or credentials
+- [ ] No `.env` files committed
+- [ ] No duplicate logic that belongs in `packages/`
+- [ ] Dead code removed
+- [ ] Branch name follows naming convention
+
+## Web-App Specific
+- [ ] API call chain followed: page → hook → lib → axios
+- [ ] TanStack Query used for all async data (no `useEffect` fetching)
+- [ ] API call handles loading, error, and empty states
+- [ ] Component is under 200 lines
+- [ ] No inline styles — Tailwind only
+- [ ] New `NEXT_PUBLIC_*` vars added to `next.config.js` env block + `.env.example`
+- [ ] MSW handler added for any new API call in tests
+- [ ] Tests written for new hooks and lib functions
+
+## Desktop Agent Specific
+- [ ] Enforcement startup order not disturbed
+- [ ] No live API calls inside the 2-second enforcement loop
+- [ ] `rulesVersion` diffing preserved in `RuleSync`
+- [ ] Native modules mocked in tests
+- [ ] `dist/` not committed
+
+## Mobile Specific
+- [ ] Background tasks not registered inside component renders
+- [ ] AsyncStorage keys match what `lib/axios.ts` expects
+- [ ] Native modules (`UsageStatsManager`, `OverlayModule`) mocked in tests
+- [ ] Permission denial handled gracefully
+- [ ] `android/` / `ios/` not committed
+
+## Backend Specific
+- [ ] DTO used in API response (no raw entity exposure)
+- [ ] Tenant ID scoped from JWT, not request body
+- [ ] `rulesVersion` incremented when blocking rules change
+- [ ] No duplicate YAML keys in `application.yml`
+- [ ] JUnit test added for new service methods
+
+## Shared Packages
+- [ ] New shared type added to `@kavach/shared-types` (not re-declared in each app)
+- [ ] `packages/` contain only raw TypeScript (no compiled JS committed)
+
+# ==============================================================
+# END OF RULES
+# ==============================================================

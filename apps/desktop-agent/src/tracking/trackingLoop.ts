@@ -5,6 +5,7 @@ import { shouldBlock, refreshBlockRules, trackAppTime } from '../blocking/blocki
 import { killProcess, showBlockNotification } from '../blocking/processKiller'
 import { reportViolation } from '../blocking/violationReporter'
 import { pollFocusStatus, isFocusBlocked, getCurrentFocusStatus } from '../focus/focusEnforcer'
+import { logger } from '../logger'
 
 const POLL_INTERVAL_MS   = 5000
 const RULES_REFRESH_MS   = 60000  // refresh block rules every 60 seconds
@@ -39,9 +40,9 @@ export function startTrackingLoop(opts: TrackingLoopOptions = {}): void {
   const skipEnforcement = opts.skipLegacyEnforcement ?? false
 
   if (skipEnforcement) {
-    console.log('[tracking] Starting tracking loop — activity logging only (EnforcementEngine handles blocking)')
+    logger.info('[tracking] Starting tracking loop — activity logging only (EnforcementEngine handles blocking)')
   } else {
-    console.log('[tracking] Starting tracking loop with legacy blocking enforcement')
+    logger.info('[tracking] Starting tracking loop with legacy blocking enforcement')
     // Only fetch rules and poll focus when the legacy engine is active
     refreshBlockRules()
     focusTimer = setInterval(pollFocusStatus, 15000)
@@ -71,14 +72,14 @@ export function startTrackingLoop(opts: TrackingLoopOptions = {}): void {
           )
 
           if (blocked && rule) {
-            console.log(`[blocker] Blocking ${window.processName}: ${reason}`)
+            logger.info(`[blocker] Blocking ${window.processName}: ${reason}`)
             recentlyBlocked.set(window.processName, Date.now())
 
             // Kill the process (wrapped in try/catch for graceful degradation)
             try {
               await killProcess(window.processName)
             } catch (err) {
-              console.warn('[blocker] Process kill error handled gracefully', {
+              logger.warn('[blocker] Process kill error handled gracefully', {
                 processName: window.processName,
                 error: String(err),
               })
@@ -108,12 +109,12 @@ export function startTrackingLoop(opts: TrackingLoopOptions = {}): void {
         // ── LEGACY FOCUS MODE ENFORCEMENT ─────────────────────────────────────
         if (window && isFocusBlocked(window.processName)) {
           const status = getCurrentFocusStatus()
-          console.log(`[focus] Blocking non-whitelisted app during focus: ${window.processName}`)
+          logger.info(`[focus] Blocking non-whitelisted app during focus: ${window.processName}`)
 
           try {
             await killProcess(window.processName)
           } catch (err) {
-            console.warn('[focus] Process kill error handled gracefully', {
+            logger.warn('[focus] Process kill error handled gracefully', {
               processName: window.processName,
               error: String(err),
             })

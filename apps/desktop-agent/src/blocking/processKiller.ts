@@ -1,5 +1,6 @@
 import { exec } from 'child_process'
 import { promisify } from 'util'
+import { logger } from '../logger'
 
 const execAsync = promisify(exec)
 
@@ -9,7 +10,7 @@ const processKillHistory = new Map<string, number>()
 // Kill a process by name on Windows
 export async function killProcess(processName: string, pid?: number): Promise<boolean> {
   if (process.platform !== 'win32') {
-    console.log(`[blocker] Dev mode — would kill: ${processName}`)
+    logger.debug(`[blocker] Dev mode — would kill: ${processName}`)
     return true
   }
 
@@ -21,8 +22,7 @@ export async function killProcess(processName: string, pid?: number): Promise<bo
     
     await execAsync(command, { timeout: 5000 })
     
-    // Log successful kill
-    console.log('[blocker] Killed process', { processName, pid })
+    logger.info('[blocker] Killed process', { processName, pid })
     
     // Track kill time for bypass detection
     const now = Date.now()
@@ -30,7 +30,7 @@ export async function killProcess(processName: string, pid?: number): Promise<bo
     
     // If same process was killed within 3 seconds, it's a persistent bypass attempt
     if (lastKill > 0 && (now - lastKill) < 3000) {
-      console.warn('[blocker] Persistent bypass attempt detected', {
+      logger.warn('[blocker] Persistent bypass attempt detected', {
         processName,
         pid,
         timeSinceLastKill: now - lastKill,
@@ -43,12 +43,12 @@ export async function killProcess(processName: string, pid?: number): Promise<bo
   } catch (err: any) {
     // Process might have already closed
     if (err.message?.includes('not found') || err.message?.includes('not running')) {
-      console.log('[blocker] Process not found (may have already exited)', { processName, pid })
+      logger.debug('[blocker] Process not found (may have already exited)', { processName, pid })
       return true
     }
     
     // Log warning but don't rethrow — blocking should degrade gracefully
-    console.warn('[blocker] Failed to kill process (may have already exited)', {
+    logger.warn('[blocker] Failed to kill process (may have already exited)', {
       processName,
       pid,
       error: String(err),
