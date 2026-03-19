@@ -26,19 +26,31 @@ const HOURS_OPTIONS = [
   { label: 'Last 7 days',  value: 168 },
 ]
 
+// Backend stores timestamps as UTC LocalDateTime (no Z suffix).
+// Append 'Z' so JS correctly parses as UTC, then display in IST (UTC+5:30).
+function toUtcDate(ts: string): Date {
+  return new Date(ts.endsWith('Z') ? ts : ts + 'Z')
+}
+
 function relativeTime(ts: string): string {
-  const diff = Math.floor((Date.now() - new Date(ts).getTime()) / 1000)
-  if (diff < 60)   return `${diff}s ago`
-  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`
+  const diff = Math.floor((Date.now() - toUtcDate(ts).getTime()) / 1000)
+  if (diff < 60)    return `${diff}s ago`
+  if (diff < 3600)  return `${Math.floor(diff / 60)}m ago`
   if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`
-  return new Date(ts).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+  return toUtcDate(ts).toLocaleDateString('en-IN', {
+    timeZone: 'Asia/Kolkata',
+    month: 'short',
+    day: 'numeric',
+  })
 }
 
 function formatTime(ts: string): string {
-  return new Date(ts).toLocaleTimeString(undefined, {
+  return toUtcDate(ts).toLocaleTimeString('en-IN', {
+    timeZone: 'Asia/Kolkata',
     hour: '2-digit',
     minute: '2-digit',
     second: '2-digit',
+    hour12: false,
   })
 }
 
