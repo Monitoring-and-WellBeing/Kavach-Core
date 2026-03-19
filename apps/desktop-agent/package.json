@@ -9,7 +9,7 @@
   },
   "main": "dist/main.js",
   "scripts": {
-    "dev": "ts-node src/main.ts",
+    "dev": "tsc && electron .",
     "write-config": "node scripts/write-build-config.cjs",
     "build": "tsc",
     "build:full": "tsc && electron-builder",
