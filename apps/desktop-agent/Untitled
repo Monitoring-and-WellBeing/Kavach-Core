@@ -1,0 +1,14 @@
+# ═══════════════════════════════════════════════════════════════
+# KAVACH AI — Desktop Agent Environment Variables
+# These are baked into the Electron build at compile time via
+# electron-builder's extraMetadata or a bundled .env.
+# ═══════════════════════════════════════════════════════════════
+
+# ── Backend API base URL (HTTPS in production) ───────────────────
+API_URL=https://api.your-production-domain.com/api/v1
+
+# ── Enforcement poll interval in milliseconds (default: 30 000 = 30 s) ──
+TRACKING_INTERVAL=30000
+
+# ── Debug logging (set to "true" only in development builds) ─────
+DEBUG=false
