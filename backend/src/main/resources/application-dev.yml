@@ -1,4 +1,11 @@
 spring:
+  main:
+    # Defer @Service/@Component/@RestController bean init to first HTTP request.
+    # Reduces startup heap from ~450 MB to ~120 MB so the app fits within
+    # Railway's 512 MB container limit. Infrastructure beans (JPA, Hikari,
+    # Security) are still initialized eagerly.
+    lazy-initialization: true
+
   datasource:
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/kavach_dev?sslmode=prefer}
     username: ${SPRING_DATASOURCE_USERNAME:kavach}
