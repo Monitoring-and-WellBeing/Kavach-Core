@@ -59,7 +59,7 @@ function renderFocus() {
 beforeEach(async () => {
   await AsyncStorage.clear()
   jest.clearAllMocks()
-  jest.useFakeTimers()
+  jest.useFakeTimers({ advanceTimers: true })
 
   await AsyncStorage.setItem('kavach_access_token', 'live-token')
 

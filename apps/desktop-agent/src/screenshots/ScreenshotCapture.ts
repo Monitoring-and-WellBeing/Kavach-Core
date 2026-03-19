@@ -7,6 +7,7 @@
 // If upload fails, we log and move on — screenshots are non-critical.
 
 import { loadConfig } from '../auth/config'
+import { logger } from '../logger'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -45,13 +46,13 @@ export class ScreenshotCapture {
 
       if (res.ok) {
         this.settings = await res.json() as ScreenshotSettings
-        console.log('[Screenshots] Settings loaded:', this.settings)
+        logger.info('[Screenshots] Settings loaded', this.settings)
       } else {
-        console.warn('[Screenshots] Could not fetch settings, disabling capture')
+        logger.warn('[Screenshots] Could not fetch settings, disabling capture')
         this.settings = null
       }
     } catch {
-      console.warn('[Screenshots] Settings fetch failed, disabling capture')
+      logger.warn('[Screenshots] Settings fetch failed, disabling capture')
       this.settings = null
     }
   }
@@ -100,14 +101,14 @@ export class ScreenshotCapture {
     }
 
     this.periodicTimer = setInterval(checkAndCapture, intervalMs)
-    console.log(`[Screenshots] Periodic capture started — every ${intervalMs / 60000} min`)
+    logger.info(`[Screenshots] Periodic capture started — every ${intervalMs / 60000} min`)
   }
 
   stopPeriodic(): void {
     if (this.periodicTimer) {
       clearInterval(this.periodicTimer)
       this.periodicTimer = null
-      console.log('[Screenshots] Periodic capture stopped')
+      logger.info('[Screenshots] Periodic capture stopped')
     }
   }
 
@@ -147,10 +148,10 @@ export class ScreenshotCapture {
       if (this.settings) {
         this.settings.studentNotified = true
       }
-      console.log('[Screenshots] Student disclosure acknowledged')
+      logger.info('[Screenshots] Student disclosure acknowledged')
     } catch (err) {
       // Electron not available (test env) or dialog failed — ignore
-      console.warn('[Screenshots] Could not show disclosure dialog:', err)
+      logger.warn('[Screenshots] Could not show disclosure dialog', String(err))
     }
   }
 
@@ -179,7 +180,7 @@ export class ScreenshotCapture {
       return jpegBuffer
 
     } catch (err) {
-      console.error('[Screenshots] Capture failed:', err)
+      logger.error('[Screenshots] Capture failed', String(err))
       return null
     }
   }
@@ -209,13 +210,13 @@ export class ScreenshotCapture {
       })
 
       if (res.ok) {
-        console.log(`[Screenshots] Uploaded (${trigger}) — ${buffer.length} bytes`)
+        logger.info(`[Screenshots] Uploaded (${trigger}) — ${buffer.length} bytes`)
       } else {
-        console.warn(`[Screenshots] Upload returned ${res.status}`)
+        logger.warn(`[Screenshots] Upload returned ${res.status}`)
       }
     } catch (err) {
       // Non-critical — log and continue; never let upload failure crash enforcement
-      console.error('[Screenshots] Upload failed:', err)
+      logger.error('[Screenshots] Upload failed', String(err))
     }
   }
 

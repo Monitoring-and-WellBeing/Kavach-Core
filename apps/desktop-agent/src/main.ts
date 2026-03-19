@@ -9,6 +9,8 @@ import { SelfProtection } from "./protection/SelfProtection";
 import { timeSync } from "./enforcement/TimeSync";
 import { ScreenshotCapture } from "./screenshots/ScreenshotCapture";
 import { generateLinkCode, pollForLink, sendHeartbeat } from "./sync/deviceRegistration";
+import { logger } from "./logger";
+import { AGENT_VERSION } from "./version";
 
 let mainWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
@@ -76,7 +78,7 @@ async function startEnforcement(deviceId: string): Promise<void> {
   sendHeartbeat().catch(() => {})
   heartbeatTimer = setInterval(() => sendHeartbeat().catch(() => {}), 30_000)
 
-  console.log('[KAVACH] Enforcement engine active for device', deviceId);
+  logger.info('[KAVACH] Enforcement engine active for device', deviceId);
 }
 
 function stopEnforcement(): void {
@@ -93,7 +95,7 @@ async function initializeAgent() {
   const config = await loadConfig();
 
   if (config.deviceLinked && config.deviceId) {
-    console.log('[main] Device already linked, starting tracking + enforcement');
+    logger.info('[main] Device already linked, starting tracking + enforcement');
     // skipLegacyEnforcement=true: EnforcementEngine handles all blocking.
     // TrackingLoop runs in activity-logging-only mode to avoid double-kills
     // and duplicate usage reports.
@@ -101,7 +103,7 @@ async function initializeAgent() {
     await startEnforcement(config.deviceId);
     mainWindow?.hide(); // hide window — runs in tray
   } else {
-    console.log('[main] Device not linked, showing link screen');
+    logger.info('[main] Device not linked, showing link screen');
     mainWindow?.show();
   }
 }
@@ -157,12 +159,12 @@ app.whenReady().then(async () => {
           setTimeout(() => mainWindow?.hide(), 3500);
         }
       }).catch((err) => {
-        console.error('[main] pollForLink failed:', err);
+        logger.error('[main] pollForLink failed', String(err));
       });
 
       return { code, expiresInMinutes };
     } catch (err: any) {
-      console.error('[main] generate-link-code error:', err);
+      logger.error('[main] generate-link-code error', String(err));
       return { error: err?.message || 'Failed to reach KAVACH server' };
     }
   });
@@ -184,7 +186,7 @@ app.whenReady().then(async () => {
     return {
       linked: current.deviceLinked,
       tracking: isTrackingActive(),
-      version: "1.2.4",
+      version: AGENT_VERSION,
     };
   });
 
@@ -194,7 +196,7 @@ app.whenReady().then(async () => {
     return {
       linked: current.deviceLinked,
       tracking: isTrackingActive(),
-      version: "1.2.4",
+      version: AGENT_VERSION,
     };
   });
 });
@@ -211,11 +213,9 @@ app.on("window-all-closed", (e: Event) => {
 
 // Crash recovery handlers
 process.on('uncaughtException', (error) => {
-  console.error('[crash] Uncaught exception in main process', { error: error.message, stack: error.stack });
-  // Don't crash the agent — log and continue
-  // If the error is in a non-critical module, attempt recovery
+  logger.error('[crash] Uncaught exception in main process', { error: error.message, stack: error.stack });
 });
 
 process.on('unhandledRejection', (reason) => {
-  console.error('[crash] Unhandled promise rejection', { reason: String(reason) });
+  logger.error('[crash] Unhandled promise rejection', { reason: String(reason) });
 });

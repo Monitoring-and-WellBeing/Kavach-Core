@@ -1,5 +1,6 @@
 import { loadConfig } from '../auth/config'
 import { killProcess, showBlockNotification } from '../blocking/processKiller'
+import { logger } from '../logger'
 
 export interface AgentFocusStatus {
   focusActive: boolean
@@ -71,12 +72,12 @@ export function isFocusBlocked(processName: string): boolean {
 }
 
 function onFocusStarted() {
-  console.log('[focus] Focus mode STARTED:', currentStatus.title)
+  logger.info('[focus] Focus mode STARTED', currentStatus.title)
   showFocusOverlay()
 }
 
 function onFocusEnded() {
-  console.log('[focus] Focus mode ENDED')
+  logger.info('[focus] Focus mode ENDED')
   hideFocusOverlay()
 }
 
@@ -100,7 +101,7 @@ export function showFocusOverlay() {
     updateFocusOverlay()
   } catch (e) {
     // Electron not available in dev mode
-    console.log('[focus] Overlay would show:', currentStatus.remainingSeconds, 's remaining')
+    logger.debug('[focus] Overlay would show', `${currentStatus.remainingSeconds}s remaining`)
   }
 }
 
