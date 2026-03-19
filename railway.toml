@@ -2,7 +2,7 @@
 builder = "NIXPACKS"
 
 [deploy]
-startCommand = "java -Dspring.profiles.active=dev -jar target/*.jar"
+startCommand = "java -jar backend/target/kavach-backend-*.jar"
 healthcheckPath = "/actuator/health"
 healthcheckTimeout = 300
 restartPolicyType = "ON_FAILURE"

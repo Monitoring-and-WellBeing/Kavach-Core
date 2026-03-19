@@ -1,9 +1,8 @@
 [phases.setup]
-nixPkgs = ["jdk17", "maven"]
+nixPkgs = ["jdk17"]
 
 [phases.build]
-cmds = ["mvn clean package -DskipTests"]
+cmds = ["cd backend && ./mvnw clean package -DskipTests -Pprod"]
 
 [start]
-cmd = "java -Dspring.profiles.active=dev -jar target/*.jar"
-
+cmd = "java -Dspring.profiles.active=dev -jar backend/target/*.jar"
