@@ -207,6 +207,9 @@ public class DeviceService {
     }
 
     // ── Check if a code has been linked (for desktop agent polling) ─────────
+    // @Transactional keeps the Hibernate session open so the lazy-loaded
+    // Device association on DeviceLinkCode can be accessed in the controller.
+    @Transactional(readOnly = true)
     public Optional<DeviceLinkCode> checkLinked(String code) {
         return codeRepo.findByCode(code.toUpperCase());
     }
