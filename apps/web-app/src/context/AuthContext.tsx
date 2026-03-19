@@ -22,12 +22,13 @@ interface AuthContextType {
 }
 
 interface SignupData {
+  role: 'INSTITUTE_ADMIN' | 'PARENT'
   name: string
   email: string
   password: string
   phone?: string
-  instituteName: string
-  instituteType: string
+  instituteName?: string
+  instituteType?: string
   city?: string
   state?: string
 }
@@ -83,7 +84,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.setItem('kavach_refresh_token', data.refreshToken)
     localStorage.setItem('kavach_user_profile', JSON.stringify(data.user))
     setUser(data.user)
-    router.push('/institute')
+    router.push(ROLE_ROUTES[data.user.role] || '/')
   }, [router])
 
   const logout = useCallback(async () => {

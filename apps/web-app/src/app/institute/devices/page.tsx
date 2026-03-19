@@ -1,11 +1,12 @@
 'use client'
 import { useState, useEffect, useCallback } from 'react'
-import { Search, Download, Pause, Play, Zap, RefreshCw } from 'lucide-react'
+import { Search, Download, Pause, Play, Zap, RefreshCw, Plus } from 'lucide-react'
 import { useToast, Toast } from '@/components/ui/Toast'
 import { instituteDashboardApi, InstituteDevice } from '@/lib/instituteDashboard'
-import { devicesApi } from '@/lib/devices'
+import { devicesApi, Device } from '@/lib/devices'
 import { formatTime } from '@kavach/shared-utils'
 import { DeviceStatus } from '@kavach/shared-types'
+import { DeviceLinkModal } from '@/components/devices/DeviceLinkModal'
 
 const statusColors: Record<DeviceStatus, string> = {
   ONLINE:     'bg-green-100 text-green-700',
@@ -20,6 +21,7 @@ export default function InstituteDevicesPage() {
   const [search, setSearch]     = useState('')
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [actioning, setActioning] = useState(false)
+  const [linkModalOpen, setLinkModalOpen] = useState(false)
   const { toast, showToast, hideToast } = useToast()
 
   const load = useCallback(async () => {
@@ -128,6 +130,12 @@ export default function InstituteDevicesPage() {
     <div className="p-6 space-y-5 fade-up">
       {toast && <Toast message={toast.message} type={toast.type} onClose={hideToast} />}
 
+      <DeviceLinkModal
+        open={linkModalOpen}
+        onClose={() => setLinkModalOpen(false)}
+        onLinked={(_device: Device) => { load() }}
+      />
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -148,6 +156,10 @@ export default function InstituteDevicesPage() {
               </button>
             </>
           )}
+          <button onClick={() => setLinkModalOpen(true)}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 text-white text-sm font-medium hover:bg-blue-700">
+            <Plus size={16} /> Add Device
+          </button>
           <button onClick={handleExportCSV}
             className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-gray-200 text-gray-700 text-sm font-medium hover:bg-gray-50">
             <Download size={16} /> Export CSV

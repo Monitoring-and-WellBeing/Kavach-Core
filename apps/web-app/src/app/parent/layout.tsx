@@ -6,9 +6,10 @@ import { usePathname } from "next/navigation";
 import {
   LayoutDashboard, Monitor, BarChart3, Brain,
   Shield, Bell, CreditCard, Settings, Gift,
-  ChevronLeft, ChevronRight,
+  ChevronLeft, ChevronRight, LogOut,
 } from "lucide-react";
 import { BottomNav } from "@/components/layout/BottomNav";
+import { useAuth } from "@/context/AuthContext";
 
 const navItems = [
   { label: "Dashboard",       icon: <LayoutDashboard size={18} />, href: "/parent" },
@@ -25,6 +26,11 @@ const navItems = [
 export default function ParentLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
+  const { user, logout } = useAuth();
+
+  const initials = user?.name
+    ? user.name.split(" ").map((p: string) => p[0]).join("").toUpperCase().slice(0, 2)
+    : "P";
 
   return (
     <div className="flex h-screen overflow-hidden">
@@ -79,20 +85,29 @@ export default function ParentLayout({ children }: { children: React.ReactNode }
           {!collapsed && (
             <div className="flex items-center gap-2 p-2 rounded-xl hover:bg-white/5 cursor-pointer mb-2">
               <div className="w-8 h-8 rounded-full bg-teal-500 flex items-center justify-center text-white text-xs font-bold">
-                A
+                {initials}
               </div>
-              <div>
-                <div className="text-white text-xs font-medium">Aarav Singh</div>
-                <div className="text-gray-400 text-xs">Class 8 · Age 13</div>
+              <div className="flex-1 min-w-0">
+                <div className="text-white text-xs font-medium truncate">{user?.name || 'Parent'}</div>
+                <div className="text-gray-400 text-xs">Parent</div>
               </div>
             </div>
           )}
-          <button
-            onClick={() => setCollapsed(!collapsed)}
-            className="w-full flex items-center justify-center p-2 text-gray-400 hover:text-white hover:bg-white/5 rounded-xl transition-colors"
-          >
-            {collapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
-          </button>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => setCollapsed(!collapsed)}
+              className="flex-1 flex items-center justify-center p-2 text-gray-400 hover:text-white hover:bg-white/5 rounded-xl transition-colors"
+            >
+              {collapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
+            </button>
+            <button
+              onClick={logout}
+              title="Log out"
+              className="flex items-center justify-center p-2 text-gray-400 hover:text-red-400 hover:bg-white/5 rounded-xl transition-colors"
+            >
+              <LogOut size={16} />
+            </button>
+          </div>
         </div>
       </aside>
 
@@ -115,7 +130,7 @@ export default function ParentLayout({ children }: { children: React.ReactNode }
               <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-orange-500 rounded-full" />
             </button>
             <div className="w-9 h-9 rounded-full bg-teal-500 flex items-center justify-center text-white text-sm font-bold">
-              MS
+              {initials}
             </div>
           </div>
         </header>

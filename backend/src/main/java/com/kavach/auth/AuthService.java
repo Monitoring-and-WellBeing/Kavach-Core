@@ -54,10 +54,22 @@ public class AuthService {
             throw new IllegalArgumentException("Email already registered");
         }
 
-        // Create tenant
+        boolean isParent = "PARENT".equalsIgnoreCase(req.getRole());
+        Role role = isParent ? Role.PARENT : Role.INSTITUTE_ADMIN;
+
+        if (!isParent && (req.getInstituteName() == null || req.getInstituteName().isBlank())) {
+            throw new IllegalArgumentException("Institute name is required for institute accounts");
+        }
+
+        // Create tenant (FAMILY type for parents, institute type otherwise)
         Tenant tenant = new Tenant();
-        tenant.setName(req.getInstituteName());
-        tenant.setType(req.getInstituteType());
+        if (isParent) {
+            tenant.setName(req.getName() + "'s Family");
+            tenant.setType("FAMILY");
+        } else {
+            tenant.setName(req.getInstituteName());
+            tenant.setType(req.getInstituteType() != null ? req.getInstituteType() : "SCHOOL");
+        }
         tenant.setCity(req.getCity());
         tenant.setState(req.getState());
         tenant.setAdminEmail(req.getEmail());
@@ -70,7 +82,7 @@ public class AuthService {
         user.setEmail(req.getEmail());
         user.setPasswordHash(passwordEncoder.encode(req.getPassword()));
         user.setPhone(req.getPhone());
-        user.setRole(Role.INSTITUTE_ADMIN);
+        user.setRole(role);
         user.setTenantId(tenant.getId());
         user.setEmailVerified(true); // skip email verification for MVP
         user.setActive(true);
