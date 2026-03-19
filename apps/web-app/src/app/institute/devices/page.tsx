@@ -37,8 +37,7 @@ export default function InstituteDevicesPage() {
     } finally {
       setLoading(false)
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [showToast])
 
   useEffect(() => { load() }, [load])
 
@@ -137,7 +136,11 @@ export default function InstituteDevicesPage() {
       <DeviceLinkModal
         open={linkModalOpen}
         onClose={() => setLinkModalOpen(false)}
-        onLinked={(_device: Device) => { load() }}
+        onLinked={(_device: Device) => {
+          setLinkModalOpen(false)
+          setLoading(true)
+          load()
+        }}
       />
 
       {/* Header */}
