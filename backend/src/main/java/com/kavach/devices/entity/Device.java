@@ -44,12 +44,15 @@ public class Device {
     @Column(name = "assigned_to")
     private String assignedTo;
 
+    @Builder.Default
     @Column(name = "is_active")
     private boolean active = true;
 
+    @Builder.Default
     @Column(name = "created_at")
     private LocalDateTime createdAt = LocalDateTime.now();
 
+    @Builder.Default
     @Column(name = "updated_at")
     private LocalDateTime updatedAt = LocalDateTime.now();
 

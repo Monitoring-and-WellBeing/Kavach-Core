@@ -68,6 +68,9 @@ public class DeviceService {
                 .type(DeviceType.DESKTOP)
                 .status(DeviceStatus.OFFLINE)
                 .assignedTo(req.getAssignedTo())
+                .active(true)
+                .createdAt(LocalDateTime.now())
+                .updatedAt(LocalDateTime.now())
                 .build();
 
         device = deviceRepo.save(device);

@@ -32,7 +32,12 @@ public class JwtFilter extends OncePerRequestFilter {
 
         String token = authHeader.substring(7);
         if (!jwtService.isTokenValid(token)) {
-            chain.doFilter(req, res);
+            // Token was provided but is expired or tampered — return 401 explicitly.
+            // Without this, Spring Security falls through to anonymous auth and returns
+            // 403, which bypasses the axios auto-refresh interceptor on the frontend.
+            res.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            res.setContentType("application/json");
+            res.getWriter().write("{\"error\":\"Token expired or invalid\",\"code\":\"TOKEN_EXPIRED\"}");
             return;
         }
 
