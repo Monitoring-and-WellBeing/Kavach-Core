@@ -3,6 +3,7 @@ package com.kavach.security;
 import com.kavach.auth.JwtFilter;
 import com.kavach.config.RequestIdFilter;
 import lombok.RequiredArgsConstructor;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -102,6 +103,17 @@ public class SecurityConfig {
                 )
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+                )
+                // Belt-and-suspenders: if a request reaches Spring Security without auth
+                // context (e.g. no token sent at all), return 401 — not 403 — so the
+                // frontend axios interceptor knows to attempt a token refresh.
+                .exceptionHandling(ex -> ex
+                        .authenticationEntryPoint((request, response, authException) -> {
+                            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                            response.setContentType("application/json");
+                            response.getWriter().write(
+                                    "{\"error\":\"Authentication required\",\"code\":\"UNAUTHENTICATED\"}");
+                        })
                 )
                 .addFilterBefore(requestIdFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
