@@ -2,7 +2,7 @@
 builder = "NIXPACKS"
 
 [deploy]
-startCommand = "java -Dspring.profiles.active=dev -Xmx400m -XX:MaxMetaspaceSize=150m -XX:+ExitOnOutOfMemoryError -jar target/*.jar"
+startCommand = "java -Dspring.profiles.active=dev -Xmx300m -XX:+ExitOnOutOfMemoryError -jar target/*.jar"
 healthcheckPath = "/actuator/health"
 healthcheckTimeout = 300
 restartPolicyType = "ON_FAILURE"
