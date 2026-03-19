@@ -14,11 +14,10 @@ on:
     tags:
       - "desktop-agent-v*"
   workflow_dispatch:
-    inputs:
-      draft:
-        description: "Create as draft release?"
-        required: false
-        default: "true"
+
+# Required so GITHUB_TOKEN can create a GitHub Release
+permissions:
+  contents: write
 
 jobs:
   build-windows:
@@ -30,12 +29,13 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # ── 2. Node + pnpm ───────────────────────────────────────────────────────
+      # ── 2. pnpm ───────────────────────────────────────────────────────────────
       - name: Setup pnpm
         uses: pnpm/action-setup@v3
         with:
           version: 10
 
+      # ── 3. Node ───────────────────────────────────────────────────────────────
       - name: Setup Node.js 20
         uses: actions/setup-node@v4
         with:
@@ -43,40 +43,34 @@ jobs:
           cache: "pnpm"
           cache-dependency-path: "**/pnpm-lock.yaml"
 
-      # ── 3. Install dependencies ───────────────────────────────────────────────
+      # ── 4. Install dependencies ───────────────────────────────────────────────
       - name: Install monorepo dependencies
         run: pnpm install
 
-      # ── 4. Generate build-time config (injects API_URL from repo secret) ────────
-      # API_URL must be set as a GitHub repository secret:
-      #   GitHub → repo → Settings → Secrets → Actions → New secret
-      #   Name: KAVACH_API_URL   Value: https://kavach-core-production.up.railway.app
-      #
-      # This step writes src/buildTime.ts with the real URL.
+      # ── 5. Generate build-time config ─────────────────────────────────────────
+      # Writes src/buildTime.ts with the real API URL from the repo secret.
       # The URL never appears in committed source code.
+      # Secret: Settings → Secrets → Actions → KAVACH_API_URL
       - name: Generate build-time config
-        run: pnpm write-config
-        working-directory: apps/desktop-agent
+        run: pnpm --filter desktop-agent write-config
         env:
           API_URL: ${{ secrets.KAVACH_API_URL }}
 
-      # ── 5. Compile TypeScript ─────────────────────────────────────────────────
+      # ── 6. Compile TypeScript ─────────────────────────────────────────────────
       - name: Compile TypeScript
-        run: pnpm build
-        working-directory: apps/desktop-agent
+        run: pnpm --filter desktop-agent build
 
-      # ── 6. Build Windows NSIS installer ──────────────────────────────────────
-      # electron-builder reads GH_TOKEN to create/upload the GitHub Release.
-      # The token is automatically provided by GitHub Actions.
-      - name: Build Windows installer
-        run: pnpm electron-builder --win --x64 --publish always
+      # ── 7. Build Windows NSIS installer and publish as GitHub Release draft ───
+      - name: Build and publish Windows installer
+        run: pnpm exec electron-builder --win --x64 --publish always
         working-directory: apps/desktop-agent
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # ── 7. Upload artifact as workflow artifact (backup) ──────────────────────
+      # ── 8. Upload installer as workflow artifact (backup copy) ────────────────
       - name: Upload installer artifact
         uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: windows-installer
           path: apps/desktop-agent/dist-build/*.exe
