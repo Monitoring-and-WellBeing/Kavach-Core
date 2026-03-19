@@ -1,12 +1,13 @@
 'use client'
 import { useState, useEffect, useCallback } from 'react'
-import { Search, Download, Pause, Play, Zap, RefreshCw, Plus } from 'lucide-react'
+import { Search, Download, Pause, Play, Zap, RefreshCw, Plus, Activity } from 'lucide-react'
 import { useToast, Toast } from '@/components/ui/Toast'
 import { instituteDashboardApi, InstituteDevice } from '@/lib/instituteDashboard'
 import { devicesApi, Device } from '@/lib/devices'
 import { formatTime } from '@kavach/shared-utils'
 import { DeviceStatus } from '@kavach/shared-types'
 import { DeviceLinkModal } from '@/components/devices/DeviceLinkModal'
+import { LiveMonitorPanel } from '@/components/devices/LiveMonitorPanel'
 
 const statusColors: Record<DeviceStatus, string> = {
   ONLINE:     'bg-green-100 text-green-700',
@@ -15,6 +16,8 @@ const statusColors: Record<DeviceStatus, string> = {
   FOCUS_MODE: 'bg-blue-100 text-blue-700',
 }
 
+type Tab = 'devices' | 'monitor'
+
 export default function InstituteDevicesPage() {
   const [devices, setDevices]   = useState<InstituteDevice[]>([])
   const [loading, setLoading]   = useState(true)
@@ -22,6 +25,7 @@ export default function InstituteDevicesPage() {
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [actioning, setActioning] = useState(false)
   const [linkModalOpen, setLinkModalOpen] = useState(false)
+  const [activeTab, setActiveTab] = useState<Tab>('devices')
   const { toast, showToast, hideToast } = useToast()
 
   const load = useCallback(async () => {
@@ -137,13 +141,13 @@ export default function InstituteDevicesPage() {
       />
 
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h2 className="text-gray-900 font-bold text-xl">All Devices</h2>
-          <p className="text-gray-500 text-sm">Manage all lab devices</p>
+          <h2 className="text-gray-900 font-bold text-xl">Devices</h2>
+          <p className="text-gray-500 text-sm">Manage and monitor all lab devices</p>
         </div>
         <div className="flex items-center gap-3">
-          {selected.size > 0 && (
+          {activeTab === 'devices' && selected.size > 0 && (
             <>
               <button onClick={() => handleBulkAction('PAUSE')} disabled={actioning}
                 className="flex items-center gap-2 px-4 py-2 rounded-xl bg-amber-500 text-white text-sm font-medium hover:bg-amber-600 disabled:opacity-50">
@@ -160,14 +164,56 @@ export default function InstituteDevicesPage() {
             className="flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 text-white text-sm font-medium hover:bg-blue-700">
             <Plus size={16} /> Add Device
           </button>
-          <button onClick={handleExportCSV}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-gray-200 text-gray-700 text-sm font-medium hover:bg-gray-50">
-            <Download size={16} /> Export CSV
-          </button>
+          {activeTab === 'devices' && (
+            <button onClick={handleExportCSV}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-gray-200 text-gray-700 text-sm font-medium hover:bg-gray-50">
+              <Download size={16} /> Export CSV
+            </button>
+          )}
         </div>
       </div>
 
-      {/* Search */}
+      {/* Tabs */}
+      <div className="flex gap-1 bg-gray-100 p-1 rounded-xl w-fit">
+        <button
+          onClick={() => setActiveTab('devices')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+            activeTab === 'devices'
+              ? 'bg-white text-gray-900 shadow-sm'
+              : 'text-gray-500 hover:text-gray-700'
+          }`}
+        >
+          All Devices
+          <span className="text-xs bg-gray-200 text-gray-600 rounded-full px-1.5 py-0.5 font-semibold">
+            {devices.length}
+          </span>
+        </button>
+        <button
+          onClick={() => setActiveTab('monitor')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+            activeTab === 'monitor'
+              ? 'bg-white text-gray-900 shadow-sm'
+              : 'text-gray-500 hover:text-gray-700'
+          }`}
+        >
+          <Activity size={14} />
+          Live Monitor
+          <span className="relative flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500" />
+          </span>
+        </button>
+      </div>
+
+      {/* Live Monitor Tab */}
+      {activeTab === 'monitor' && (
+        <LiveMonitorPanel
+          devices={devices.map(d => ({ id: d.id, name: d.name }))}
+        />
+      )}
+
+      {/* Devices Tab — Search + Table */}
+      {activeTab === 'devices' && <>
       <div className="relative">
         <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
         <input value={search} onChange={e => setSearch(e.target.value)}
@@ -265,6 +311,7 @@ export default function InstituteDevicesPage() {
           </div>
         )}
       </div>
+      </>}
     </div>
   )
 }
