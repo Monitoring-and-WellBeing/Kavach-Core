@@ -22,6 +22,7 @@
     <java.version>17</java.version>
     <jjwt.version>0.11.5</jjwt.version>
     <springdoc.version>2.3.0</springdoc.version>
+    <shedlock.version>5.13.0</shedlock.version>
   </properties>
 
   <dependencies>
@@ -110,6 +111,19 @@
       <groupId>com.bucket4j</groupId>
       <artifactId>bucket4j-core</artifactId>
       <version>8.10.1</version>
+    </dependency>
+
+    <!-- Distributed scheduling lock — prevents @Scheduled jobs from firing on every
+         Railway instance simultaneously when horizontally scaled. -->
+    <dependency>
+      <groupId>net.javacrumbs.shedlock</groupId>
+      <artifactId>shedlock-spring</artifactId>
+      <version>${shedlock.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>net.javacrumbs.shedlock</groupId>
+      <artifactId>shedlock-provider-jdbc-template</artifactId>
+      <version>${shedlock.version}</version>
     </dependency>
 
     <!-- Logging (JSON for production) -->

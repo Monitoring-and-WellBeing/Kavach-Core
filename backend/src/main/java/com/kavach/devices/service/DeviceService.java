@@ -5,6 +5,7 @@ import com.kavach.devices.entity.*;
 import com.kavach.devices.repository.*;
 import com.kavach.subscription.service.SubscriptionService;
 import lombok.RequiredArgsConstructor;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -85,6 +86,7 @@ public class DeviceService {
     }
 
     // ── List all devices for a tenant ─────────────────────────────────────────
+    @Transactional(readOnly = true)
     public List<DeviceDto> getDevicesByTenant(UUID tenantId) {
         return deviceRepo.findByTenantIdAndActiveTrue(tenantId)
                 .stream()
@@ -93,6 +95,7 @@ public class DeviceService {
     }
 
     // ── Get single device ─────────────────────────────────────────────────────
+    @Transactional(readOnly = true)
     public DeviceDto getDevice(UUID deviceId, UUID tenantId) {
         Device device = deviceRepo.findById(deviceId)
                 .filter(d -> d.getTenantId().equals(tenantId))
@@ -152,7 +155,8 @@ public class DeviceService {
     }
 
     // ── Auto-mark devices OFFLINE if no heartbeat in 2 minutes ───────────────
-    @Scheduled(fixedDelay = 60000) // every 60 seconds
+    @Scheduled(fixedDelay = 60000)
+    @SchedulerLock(name = "markStaleDevicesOffline", lockAtLeastFor = "PT45S", lockAtMostFor = "PT2M")
     @Transactional
     public void markStaleDevicesOffline() {
         LocalDateTime threshold = LocalDateTime.now().minusMinutes(2);

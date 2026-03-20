@@ -10,6 +10,7 @@ import com.razorpay.RazorpayException;
 import com.razorpay.Utils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -239,7 +240,8 @@ public class SubscriptionService {
     }
 
     // ── Scheduled job: Expire subscriptions whose period has ended ───────────
-    @Scheduled(fixedDelay = 3600000) // every hour
+    @Scheduled(fixedDelay = 3600000)
+    @SchedulerLock(name = "expireElapsedSubscriptions", lockAtLeastFor = "PT50M", lockAtMostFor = "PT110M")
     @Transactional
     public void expireElapsedSubscriptions() {
         List<Subscription> expired = subRepo.findByStatusIn(Arrays.asList("ACTIVE", "TRIAL"))

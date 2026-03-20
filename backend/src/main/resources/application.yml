@@ -8,12 +8,24 @@ spring:
     password: ${SPRING_DATASOURCE_PASSWORD:CHANGE_ME_IN_PROD}
     driver-class-name: org.postgresql.Driver
     hikari:
-      maximum-pool-size: 5
-      minimum-idle: 1
-      connection-timeout: 30000
-      idle-timeout: 600000
-      max-lifetime: 1800000
-      keepalive-time: 300000
+      pool-name: KavachHikariPool
+      # Sized for Neon pooler (PgBouncer in transaction mode).
+      # Formula: (core_count × 2) + 1; Railway Starter = 1 vCPU → 3 minimum.
+      # Set to 10 to handle burst traffic while staying within Neon's connection limit.
+      # Raise to 20 when upgrading to Neon Pro (which lifts the connection cap).
+      maximum-pool-size: 10
+      minimum-idle: 2
+      # Fail fast if DB is unreachable at startup — better than queuing forever.
+      connection-timeout: 20000
+      # Release idle connections after 3 min to avoid holding Neon slots during quiet periods.
+      idle-timeout: 180000
+      # Recycle connections before Neon's server-side 5-min idle timeout kills them.
+      max-lifetime: 240000
+      # Send keepalive every 60s so Neon doesn't suspend the compute during low traffic.
+      keepalive-time: 60000
+      # Validate connection health before handing it to the application.
+      connection-test-query: SELECT 1
+      auto-commit: false
 
   jpa:
     hibernate:
