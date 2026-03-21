@@ -35,6 +35,8 @@ export const goalsApi = {
     api.get<Goal[]>('/goals').then(r => r.data),
   create: (data: { deviceId: string; title: string; goalType: GoalType; period: string; targetValue: number }) =>
     api.post<Goal>('/goals', data).then(r => r.data),
+  update: (id: string, patch: Partial<Goal>) =>
+    api.put<Goal>(`/goals/${id}`, patch).then(r => r.data),
   delete: (id: string) =>
     api.delete(`/goals/${id}`),
 }

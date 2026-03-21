@@ -5,12 +5,6 @@
 
 import { useEffect, useRef, useCallback } from 'react'
 
-declare global {
-  interface Window {
-    Razorpay: any
-  }
-}
-
 export function useRazorpay() {
   const scriptLoaded = useRef(false)
 
@@ -61,7 +55,8 @@ export function useRazorpay() {
       modal: {
         ondismiss: options.onDismiss || (() => {}),
       },
-      handler: (response: any) => {
+      // GAP-18 FIXED
+      handler: (response) => {
         options.onSuccess({
           razorpay_order_id: response.razorpay_order_id,
           razorpay_payment_id: response.razorpay_payment_id,

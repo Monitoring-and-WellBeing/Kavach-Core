@@ -1,5 +1,6 @@
 package com.kavach.activity.service;
 
+import com.kavach.activity.dto.ActivityLogResponse;
 import com.kavach.activity.dto.SyncActivityRequest;
 import com.kavach.activity.entity.ActivityLog;
 import com.kavach.activity.entity.AppCategory;
@@ -8,13 +9,16 @@ import com.kavach.devices.repository.DeviceRepository;
 import com.kavach.devices.entity.Device;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.time.ZonedDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -65,6 +69,43 @@ public class ActivityService {
     public List<Object[]> getTopAppsToday(UUID deviceId) {
         LocalDateTime startOfDay = LocalDateTime.now().toLocalDate().atStartOfDay();
         return activityRepo.topAppsSince(deviceId, startOfDay);
+    }
+
+    public List<ActivityLogResponse> getLogs(UUID tenantId, UUID deviceId, int hours, int limit) {
+        int cap = Math.min(limit, 500);
+        LocalDateTime since = LocalDateTime.now().minusHours(Math.max(hours, 1));
+        var pageable = PageRequest.of(0, cap);
+
+        // Build device-name lookup for this tenant (avoids N+1)
+        Map<UUID, String> deviceNames = deviceRepo.findByTenantIdAndActiveTrue(tenantId)
+                .stream()
+                .collect(Collectors.toMap(Device::getId, Device::getName));
+
+        List<ActivityLog> logs = deviceId != null
+                ? activityRepo.findRecentByDeviceIdAndTenantId(deviceId, tenantId, since, pageable)
+                : activityRepo.findRecentByTenantId(tenantId, since, pageable);
+
+        return logs.stream().map(a -> ActivityLogResponse.builder()
+                .id(a.getId())
+                .deviceId(a.getDeviceId())
+                .deviceName(deviceNames.getOrDefault(a.getDeviceId(), "Unknown Device"))
+                .appName(a.getAppName())
+                .processName(a.getProcessName())
+                .windowTitle(a.getWindowTitle())
+                .category(a.getCategory() != null ? a.getCategory().name() : "OTHER")
+                .durationSeconds(a.getDurationSeconds())
+                .durationFormatted(formatDuration(a.getDurationSeconds()))
+                .startedAt(a.getStartedAt())
+                .endedAt(a.getEndedAt())
+                .blocked(a.isBlocked())
+                .build()
+        ).toList();
+    }
+
+    private String formatDuration(int seconds) {
+        if (seconds < 60) return seconds + "s";
+        if (seconds < 3600) return (seconds / 60) + "m " + (seconds % 60) + "s";
+        return (seconds / 3600) + "h " + ((seconds % 3600) / 60) + "m";
     }
 
     private AppCategory parseCategory(String cat) {

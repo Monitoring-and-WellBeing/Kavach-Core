@@ -1,12 +1,12 @@
 'use client'
 import { useState, useEffect, useCallback } from 'react'
 import { Shield, Plus, Trash2, ToggleLeft, ToggleRight,
-         Monitor, Gamepad2, Instagram, Globe, Search,
-         Clock, X, AlertCircle, ChevronRight } from 'lucide-react'
+         Search, Clock } from 'lucide-react'
 import { blockingApi, BlockRule } from '@/lib/blocking'
 import { devicesApi, Device } from '@/lib/devices'
 import { Modal } from '@/components/ui/Modal'
 import { Toast, useToast } from '@/components/ui/Toast'
+import AiRuleSuggestions from '@/components/rules/AiRuleSuggestions'
 
 // ── Category config ────────────────────────────────────────────────────────────
 const CATEGORIES = [
@@ -48,7 +48,7 @@ function RuleTypeBadge({ type }: { type: BlockRule['ruleType'] }) {
 export default function AppControlPage() {
   const [tab, setTab] = useState<Tab>('apps')
   const [rules, setRules] = useState<BlockRule[]>([])
-  const [devices, setDevices] = useState<Device[]>([])
+  const [_devices, setDevices] = useState<Device[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [createOpen, setCreateOpen] = useState(false)
@@ -160,6 +160,11 @@ export default function AppControlPage() {
           style={{ background: 'linear-gradient(135deg, #2563EB, #7C3AED)' }}>
           <Plus size={16} /> Add Block Rule
         </button>
+      </div>
+
+      {/* AI Rule Suggestions */}
+      <div className="mb-5">
+        <AiRuleSuggestions onRuleApplied={load} />
       </div>
 
       {/* Tabs */}

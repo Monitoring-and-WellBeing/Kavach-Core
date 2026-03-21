@@ -1,0 +1,74 @@
+# =============================================================================
+# KAVACH AI -- Production profile overrides
+# Activate with: SPRING_PROFILES_ACTIVE=prod
+#
+# All secrets MUST be supplied via environment variables; no hardcoded fallbacks
+# are permitted in this file.  Any property that falls back to a placeholder
+# ("CHANGE_ME_IN_PROD", "XXXXXXXX", etc.) in the base application.yml is
+# overridden here to require an explicit env var with NO default.
+# =============================================================================
+
+spring:
+  main:
+    # Never use dev's lazy-init in prod — keeps startup deterministic (Flyway → JPA → web).
+    lazy-initialization: false
+
+  datasource:
+    # In production all three MUST be set as env vars -- no fallbacks.
+    url: ${SPRING_DATASOURCE_URL}
+    username: ${SPRING_DATASOURCE_USERNAME}
+    password: ${SPRING_DATASOURCE_PASSWORD}
+    hikari:
+      # Neon free tier supports ~10 pooled connections; keep Hikari well below that.
+      maximum-pool-size: 5
+      minimum-idle: 1
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+      keepalive-time: 300000
+
+  jpa:
+    hibernate:
+      # Flyway owns the schema in production -- Hibernate must NEVER alter it.
+      ddl-auto: validate
+    show-sql: false
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    # Do NOT allow migrations to run out of order in production.
+    out-of-order: false
+    # Validate checksums before applying any migration.
+    validate-on-migrate: true
+    # baseline-on-migrate must be FALSE in production -- if the schema is empty
+    # it means a fresh deploy and Flyway should run V1 normally.
+    baseline-on-migrate: false
+
+kavach:
+  jwt:
+    # JWT_SECRET MUST be set in prod -- no fallback.
+    secret: ${JWT_SECRET}
+
+razorpay:
+  key:
+    # Live Razorpay keys MUST be set as env vars in prod -- no fallback.
+    id: ${RAZORPAY_KEY_ID}
+    secret: ${RAZORPAY_KEY_SECRET}
+  webhook:
+    secret: ${RAZORPAY_WEBHOOK_SECRET}
+
+r2:
+  account-id: ${R2_ACCOUNT_ID}
+  access-key-id: ${R2_ACCESS_KEY_ID}
+  secret-access-key: ${R2_SECRET_ACCESS_KEY}
+  bucket-name: ${R2_BUCKET_NAME}
+
+# Production logging: reduce noise, keep warnings and above for most libs.
+logging:
+  level:
+    com.kavach: INFO
+    org.springframework.security: WARN
+    org.springframework.web: WARN
+    org.hibernate: WARN
+
+# Swagger / OpenAPI docs are enabled in application.yml (base config).

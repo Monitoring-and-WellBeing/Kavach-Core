@@ -1,54 +1,41 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { Shield, Eye, EyeOff, Loader2 } from "lucide-react";
-
-const DEMO_CREDENTIALS = [
-  { email: "parent@demo.com", password: "demo123", role: "parent", redirect: "/parent" },
-  { email: "student@demo.com", password: "demo123", role: "student", redirect: "/student" },
-  { email: "admin@demo.com", password: "demo123", role: "institute", redirect: "/institute" },
-];
+import { useAuth } from "@/context/AuthContext";
 
 export default function LoginPage() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const roleParam = searchParams.get("role");
+  const { login } = useAuth();
+
+  const showDemoCredentials = process.env.NEXT_PUBLIC_SHOW_DEMO_CREDENTIALS === "true";
 
   const [email, setEmail] = useState(
-    roleParam === "parent"
+    showDemoCredentials && roleParam === "parent"
       ? "parent@demo.com"
-      : roleParam === "student"
+      : showDemoCredentials && roleParam === "student"
       ? "student@demo.com"
-      : roleParam === "institute"
+      : showDemoCredentials && roleParam === "institute"
       ? "admin@demo.com"
       : ""
   );
-  const [password, setPassword] = useState("demo123");
+  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setLoading(true); // Must be BEFORE any await
     setError("");
-    setLoading(true);
-
-    await new Promise((r) => setTimeout(r, 800)); // simulate API call
-
-    const match = DEMO_CREDENTIALS.find(
-      (c) => c.email === email && c.password === password
-    );
-
-    if (match) {
-      // Store demo auth in sessionStorage
-      sessionStorage.setItem(
-        "kavach_user",
-        JSON.stringify({ email: match.email, role: match.role })
-      );
-      router.push(match.redirect);
-    } else {
-      setError("Invalid credentials. Try: parent@demo.com / demo123");
+    try {
+      await login(email, password);
+      // AuthContext.login() handles token storage and redirect
+    } catch (err: any) {
+      setError(err?.response?.data?.message || err?.message || "Invalid email or password");
+    } finally {
       setLoading(false);
     }
   };
@@ -79,10 +66,11 @@ export default function LoginPage() {
 
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             <div>
-              <label className="block text-sm font-medium text-[#94A3B8] mb-1.5">
+              <label htmlFor="email" className="block text-sm font-medium text-[#94A3B8] mb-1.5">
                 Email
               </label>
               <input
+                id="email"
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -93,11 +81,12 @@ export default function LoginPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-[#94A3B8] mb-1.5">
+              <label htmlFor="password" className="block text-sm font-medium text-[#94A3B8] mb-1.5">
                 Password
               </label>
               <div className="relative">
                 <input
+                  id="password"
                   type={showPassword ? "text" : "password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
@@ -135,18 +124,24 @@ export default function LoginPage() {
             </button>
           </form>
 
-          {/* Demo credentials hint */}
+          {/* Demo credentials hint — only rendered when NEXT_PUBLIC_SHOW_DEMO_CREDENTIALS=true */}
+          {showDemoCredentials && (
           <div className="mt-6 pt-6 border-t border-[#1E2A45]">
             <p className="text-xs text-[#64748B] mb-3 font-medium uppercase tracking-wide">
               Demo Credentials
             </p>
             <div className="flex flex-col gap-2">
-              {DEMO_CREDENTIALS.map((c) => (
+              {[
+                { email: "parent@demo.com", role: "parent" },
+                { email: "student@demo.com", role: "student" },
+                { email: "admin@demo.com", role: "institute" },
+              ].map((c) => (
                 <button
                   key={c.email}
+                  type="button"
                   onClick={() => {
                     setEmail(c.email);
-                    setPassword(c.password);
+                    setPassword("demo123");
                   }}
                   className="text-left text-xs px-3 py-2.5 bg-[#0A0F1E] border border-[#1E2A45] rounded-lg hover:border-blue-500 transition-colors"
                 >
@@ -157,6 +152,7 @@ export default function LoginPage() {
               ))}
             </div>
           </div>
+          )}
         </div>
 
         <p className="text-center mt-4 text-[#64748B] text-sm">

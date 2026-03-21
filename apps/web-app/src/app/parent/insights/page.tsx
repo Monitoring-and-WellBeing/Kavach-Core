@@ -1,10 +1,13 @@
 'use client'
 import { useState, useEffect, useCallback } from 'react'
 import { Sparkles, RefreshCw, ChevronDown, AlertTriangle,
-         CheckCircle, Lightbulb, TrendingUp, Shield, Clock } from 'lucide-react'
-import { insightsApi, DeviceInsight, InsightCard, RiskLevel } from '@/lib/insights'
+         CheckCircle, Lightbulb, TrendingUp, Shield, Clock,
+         BookOpen, SmilePlus } from 'lucide-react'
+import { insightsApi, DeviceInsight, InsightCard, RiskLevel,
+         moodApi, MoodTrendItem, studyBuddyApi, TopicSummary } from '@/lib/insights'
 import { devicesApi, Device } from '@/lib/devices'
 import { Toast, useToast } from '@/components/ui/Toast'
+import MoodTrendChart from '@/components/charts/MoodTrendChart'
 
 // ── Config maps ───────────────────────────────────────────────────────────────
 const RISK_CONFIG: Record<RiskLevel, { label: string; color: string; bg: string; border: string }> = {
@@ -87,6 +90,8 @@ export default function InsightsPage() {
   const [insight, setInsight] = useState<DeviceInsight | null>(null)
   const [loading, setLoading] = useState(false)
   const [generating, setGenerating] = useState(false)
+  const [moodData, setMoodData] = useState<MoodTrendItem[]>([])
+  const [topicSummary, setTopicSummary] = useState<TopicSummary | null>(null)
   const { toast, showToast, hideToast } = useToast()
 
   // Load devices on mount
@@ -97,13 +102,24 @@ export default function InsightsPage() {
     })
   }, [])
 
-  // Load insights when device selected
+  // Load insights + mood + topics when device selected
   const loadInsights = useCallback(async (deviceId: string) => {
     setLoading(true)
     setInsight(null)
+    setMoodData([])
+    setTopicSummary(null)
     try {
-      const data = await insightsApi.get(deviceId)
+      const [data, mood] = await Promise.all([
+        insightsApi.get(deviceId),
+        moodApi.getHistory(deviceId).catch(() => [] as MoodTrendItem[]),
+      ])
       setInsight(data)
+      setMoodData(mood)
+
+      // Load topic summary using deviceId as proxy (or extend with student lookup)
+      studyBuddyApi.getTopics(deviceId)
+        .then(setTopicSummary)
+        .catch(() => {})
     } catch {
       showToast('Failed to load insights', 'error')
     } finally {
@@ -145,7 +161,7 @@ export default function InsightsPage() {
             AI Insights
           </h1>
           <p className="text-gray-400 text-sm mt-0.5">
-            Powered by Claude · Analyzes last 7 days of usage
+            Powered by Gemini · Analyzes last 7 days of usage
           </p>
         </div>
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
@@ -178,6 +194,72 @@ export default function InsightsPage() {
       )}
 
       {selectedDeviceId && loading && <InsightSkeleton />}
+
+      {/* ── Mood Trend + Study Buddy Topics row ── */}
+      {selectedDeviceId && !loading && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-5 mb-4 md:mb-5">
+
+          {/* Mood Trend Chart */}
+          <div className="bg-white rounded-2xl p-5 shadow-sm">
+            <div className="flex items-center gap-2 mb-4">
+              <SmilePlus size={16} className="text-amber-500" />
+              <h3 className="font-semibold text-gray-800 text-sm">
+                7-Day Mood Trend
+              </h3>
+            </div>
+            <MoodTrendChart
+              data={moodData}
+              studentName={devices.find(d => d.id === selectedDeviceId)?.assignedTo ?? undefined}
+            />
+          </div>
+
+          {/* Study Buddy Topics */}
+          <div className="bg-white rounded-2xl p-5 shadow-sm">
+            <div className="flex items-center gap-2 mb-4">
+              <BookOpen size={16} className="text-blue-500" />
+              <h3 className="font-semibold text-gray-800 text-sm">
+                Study Buddy — Topics This Week
+              </h3>
+            </div>
+            {topicSummary === null ? (
+              <div className="flex items-center justify-center py-8">
+                <div className="h-4 w-32 bg-gray-100 rounded animate-pulse" />
+              </div>
+            ) : topicSummary.topics.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-8 text-center">
+                <span className="text-3xl mb-2">🔬</span>
+                <p className="text-gray-400 text-sm">No Study Buddy questions yet</p>
+                <p className="text-gray-300 text-xs mt-1">
+                  Topics appear here once your student uses the AI tutor
+                </p>
+              </div>
+            ) : (
+              <div>
+                <p className="text-gray-400 text-xs mb-3">
+                  {topicSummary.totalQuestionsThisWeek} questions asked this week
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {topicSummary.topics.map((topic) => {
+                    const isMath = topic.toLowerCase().startsWith('math')
+                    return (
+                      <span
+                        key={topic}
+                        className={`text-xs px-2.5 py-1 rounded-full font-medium border ${
+                          isMath
+                            ? 'bg-blue-50 text-blue-700 border-blue-100'
+                            : 'bg-green-50 text-green-700 border-green-100'
+                        }`}
+                      >
+                        {isMath ? '📐' : '🔬'} {topic}
+                      </span>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {selectedDeviceId && !loading && insight && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-5">

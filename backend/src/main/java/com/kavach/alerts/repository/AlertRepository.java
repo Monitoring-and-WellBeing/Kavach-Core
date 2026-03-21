@@ -30,4 +30,7 @@ public interface AlertRepository extends JpaRepository<Alert, UUID> {
 
     // Count alerts after a given timestamp (used by dashboard)
     long countByTriggeredAtAfter(LocalDateTime triggeredAt);
+    
+    // Count alerts for a tenant after a given timestamp (tenant-isolated version)
+    long countByTenantIdAndTriggeredAtAfter(UUID tenantId, LocalDateTime triggeredAt);
 }

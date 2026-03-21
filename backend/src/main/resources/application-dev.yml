@@ -1,0 +1,56 @@
+spring:
+  main:
+    # Defer @Service/@Component/@RestController bean init to first HTTP request.
+    # Reduces startup heap from ~450 MB to ~120 MB so the app fits within
+    # Railway's 512 MB container limit. Infrastructure beans (JPA, Hikari,
+    # Security) are still initialized eagerly.
+    lazy-initialization: true
+
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/kavach_dev?sslmode=prefer}
+    username: ${SPRING_DATASOURCE_USERNAME:kavach}
+    password: ${SPRING_DATASOURCE_PASSWORD:kavach}
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+    out-of-order: false
+    validate-on-migrate: true
+
+  security:
+    cors:
+      allowed-origins: ${CORS_ORIGINS:http://localhost:3000,http://localhost:3001,https://kavach-core-web-appss.vercel.app}
+
+server:
+  port: ${PORT:8080}
+
+kavach:
+  jwt:
+    secret: ${JWT_SECRET:kavach-dev-secret-key-minimum-32-chars-long}
+    access-token-expiry: ${JWT_ACCESS_EXPIRY:900000}
+    refresh-token-expiry: ${JWT_REFRESH_EXPIRY:604800000}
+  ai:
+    provider: gemini
+    gemini:
+      api-key: ${GEMINI_API_KEY:}
+      model: gemini-1.5-flash
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: always
+

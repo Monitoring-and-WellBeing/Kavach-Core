@@ -7,6 +7,8 @@ import Link from 'next/link'
 import { dashboardApi, type ParentDashboard, type DeviceSummary, type DashboardAlert } from '@/lib/dashboard'
 import { alertsApi } from '@/lib/alerts'
 import { FocusControl } from '@/components/FocusControl'
+import { ChildChallengesWidget } from '@/components/challenges/ChildChallengesWidget'
+import { MoodTrendWidget } from '@/components/challenges/MoodTrendWidget'
 
 // ── Severity config ────────────────────────────────────────────────────────────
 const SEVERITY = {
@@ -157,11 +159,11 @@ export default function ParentDashboard() {
       <div className="p-4 md:p-6 space-y-4 md:space-y-5">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
           {[1,2,3,4].map(i => <div key={i} className="bg-white rounded-2xl h-28 animate-pulse shadow-sm" />)}
-        </div>
+            </div>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 md:gap-4">
           {[1,2,3].map(i => <div key={i} className="bg-white rounded-2xl h-36 animate-pulse shadow-sm" />)}
         </div>
-      </div>
+          </div>
     )
   }
 
@@ -225,6 +227,29 @@ export default function ParentDashboard() {
           color="bg-red-50"
         />
       </div>
+
+      {/* ── Engagement: Mood & Challenges (per device) ── */}
+      {devices.length > 0 && (
+        <div className="space-y-3">
+          <h2 className="font-semibold text-gray-800 text-sm flex items-center gap-2">
+            ⚡ Today&apos;s Challenges &amp; Mood
+          </h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {devices.slice(0, 3).map((device) => (
+              <div key={device.id} className="space-y-3">
+                <ChildChallengesWidget
+                  deviceId={device.id}
+                  childName={device.assignedTo || device.name}
+                />
+                <MoodTrendWidget
+                  deviceId={device.id}
+                  childName={device.assignedTo || device.name}
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* ── Main content: devices + alerts ── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-5">

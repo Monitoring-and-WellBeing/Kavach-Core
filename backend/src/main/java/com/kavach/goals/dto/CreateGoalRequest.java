@@ -13,9 +13,12 @@ public class CreateGoalRequest {
     private String title;
 
     @NotBlank
+    @Pattern(regexp = "SCREEN_TIME|FOCUS_SESSIONS|APP_LIMIT|CATEGORY_LIMIT|STREAK|CUSTOM", 
+             message = "goalType must be one of: SCREEN_TIME, FOCUS_SESSIONS, APP_LIMIT, CATEGORY_LIMIT, STREAK, CUSTOM")
     private String goalType;
 
     @NotBlank
+    @Pattern(regexp = "DAILY|WEEKLY|MONTHLY", message = "period must be one of: DAILY, WEEKLY, MONTHLY")
     private String period;
 
     @Min(1)

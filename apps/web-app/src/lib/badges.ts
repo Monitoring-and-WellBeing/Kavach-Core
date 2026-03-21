@@ -20,7 +20,7 @@ export interface BadgeProgress {
   totalXp: number
   badgesEarned: number
   badgesTotal: number
-  level: string
+  level: string | number  // Can be string like "Explorer" or number like 1
   levelProgress: number
   badges: Badge[]
   recentlyEarned: Badge[]

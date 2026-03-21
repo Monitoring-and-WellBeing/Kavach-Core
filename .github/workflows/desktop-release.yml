@@ -1,0 +1,77 @@
+name: KAVACH Desktop Agent — Build & Release
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Triggers:
+#   • Push a tag like  desktop-agent-v1.2.4  to kick off a Windows build
+#   • Workflow dispatch for manual one-off builds
+# Output:
+#   • A GitHub Release (draft) containing KAVACH-Agent-Setup-<version>.exe
+#   • The release stays as DRAFT until you manually publish it on GitHub
+# ─────────────────────────────────────────────────────────────────────────────
+
+on:
+  push:
+    tags:
+      - "desktop-agent-v*"
+  workflow_dispatch:
+
+# Required so GITHUB_TOKEN can create a GitHub Release
+permissions:
+  contents: write
+
+jobs:
+  build-windows:
+    name: Build Windows Installer
+    runs-on: windows-latest
+
+    steps:
+      # ── 1. Checkout ──────────────────────────────────────────────────────────
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # ── 2. pnpm ───────────────────────────────────────────────────────────────
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 10
+
+      # ── 3. Node ───────────────────────────────────────────────────────────────
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "pnpm"
+          cache-dependency-path: "**/pnpm-lock.yaml"
+
+      # ── 4. Install dependencies ───────────────────────────────────────────────
+      - name: Install monorepo dependencies
+        run: pnpm install
+
+      # ── 5. Generate build-time config ─────────────────────────────────────────
+      # Writes src/buildTime.ts with the real API URL from the repo secret.
+      # The URL never appears in committed source code.
+      # Secret: Settings → Secrets → Actions → KAVACH_API_URL
+      - name: Generate build-time config
+        run: pnpm --filter desktop-agent write-config
+        env:
+          API_URL: ${{ secrets.KAVACH_API_URL }}
+
+      # ── 6. Compile TypeScript ─────────────────────────────────────────────────
+      - name: Compile TypeScript
+        run: pnpm --filter desktop-agent build
+
+      # ── 7. Build Windows NSIS installer and publish as GitHub Release draft ───
+      - name: Build and publish Windows installer
+        run: pnpm exec electron-builder --win --x64 --publish always
+        working-directory: apps/desktop-agent
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # ── 8. Upload installer as workflow artifact (backup copy) ────────────────
+      - name: Upload installer artifact
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: windows-installer
+          path: apps/desktop-agent/dist-build/*.exe
+          retention-days: 30

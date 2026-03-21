@@ -1,5 +1,6 @@
 import { loadConfig } from '../auth/config'
 import { killProcess, showBlockNotification } from '../blocking/processKiller'
+import { logger } from '../logger'
 
 export interface AgentFocusStatus {
   focusActive: boolean
@@ -24,7 +25,7 @@ export async function pollFocusStatus(): Promise<AgentFocusStatus> {
     )
     if (res.ok) {
       const prev = currentStatus
-      currentStatus = await res.json()
+      currentStatus = await res.json() as AgentFocusStatus
 
       // Focus just started
       if (!prev.focusActive && currentStatus.focusActive) {
@@ -71,18 +72,18 @@ export function isFocusBlocked(processName: string): boolean {
 }
 
 function onFocusStarted() {
-  console.log('[focus] Focus mode STARTED:', currentStatus.title)
+  logger.info('[focus] Focus mode STARTED', currentStatus.title)
   showFocusOverlay()
 }
 
 function onFocusEnded() {
-  console.log('[focus] Focus mode ENDED')
+  logger.info('[focus] Focus mode ENDED')
   hideFocusOverlay()
 }
 
 // Show a small persistent overlay showing remaining time
 export function showFocusOverlay() {
-  if (typeof window !== 'undefined') return // Skip in renderer process
+  if (typeof (globalThis as any).window !== 'undefined') return // Skip in renderer process
 
   try {
     const { BrowserWindow } = require('electron')
@@ -100,7 +101,7 @@ export function showFocusOverlay() {
     updateFocusOverlay()
   } catch (e) {
     // Electron not available in dev mode
-    console.log('[focus] Overlay would show:', currentStatus.remainingSeconds, 's remaining')
+    logger.debug('[focus] Overlay would show', `${currentStatus.remainingSeconds}s remaining`)
   }
 }
 

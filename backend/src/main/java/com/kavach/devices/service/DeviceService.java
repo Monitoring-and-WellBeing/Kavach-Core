@@ -5,13 +5,16 @@ import com.kavach.devices.entity.*;
 import com.kavach.devices.repository.*;
 import com.kavach.subscription.service.SubscriptionService;
 import lombok.RequiredArgsConstructor;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
+import static org.springframework.http.HttpStatus.NOT_FOUND;
 
 @Service
 @RequiredArgsConstructor
@@ -68,6 +71,10 @@ public class DeviceService {
                 .type(DeviceType.DESKTOP)
                 .status(DeviceStatus.OFFLINE)
                 .assignedTo(req.getAssignedTo())
+                .active(true)
+                .deviceSecret(UUID.randomUUID().toString()) // GAP-5 FIXED
+                .createdAt(LocalDateTime.now())
+                .updatedAt(LocalDateTime.now())
                 .build();
 
         device = deviceRepo.save(device);
@@ -82,6 +89,7 @@ public class DeviceService {
     }
 
     // ── List all devices for a tenant ─────────────────────────────────────────
+    @Transactional(readOnly = true)
     public List<DeviceDto> getDevicesByTenant(UUID tenantId) {
         return deviceRepo.findByTenantIdAndActiveTrue(tenantId)
                 .stream()
@@ -90,6 +98,7 @@ public class DeviceService {
     }
 
     // ── Get single device ─────────────────────────────────────────────────────
+    @Transactional(readOnly = true)
     public DeviceDto getDevice(UUID deviceId, UUID tenantId) {
         Device device = deviceRepo.findById(deviceId)
                 .filter(d -> d.getTenantId().equals(tenantId))
@@ -149,20 +158,18 @@ public class DeviceService {
     }
 
     // ── Auto-mark devices OFFLINE if no heartbeat in 2 minutes ───────────────
-    @Scheduled(fixedDelay = 60000) // every 60 seconds
+    @Scheduled(fixedDelay = 60000)
+    @SchedulerLock(name = "markStaleDevicesOffline", lockAtLeastFor = "PT45S", lockAtMostFor = "PT2M")
     @Transactional
     public void markStaleDevicesOffline() {
         LocalDateTime threshold = LocalDateTime.now().minusMinutes(2);
-        deviceRepo.findAll().stream()
-                .filter(d -> d.isActive()
-                        && d.getStatus() == DeviceStatus.ONLINE
-                        && d.getLastSeen() != null
-                        && d.getLastSeen().isBefore(threshold))
-                .forEach(d -> {
-                    d.setStatus(DeviceStatus.OFFLINE);
-                    d.setUpdatedAt(LocalDateTime.now());
-                    deviceRepo.save(d);
-                });
+        // Use a scoped query instead of findAll() to avoid loading every device
+        // across all tenants into heap.
+        deviceRepo.findOnlineDevicesLastSeenBefore(threshold).forEach(d -> {
+            d.setStatus(DeviceStatus.OFFLINE);
+            d.setUpdatedAt(LocalDateTime.now());
+            deviceRepo.save(d);
+        });
     }
 
     // ── Helper: update status ─────────────────────────────────────────────────
@@ -207,6 +214,9 @@ public class DeviceService {
     }
 
     // ── Check if a code has been linked (for desktop agent polling) ─────────
+    // @Transactional keeps the Hibernate session open so the lazy-loaded
+    // Device association on DeviceLinkCode can be accessed in the controller.
+    @Transactional(readOnly = true)
     public Optional<DeviceLinkCode> checkLinked(String code) {
         return codeRepo.findByCode(code.toUpperCase());
     }
@@ -219,5 +229,16 @@ public class DeviceService {
         long hours = ChronoUnit.HOURS.between(time, LocalDateTime.now());
         if (hours < 24) return hours + "h ago";
         return ChronoUnit.DAYS.between(time, LocalDateTime.now()) + "d ago";
+    }
+
+    public void assertDeviceOwnedByTenant(String deviceId, String tenantId) {
+        // GAP-8 FIXED
+        UUID parsedDeviceId = UUID.fromString(deviceId);
+        UUID parsedTenantId = UUID.fromString(tenantId);
+        Device device = deviceRepo.findById(parsedDeviceId)
+            .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Device not found"));
+        if (!Objects.equals(device.getTenantId(), parsedTenantId)) {
+            throw new ResponseStatusException(NOT_FOUND, "Device not found");
+        }
     }
 }

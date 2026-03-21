@@ -8,7 +8,6 @@ import {
   Tooltip,
   ResponsiveContainer,
   CartesianGrid,
-  Legend,
 } from "recharts";
 
 interface ScreenTimeBarChartProps {

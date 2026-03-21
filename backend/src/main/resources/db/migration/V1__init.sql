@@ -1,9 +1,9 @@
--- ═══════════════════════════════════════════════════════════════
--- KAVACH AI — Initial Database Schema
--- ═══════════════════════════════════════════════════════════════
+-- ================================================================
+-- KAVACH AI -- Initial Database Schema
+-- ================================================================
 
 -- Tenants
-CREATE TABLE tenants (
+CREATE TABLE IF NOT EXISTS tenants (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name VARCHAR(255) NOT NULL,
     type VARCHAR(50) NOT NULL,
@@ -15,7 +15,7 @@ CREATE TABLE tenants (
 );
 
 -- Users
-CREATE TABLE users (
+CREATE TABLE IF NOT EXISTS users (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     tenant_id UUID REFERENCES tenants(id),
     name VARCHAR(255) NOT NULL,
@@ -27,7 +27,7 @@ CREATE TABLE users (
 );
 
 -- Devices
-CREATE TABLE devices (
+CREATE TABLE IF NOT EXISTS devices (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     tenant_id UUID REFERENCES tenants(id),
     name VARCHAR(255) NOT NULL,
@@ -42,7 +42,7 @@ CREATE TABLE devices (
 );
 
 -- Activity Logs
-CREATE TABLE activity_logs (
+CREATE TABLE IF NOT EXISTS activity_logs (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     device_id UUID REFERENCES devices(id),
     app_name VARCHAR(255),
@@ -55,7 +55,7 @@ CREATE TABLE activity_logs (
 );
 
 -- Rules
-CREATE TABLE rules (
+CREATE TABLE IF NOT EXISTS rules (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     tenant_id UUID REFERENCES tenants(id),
     device_id UUID REFERENCES devices(id),
@@ -72,7 +72,7 @@ CREATE TABLE rules (
 );
 
 -- Alerts
-CREATE TABLE alerts (
+CREATE TABLE IF NOT EXISTS alerts (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     device_id UUID REFERENCES devices(id),
     type VARCHAR(50) NOT NULL,
@@ -85,7 +85,7 @@ CREATE TABLE alerts (
 );
 
 -- Focus Sessions
-CREATE TABLE focus_sessions (
+CREATE TABLE IF NOT EXISTS focus_sessions (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     device_id UUID REFERENCES devices(id),
     start_time TIMESTAMP NOT NULL,
@@ -99,7 +99,7 @@ CREATE TABLE focus_sessions (
 );
 
 -- Subscriptions
-CREATE TABLE subscriptions (
+CREATE TABLE IF NOT EXISTS subscriptions (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     tenant_id UUID REFERENCES tenants(id) UNIQUE,
     plan VARCHAR(50) NOT NULL DEFAULT 'FREE_TRIAL',
@@ -113,14 +113,14 @@ CREATE TABLE subscriptions (
 );
 
 -- Indexes
-CREATE INDEX idx_activity_device ON activity_logs(device_id);
-CREATE INDEX idx_activity_timestamp ON activity_logs(timestamp);
-CREATE INDEX idx_alerts_device ON alerts(device_id);
-CREATE INDEX idx_alerts_read ON alerts(read);
-CREATE INDEX idx_devices_tenant ON devices(tenant_id);
-CREATE INDEX idx_devices_code ON devices(device_code);
-CREATE INDEX idx_rules_tenant ON rules(tenant_id);
-CREATE INDEX idx_rules_device ON rules(device_id);
-CREATE INDEX idx_focus_device ON focus_sessions(device_id);
-CREATE INDEX idx_users_email ON users(email);
-CREATE INDEX idx_users_tenant ON users(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_activity_device ON activity_logs(device_id);
+CREATE INDEX IF NOT EXISTS idx_activity_timestamp ON activity_logs(timestamp);
+CREATE INDEX IF NOT EXISTS idx_alerts_device ON alerts(device_id);
+CREATE INDEX IF NOT EXISTS idx_alerts_read ON alerts(read);
+CREATE INDEX IF NOT EXISTS idx_devices_tenant ON devices(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_devices_code ON devices(device_code);
+CREATE INDEX IF NOT EXISTS idx_rules_tenant ON rules(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_rules_device ON rules(device_id);
+CREATE INDEX IF NOT EXISTS idx_focus_device ON focus_sessions(device_id);
+CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+CREATE INDEX IF NOT EXISTS idx_users_tenant ON users(tenant_id);

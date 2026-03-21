@@ -17,6 +17,7 @@ export default function Landing() {
 
   // Signup form state
   const [signupData, setSignupData] = useState({
+    role: 'INSTITUTE_ADMIN' as const,
     name: '', email: '', password: '', phone: '',
     instituteName: '', instituteType: 'SCHOOL', city: '', state: ''
   })

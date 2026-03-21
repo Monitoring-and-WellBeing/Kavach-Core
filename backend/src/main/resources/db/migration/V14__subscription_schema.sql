@@ -1,28 +1,34 @@
--- ═══════════════════════════════════════════════════════════════
--- KAVACH AI — V10 Migration: Subscription & Plan Management
--- ═══════════════════════════════════════════════════════════════
+-- ================================================================
+-- KAVACH AI -- V10 Migration: Subscription & Plan Management
+-- ================================================================
 
--- ─── DROP OLD SUBSCRIPTIONS TABLE ─────────────────────────────
+-- DROP OLD SUBSCRIPTIONS TABLE ---------------------------------------------
 DROP TABLE IF EXISTS subscriptions CASCADE;
 
--- ─── PLAN TYPE ENUM ───────────────────────────────────────────
-CREATE TYPE plan_type AS ENUM ('B2C', 'B2B');
+-- PLAN TYPE ENUM -----------------------------------------------------------
+-- Guard against "type already exists" error on partial re-run
+DO $$
+BEGIN
+  CREATE TYPE plan_type AS ENUM ('B2C', 'B2B');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
 
--- ─── PLANS ─────────────────────────────────────────────────────
-CREATE TABLE plans (
+-- PLANS --------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS plans (
     id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     code             VARCHAR(20) UNIQUE NOT NULL,   -- BASIC, STANDARD, INSTITUTE
     name             VARCHAR(100) NOT NULL,
     plan_type        plan_type NOT NULL DEFAULT 'B2C',
     price_flat       INTEGER NOT NULL,              -- flat monthly price in paise
-                                                    -- ₹149 = 14900, ₹299 = 29900, ₹3500 = 350000
+                                                    -- Rs.149 = 14900, Rs.299 = 29900, Rs.3500 = 350000
     max_devices      INTEGER NOT NULL DEFAULT 3,    -- -1 = unlimited
     features         TEXT[] NOT NULL,
     is_active        BOOLEAN DEFAULT TRUE
 );
 
--- ─── SUBSCRIPTIONS ────────────────────────────────────────────
-CREATE TABLE subscriptions (
+-- SUBSCRIPTIONS ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS subscriptions (
     id                   UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     tenant_id            UUID NOT NULL UNIQUE REFERENCES tenants(id) ON DELETE CASCADE,
     plan_id              UUID NOT NULL REFERENCES plans(id),
@@ -37,11 +43,11 @@ CREATE TABLE subscriptions (
     updated_at           TIMESTAMP DEFAULT NOW()
 );
 
-CREATE INDEX idx_subscriptions_tenant ON subscriptions(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_subscriptions_tenant ON subscriptions(tenant_id);
 
--- ─── PAYMENT ORDERS ───────────────────────────────────────────
--- One row per Razorpay order. Status transitions: CREATED → PAID / FAILED.
-CREATE TABLE payment_orders (
+-- PAYMENT ORDERS -----------------------------------------------------------
+-- One row per Razorpay order. Status transitions: CREATED -> PAID / FAILED.
+CREATE TABLE IF NOT EXISTS payment_orders (
     id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     tenant_id           UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
     plan_id             UUID NOT NULL REFERENCES plans(id),
@@ -56,10 +62,12 @@ CREATE TABLE payment_orders (
     updated_at          TIMESTAMP DEFAULT NOW()
 );
 
-CREATE INDEX idx_payment_orders_tenant    ON payment_orders(tenant_id);
-CREATE INDEX idx_payment_orders_razorpay  ON payment_orders(razorpay_order_id);
+CREATE INDEX IF NOT EXISTS idx_payment_orders_tenant    ON payment_orders(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_payment_orders_razorpay  ON payment_orders(razorpay_order_id);
 
--- ─── SEED PLANS ───────────────────────────────────────────────
+-- SEED PLANS ---------------------------------------------------------------
+-- ON CONFLICT (code) DO NOTHING guards against duplicate-key failure on re-run
+-- (plans.code has a UNIQUE constraint)
 INSERT INTO plans (code, name, plan_type, price_flat, max_devices, features) VALUES
   ('BASIC', 'Basic', 'B2C', 14900, 3,
    ARRAY['device_monitoring','app_blocking','alerts','focus_mode','parent_dashboard']),
@@ -71,10 +79,11 @@ INSERT INTO plans (code, name, plan_type, price_flat, max_devices, features) VAL
   ('INSTITUTE', 'Institute', 'B2B', 350000, 75,
    ARRAY['device_monitoring','app_blocking','alerts','focus_mode','parent_dashboard',
          'ai_insights','goals','achievements','reports',
-         'institute_dashboard','priority_support','unlimited_history']);
+         'institute_dashboard','priority_support','unlimited_history'])
+ON CONFLICT (code) DO NOTHING;
 
--- ─── SEED DEMO SUBSCRIPTION (30-day trial on STANDARD for demo tenant) ───────
--- Using tenant 'a1b2c3d4-e5f6-7890-abcd-ef1234567890' from V1__auth_schema
+-- SEED DEMO SUBSCRIPTION (30-day trial on STANDARD for demo tenant) --------
+-- Using tenant 'a1b2c3d4-...' from V11__auth_schema
 INSERT INTO subscriptions (tenant_id, plan_id, status, trial_ends_at,
   current_period_end, device_count)
 SELECT

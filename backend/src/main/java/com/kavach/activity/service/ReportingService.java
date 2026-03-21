@@ -285,6 +285,46 @@ public class ReportingService {
         return HeatmapDto.builder().rows(rows).build();
     }
 
+    // ── Export to CSV ─────────────────────────────────────────────────────────
+    public String exportToCsv(UUID deviceId, String period) {
+        LocalDate endDate = LocalDate.now();
+        LocalDate startDate;
+        
+        if ("monthly".equalsIgnoreCase(period)) {
+            startDate = endDate.minusDays(29);
+        } else {
+            startDate = endDate.minusDays(6); // weekly
+        }
+        
+        LocalDateTime start = startDate.atStartOfDay();
+        LocalDateTime end = endDate.plusDays(1).atStartOfDay();
+
+        List<ActivityLog> logs = activityRepo
+            .findByDeviceIdAndStartedAtBetweenOrderByStartedAtDesc(deviceId, start, end);
+
+        StringBuilder csv = new StringBuilder();
+        csv.append("Date,AppName,Category,DurationMinutes\n");
+
+        for (ActivityLog log : logs) {
+            String date = log.getStartedAt().toLocalDate().toString();
+            String appName = escapeCsv(log.getAppName());
+            String category = log.getCategory().name();
+            int minutes = log.getDurationSeconds() / 60;
+            
+            csv.append(String.format("%s,%s,%s,%d\n", date, appName, category, minutes));
+        }
+
+        return csv.toString();
+    }
+
+    private String escapeCsv(String value) {
+        if (value == null) return "";
+        if (value.contains(",") || value.contains("\"") || value.contains("\n")) {
+            return "\"" + value.replace("\"", "\"\"") + "\"";
+        }
+        return value;
+    }
+
     // ── Utility ───────────────────────────────────────────────────────────────
     private String formatSeconds(long seconds) {
         if (seconds <= 0) return "0m";
