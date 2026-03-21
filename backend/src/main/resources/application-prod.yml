@@ -9,6 +9,10 @@
 # =============================================================================
 
 spring:
+  main:
+    # Never use dev's lazy-init in prod — keeps startup deterministic (Flyway → JPA → web).
+    lazy-initialization: false
+
   datasource:
     # In production all three MUST be set as env vars -- no fallbacks.
     url: ${SPRING_DATASOURCE_URL}
@@ -30,6 +34,8 @@ spring:
     show-sql: false
 
   flyway:
+    enabled: true
+    locations: classpath:db/migration
     # Do NOT allow migrations to run out of order in production.
     out-of-order: false
     # Validate checksums before applying any migration.
