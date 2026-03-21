@@ -4,7 +4,8 @@ services:
     runtime: java           # native Java runtime — no Docker/mise required
     rootDir: backend
     buildCommand: mvn clean package -DskipTests
-    startCommand: java $JAVA_OPTS -jar target/kavach-backend-0.1.0.jar -Dspring.profiles.active=prod
+    # -D must appear before -jar to be a JVM flag. Profile also comes from SPRING_PROFILES_ACTIVE below.
+    startCommand: java $JAVA_OPTS -Dspring.profiles.active=prod -jar target/kavach-backend-0.1.0.jar
 
     # ── JVM tuning — fits inside Render's free/starter 512 MB RAM limit ────
     envVars:
