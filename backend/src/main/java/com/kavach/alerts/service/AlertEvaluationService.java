@@ -11,6 +11,7 @@ import com.kavach.devices.repository.DeviceRepository;
 import com.kavach.sse.SseRegistry;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -34,6 +35,7 @@ public class AlertEvaluationService {
 
     // ── Run every 5 minutes ───────────────────────────────────────────────────
     @Scheduled(fixedDelay = 300000)
+    @SchedulerLock(name = "evaluateAlertRules", lockAtLeastFor = "PT4M", lockAtMostFor = "PT9M")
     @Transactional
     public void evaluateAllRules() {
         List<AlertRule> activeRules = ruleRepo.findAll().stream()

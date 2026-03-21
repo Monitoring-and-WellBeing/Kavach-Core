@@ -1,54 +1,80 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { devicesApi, Device } from '@/lib/devices'
 
+const DEVICES_KEY = ['devices'] as const
+
 export function useDevices() {
-  const [devices, setDevices] = useState<Device[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const queryClient = useQueryClient()
 
-  const fetch = useCallback(async () => {
-    try {
-      setLoading(true)
-      setError(null)
-      const data = await devicesApi.list()
-      setDevices(data)
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to load devices')
-    } finally {
-      setLoading(false)
-    }
-  }, [])
+  const {
+    data: devices = [],
+    isLoading: loading,
+    error: queryError,
+    refetch,
+  } = useQuery({
+    queryKey: DEVICES_KEY,
+    queryFn: devicesApi.list,
+    refetchInterval: 30_000,
+  })
 
-  useEffect(() => { fetch() }, [fetch])
+  const error = queryError
+    ? ((queryError as any).response?.data?.message ?? 'Failed to load devices')
+    : null
 
-  // Poll every 30 seconds to refresh statuses
-  useEffect(() => {
-    const interval = setInterval(fetch, 30000)
-    return () => clearInterval(interval)
-  }, [fetch])
+  const pauseMutation = useMutation({
+    mutationFn: (id: string) => devicesApi.pause(id),
+    onSuccess: (updated) => {
+      queryClient.setQueryData<Device[]>(DEVICES_KEY, (prev = []) =>
+        prev.map((d) => (d.id === updated.id ? updated : d))
+      )
+    },
+  })
 
-  const pause = useCallback(async (id: string) => {
-    const updated = await devicesApi.pause(id)
-    setDevices(prev => prev.map(d => d.id === id ? updated : d))
-    return updated
-  }, [])
+  const resumeMutation = useMutation({
+    mutationFn: (id: string) => devicesApi.resume(id),
+    onSuccess: (updated) => {
+      queryClient.setQueryData<Device[]>(DEVICES_KEY, (prev = []) =>
+        prev.map((d) => (d.id === updated.id ? updated : d))
+      )
+    },
+  })
 
-  const resume = useCallback(async (id: string) => {
-    const updated = await devicesApi.resume(id)
-    setDevices(prev => prev.map(d => d.id === id ? updated : d))
-    return updated
-  }, [])
+  const linkMutation = useMutation({
+    mutationFn: ({
+      code,
+      name,
+      assignedTo,
+    }: {
+      code: string
+      name?: string
+      assignedTo?: string
+    }) => devicesApi.link(code, name, assignedTo),
+    onSuccess: (newDevice) => {
+      queryClient.setQueryData<Device[]>(DEVICES_KEY, (prev = []) => [
+        ...prev,
+        newDevice,
+      ])
+    },
+  })
 
-  const link = useCallback(async (code: string, name?: string, assignedTo?: string) => {
-    const newDevice = await devicesApi.link(code, name, assignedTo)
-    setDevices(prev => [...prev, newDevice])
-    return newDevice
-  }, [])
+  const removeMutation = useMutation({
+    mutationFn: (id: string) => devicesApi.remove(id),
+    onSuccess: (_, id) => {
+      queryClient.setQueryData<Device[]>(DEVICES_KEY, (prev = []) =>
+        prev.filter((d) => d.id !== id)
+      )
+    },
+  })
 
-  const remove = useCallback(async (id: string) => {
-    await devicesApi.remove(id)
-    setDevices(prev => prev.filter(d => d.id !== id))
-  }, [])
-
-  return { devices, loading, error, refetch: fetch, pause, resume, link, remove }
+  return {
+    devices,
+    loading,
+    error,
+    refetch,
+    pause: (id: string) => pauseMutation.mutateAsync(id),
+    resume: (id: string) => resumeMutation.mutateAsync(id),
+    link: (code: string, name?: string, assignedTo?: string) =>
+      linkMutation.mutateAsync({ code, name, assignedTo }),
+    remove: (id: string) => removeMutation.mutateAsync(id),
+  }
 }

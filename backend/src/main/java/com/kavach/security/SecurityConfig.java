@@ -33,6 +33,7 @@ import java.util.List;
 public class SecurityConfig {
 
     private final JwtFilter jwtFilter;
+    private final DeviceAuthFilter deviceAuthFilter;
     private final RequestIdFilter requestIdFilter;
 
     /**
@@ -66,7 +67,7 @@ public class SecurityConfig {
                         .requestMatchers(
                                 "/api/v1/auth/**",
                                 "/api/v1/activity",
-                                "/api/v1/subscriptions/plans",
+                                "/api/v1/subscription/plans", // GAP-7 FIXED
                                 "/api/v1/subscription/webhook",
                                 "/api/v1/devices/generate-code",
                                 "/api/v1/devices/check-linked",
@@ -93,10 +94,6 @@ public class SecurityConfig {
                                 // SSE endpoint for desktop agent (device-auth, no JWT)
                                 "/api/v1/sse/device/**",
                                 "/api/v1/sse/health",
-                                "/swagger-ui/**",
-                                "/swagger-ui.html",
-                                "/api-docs/**",
-                                "/v3/api-docs/**",
                                 "/actuator/health"
                         ).permitAll()
                         .anyRequest().authenticated()
@@ -117,6 +114,7 @@ public class SecurityConfig {
                 )
                 .addFilterBefore(requestIdFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterBefore(deviceAuthFilter, JwtFilter.class)
                 .build();
     }
 

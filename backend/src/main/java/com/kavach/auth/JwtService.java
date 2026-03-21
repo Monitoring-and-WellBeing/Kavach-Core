@@ -2,6 +2,7 @@ package com.kavach.auth;
 
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
+import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -18,6 +19,22 @@ public class JwtService {
 
     @Value("${kavach.jwt.access-token-expiry}")
     private long accessTokenExpiry;
+
+    /**
+     * Fail fast at startup if JWT_SECRET is too short.
+     * Silent key-padding was masking weak secrets — a security hole.
+     * HS256 requires a minimum 256-bit (32-byte) key.
+     */
+    @PostConstruct
+    void validateSecret() {
+        if (secret == null || secret.getBytes().length < 32) {
+            throw new IllegalStateException(
+                "JWT_SECRET must be at least 32 characters (256 bits). " +
+                "Current length: " + (secret == null ? 0 : secret.getBytes().length) + " bytes. " +
+                "Set a strong JWT_SECRET environment variable before starting."
+            );
+        }
+    }
 
     public String generateAccessToken(String email, String role, String userId, String tenantId) {
         return Jwts.builder()
@@ -70,13 +87,7 @@ public class JwtService {
     }
 
     private Key getKey() {
-        byte[] keyBytes = secret.getBytes();
-        if (keyBytes.length < 32) {
-            // Pad to minimum 256 bits
-            byte[] padded = new byte[32];
-            System.arraycopy(keyBytes, 0, padded, 0, Math.min(keyBytes.length, 32));
-            return Keys.hmacShaKeyFor(padded);
-        }
-        return Keys.hmacShaKeyFor(keyBytes);
+        // Secret is validated to be >= 32 bytes in @PostConstruct — no padding needed.
+        return Keys.hmacShaKeyFor(secret.getBytes());
     }
 }

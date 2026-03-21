@@ -1,53 +1,47 @@
-import { useState, useEffect, useCallback } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { subscriptionApi, Subscription, Plan } from "@/lib/subscription";
+import { subscriptionQueryApi } from "@/lib/api/subscriptionApi";
 
 export function useSubscription() {
-  const [subscription, setSubscription] = useState<Subscription | null>(null);
-  const [plans, setPlans] = useState<Plan[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [upgrading, setUpgrading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+  const query = useQuery({
+    queryKey: ["subscription"],
+    queryFn: subscriptionQueryApi.get,
+    staleTime: 5 * 60 * 1000,
+    // GAP-16 FIXED
+  });
 
-  const load = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const [sub, planList] = await Promise.all([
-        subscriptionApi.getCurrent(),
-        subscriptionApi.getPlans().catch(() => [] as Plan[]),
-      ]);
-      setSubscription(sub);
-      setPlans(planList);
-    } catch (err: any) {
-      setError(err?.response?.data?.message || "Failed to load subscription");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const upgradeMutation = useMutation({
+    mutationFn: (planCode: string) => subscriptionApi.createOrder(planCode),
+  });
 
-  useEffect(() => { load(); }, [load]);
+  const verifyMutation = useMutation({
+    mutationFn: (data: {
+      razorpayOrderId: string;
+      razorpayPaymentId: string;
+      razorpaySignature: string;
+      planCode: string;
+    }) => subscriptionApi.verifyPayment(data),
+    onSuccess: (updated) => {
+      queryClient.setQueryData<{ subscription: Subscription; plans: Plan[] }>(
+        ["subscription"],
+        (prev) => ({
+          subscription: updated,
+          plans: prev?.plans ?? [],
+        })
+      );
+    },
+  });
 
-  const upgradePlan = useCallback(async (planCode: string) => {
-    setUpgrading(true);
-    try {
-      // create-order returns Razorpay order; caller should handle payment UI
-      const order = await subscriptionApi.createOrder(planCode);
-      return order;
-    } finally {
-      setUpgrading(false);
-    }
-  }, []);
-
-  const onPaymentSuccess = useCallback(async (data: {
+  const onPaymentSuccess = async (data: {
     razorpayOrderId: string;
     razorpayPaymentId: string;
     razorpaySignature: string;
     planCode: string;
-  }) => {
-    const updated = await subscriptionApi.verifyPayment(data);
-    setSubscription(updated);
-    return updated;
-  }, []);
+  }) => verifyMutation.mutateAsync(data);
+
+  const subscription = query.data?.subscription ?? null;
+  const plans = query.data?.plans ?? [];
 
   // Derived usage values for backwards-compat
   const usage = subscription
@@ -64,11 +58,11 @@ export function useSubscription() {
     subscription,
     plans,
     usage,
-    loading,
-    upgrading,
-    error,
-    upgradePlan,
+    loading: query.isLoading,
+    upgrading: upgradeMutation.isPending,
+    error: query.error instanceof Error ? query.error.message : null,
+    upgradePlan: (planCode: string) => upgradeMutation.mutateAsync(planCode),
     onPaymentSuccess,
-    refetch: load,
+    refetch: () => { void query.refetch(); },
   };
 }

@@ -2,6 +2,7 @@ package com.kavach.enforcement.repository;
 
 import com.kavach.enforcement.entity.DailyAppUsage;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -10,6 +11,11 @@ import java.util.Optional;
 import java.util.UUID;
 
 public interface DailyAppUsageRepository extends JpaRepository<DailyAppUsage, UUID> {
+    interface UsageSummary {
+        String getCategory();
+        String getPackageName();
+        Long getTotalDuration();
+    }
 
     /**
      * Find today's usage row for a specific device + category + optional package.
@@ -48,4 +54,30 @@ public interface DailyAppUsageRepository extends JpaRepository<DailyAppUsage, UU
         @Param("category")    String category,
         @Param("packageName") String packageName
     );
+
+    @Modifying
+    @Query(value = """
+        INSERT INTO daily_app_usage (device_id, tenant_id, usage_date, app_category, package_name, duration_seconds, last_updated)
+        VALUES (:deviceId, :tenantId, CURRENT_DATE, :category, :packageName, :durationSeconds, NOW())
+        ON CONFLICT (device_id, usage_date, app_category, package_name)
+        DO UPDATE SET duration_seconds = daily_app_usage.duration_seconds + EXCLUDED.duration_seconds,
+                      last_updated = NOW()
+        """, nativeQuery = true)
+    void upsertUsage(
+        @Param("deviceId") UUID deviceId,
+        @Param("tenantId") UUID tenantId,
+        @Param("category") String category,
+        @Param("packageName") String packageName,
+        @Param("durationSeconds") int durationSeconds
+    );
+
+    @Query(value = """
+        SELECT app_category AS category, package_name AS packageName, SUM(duration_seconds) AS totalDuration
+        FROM daily_app_usage
+        WHERE device_id = :deviceId AND usage_date = CURRENT_DATE
+        GROUP BY app_category, package_name
+        """, nativeQuery = true)
+    java.util.List<UsageSummary> getBatchUsageForDevice(@Param("deviceId") UUID deviceId);
+    // GAP-9 FIXED
+    // GAP-12 FIXED
 }

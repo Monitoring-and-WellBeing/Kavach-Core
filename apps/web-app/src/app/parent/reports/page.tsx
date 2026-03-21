@@ -120,7 +120,7 @@ export default function ReportsPage() {
             </button>
           </div>
 
-          <button onClick={refetch} disabled={loading}
+          <button type="button" onClick={() => { void refetch(); }} disabled={loading}
             className="p-2.5 bg-gray-100 hover:bg-gray-200 rounded-xl text-gray-500 transition-colors">
             <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
           </button>
@@ -138,7 +138,7 @@ export default function ReportsPage() {
         <div className="flex items-center gap-2 p-4 bg-red-50 border border-red-100 rounded-xl mb-5">
           <AlertCircle size={16} className="text-red-500" />
           <span className="text-red-600 text-sm">{error}</span>
-          <button onClick={refetch} className="ml-auto text-sm text-red-500 underline">Retry</button>
+          <button type="button" onClick={() => { void refetch(); }} className="ml-auto text-sm text-red-500 underline">Retry</button>
         </div>
       )}
 

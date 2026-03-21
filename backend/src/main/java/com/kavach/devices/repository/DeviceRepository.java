@@ -29,4 +29,6 @@ public interface DeviceRepository extends JpaRepository<Device, UUID> {
     @Modifying
     @Query("UPDATE Device d SET d.status = :status, d.updatedAt = CURRENT_TIMESTAMP WHERE d.id = :id")
     void updateStatus(UUID id, DeviceStatus status);
+
+    boolean existsByIdAndDeviceSecret(UUID id, String deviceSecret); // GAP-5 FIXED
 }

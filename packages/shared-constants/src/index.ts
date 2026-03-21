@@ -36,7 +36,4 @@ export const FOCUS_PRESETS = [
 
 export const WEEK_DAYS = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"];
 
-export const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api/v1";
-
 export const DEVICE_LINK_CODE_LENGTH = 6;

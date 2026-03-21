@@ -14,6 +14,7 @@ import com.kavach.focus.repository.FocusSessionRepository;
 import com.kavach.gamification.service.BadgeService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -38,6 +39,7 @@ public class ChallengeService {
 
     // ── Midnight scheduler: assign 3 challenges to every active device ────────
     @Scheduled(cron = "0 0 0 * * *")
+    @SchedulerLock(name = "assignDailyChallenges", lockAtLeastFor = "PT5M", lockAtMostFor = "PT30M")
     @Transactional
     public void assignDailyChallengesForAll() {
         List<Device> activeDevices = deviceRepository.findAllByActiveTrue();

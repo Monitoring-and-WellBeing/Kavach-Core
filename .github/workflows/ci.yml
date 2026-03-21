@@ -29,12 +29,10 @@ jobs:
         run: pnpm install
 
       - name: Type check
-        run: pnpm type-check
-        working-directory: apps/web-app
+        run: pnpm --filter web-app type-check # GAP-17 FIXED
 
       - name: Lint
-        run: pnpm lint
-        working-directory: apps/web-app
+        run: pnpm --filter web-app lint # GAP-17 FIXED
 
       - name: Run tests with coverage
         run: pnpm test:ci
