@@ -94,7 +94,8 @@ public class SecurityConfig {
                                 // SSE endpoint for desktop agent (device-auth, no JWT)
                                 "/api/v1/sse/device/**",
                                 "/api/v1/sse/health",
-                                "/actuator/health"
+                                "/actuator/health",
+                                "/actuator/health/**"
                         ).permitAll()
                         .anyRequest().authenticated()
                 )
