@@ -8,11 +8,13 @@ import lombok.RequiredArgsConstructor;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
+import static org.springframework.http.HttpStatus.NOT_FOUND;
 
 @Service
 @RequiredArgsConstructor
@@ -70,6 +72,7 @@ public class DeviceService {
                 .status(DeviceStatus.OFFLINE)
                 .assignedTo(req.getAssignedTo())
                 .active(true)
+                .deviceSecret(UUID.randomUUID().toString()) // GAP-5 FIXED
                 .createdAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())
                 .build();
@@ -226,5 +229,16 @@ public class DeviceService {
         long hours = ChronoUnit.HOURS.between(time, LocalDateTime.now());
         if (hours < 24) return hours + "h ago";
         return ChronoUnit.DAYS.between(time, LocalDateTime.now()) + "d ago";
+    }
+
+    public void assertDeviceOwnedByTenant(String deviceId, String tenantId) {
+        // GAP-8 FIXED
+        UUID parsedDeviceId = UUID.fromString(deviceId);
+        UUID parsedTenantId = UUID.fromString(tenantId);
+        Device device = deviceRepo.findById(parsedDeviceId)
+            .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Device not found"));
+        if (!Objects.equals(device.getTenantId(), parsedTenantId)) {
+            throw new ResponseStatusException(NOT_FOUND, "Device not found");
+        }
     }
 }

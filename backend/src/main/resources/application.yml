@@ -44,6 +44,9 @@ spring:
     validate-on-migrate: true
     # Flyway uses spring.datasource credentials by default.
     # Do NOT set separate flyway.url / flyway.user / flyway.password here.
+  data:
+    redis:
+      url: ${REDIS_URL:redis://localhost:6379} # GAP-1 FIXED
 
   security:
     cors:
@@ -85,19 +88,16 @@ logging:
 
 r2:
   account-id: ${R2_ACCOUNT_ID:}
-  access-key-id: ${R2_ACCESS_KEY_ID:}
+  access-key-id: ${R2_ACCESS_KEY:} # GAP-15 FIXED
   secret-access-key: ${R2_SECRET_ACCESS_KEY:}
-  # WARNING: R2_BUCKET_NAME fallback is a dev default; set R2_BUCKET_NAME in production.
-  bucket-name: ${R2_BUCKET_NAME:kavach-screenshots}
+  bucket-name: ${R2_BUCKET_NAME:}
 
 razorpay:
   key:
-    # WARNING: RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET MUST be overridden in production.
-    id: ${RAZORPAY_KEY_ID:rzp_test_XXXXXXXXXXXXXXXX}
-    secret: ${RAZORPAY_KEY_SECRET:XXXXXXXXXXXXXXXXXXXXXXXX}
+    id: ${RAZORPAY_KEY_ID:} # GAP-15 FIXED
+    secret: ${RAZORPAY_KEY_SECRET:} # GAP-15 FIXED
   webhook:
-    # WARNING: RAZORPAY_WEBHOOK_SECRET MUST be overridden in production.
-    secret: ${RAZORPAY_WEBHOOK_SECRET:CHANGE_ME_IN_PROD}
+    secret: ${RAZORPAY_WEBHOOK_SECRET:}
 
 management:
   endpoints:
@@ -107,3 +107,15 @@ management:
   endpoint:
     health:
       show-details: when-authorized
+
+---
+spring:
+  config:
+    activate:
+      on-profile: prod
+springdoc:
+  swagger-ui:
+    enabled: false
+  api-docs:
+    enabled: false
+# GAP-14 FIXED

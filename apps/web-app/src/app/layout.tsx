@@ -3,6 +3,7 @@ import { Inter } from 'next/font/google'
 import '@/styles/globals.css'
 import { AuthProvider } from '@/context/AuthContext'
 import { RouteGuard } from '@/components/auth/RouteGuard'
+import { AuthLoadingGate } from '@/components/auth/AuthLoadingGate'
 import { QueryProvider } from '@/lib/query-client'
 import { InstallPrompt } from '@/components/pwa/InstallPrompt'
 import { OfflineBanner } from '@/components/pwa/OfflineBanner'
@@ -57,11 +58,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <OfflineBanner />
         <ErrorBoundary>
         <AuthProvider>
+          <AuthLoadingGate>
           <QueryProvider>
             <RouteGuard>
               {children}
             </RouteGuard>
           </QueryProvider>
+          </AuthLoadingGate>
         </AuthProvider>
         </ErrorBoundary>
         <InstallPrompt />

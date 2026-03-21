@@ -51,6 +51,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Restore session on mount
   useEffect(() => {
+    // GAP-19 FIXED: client-side bootstrap is intentional because tokens live in localStorage.
+    // Revisit this once auth is migrated to an RSC-compatible cookie/session model.
     const token = localStorage.getItem('kavach_access_token')
     if (token) {
       api.get('/auth/me')

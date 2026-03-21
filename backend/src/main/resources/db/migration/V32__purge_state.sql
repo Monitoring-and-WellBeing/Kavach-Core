@@ -1,0 +1,6 @@
+CREATE TABLE IF NOT EXISTS purge_state (
+  job_name VARCHAR(100) PRIMARY KEY,
+  cursor TEXT,
+  updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+-- GAP-21 FIXED
