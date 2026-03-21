@@ -3,6 +3,7 @@ package com.kavach.retention;
 import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -14,7 +15,8 @@ public class DataRetentionService {
 
     private final EntityManager em;
 
-    @Scheduled(cron = "0 0 2 * * SUN") // 2 AM every Sunday
+    @Scheduled(cron = "0 0 2 * * SUN")
+    @SchedulerLock(name = "archiveOldActivityLogs", lockAtLeastFor = "PT30M", lockAtMostFor = "PT2H")
     @Transactional
     public void archiveOldActivityLogs() {
         try {

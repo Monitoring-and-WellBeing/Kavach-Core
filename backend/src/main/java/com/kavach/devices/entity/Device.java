@@ -44,6 +44,9 @@ public class Device {
     @Column(name = "assigned_to")
     private String assignedTo;
 
+    @Column(name = "device_secret", nullable = false, length = 36)
+    private String deviceSecret; // GAP-5 FIXED
+
     @Builder.Default
     @Column(name = "is_active")
     private boolean active = true;

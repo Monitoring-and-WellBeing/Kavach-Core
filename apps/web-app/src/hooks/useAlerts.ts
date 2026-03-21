@@ -1,9 +1,11 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useCallback } from "react";
 import { Alert, AlertType, AlertSeverity } from "@kavach/shared-types";
 import { useSSE } from "@/hooks/useSSE";
 import { alertsApi, AlertItem } from "@/lib/alerts";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { alertsQueryApi } from "@/lib/api/alertsApi";
 
 // ── SSE payload shape from backend ────────────────────────────────────────────
 interface SseAlertPayload {
@@ -69,20 +71,17 @@ function fromApiAlert(item: AlertItem): Alert {
  * real-time updates via SSE /api/v1/sse/tenant.
  */
 export function useAlerts() {
-  const [alerts, setAlerts] = useState<Alert[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  // ── Load historical alerts on mount ──────────────────────────────────────
-  useEffect(() => {
-    alertsApi.getAlerts(0, 50)
-      .then((page) => {
-        setAlerts(page.alerts.map(fromApiAlert));
-      })
-      .catch(() => {
-        // Silently fall back to empty — SSE will still deliver new alerts
-      })
-      .finally(() => setLoading(false));
-  }, []);
+  const queryClient = useQueryClient();
+  const queryKey = ["alerts"];
+  const query = useQuery({
+    queryKey,
+    queryFn: async () => {
+      const items = await alertsQueryApi.getInitial();
+      return items.map(fromApiAlert);
+    },
+    staleTime: 60 * 1000,
+    // GAP-16 FIXED
+  });
 
   // ── SSE: prepend incoming alert ───────────────────────────────────────────
   const handleSseAlert = useCallback((data: unknown) => {
@@ -100,35 +99,41 @@ export function useAlerts() {
       autoBlocked: false,
     };
 
-    setAlerts((prev) => {
+    queryClient.setQueryData<Alert[]>(queryKey, (prev = []) => {
       if (prev.some((a) => a.id === incoming.id)) return prev;
       return [incoming, ...prev];
     });
-  }, []);
+  }, [queryClient]);
 
+  // GAP-16 FIXED
   useSSE("/api/v1/sse/tenant", { alert: handleSseAlert });
 
   // ── Mutations ─────────────────────────────────────────────────────────────
 
   const markRead = useCallback(async (id: string) => {
-    setAlerts((prev) => prev.map((a) => (a.id === id ? { ...a, read: true } : a)));
+    queryClient.setQueryData<Alert[]>(queryKey, (prev = []) =>
+      prev.map((a) => (a.id === id ? { ...a, read: true } : a))
+    );
     try { await alertsApi.markRead(id); } catch { /* best-effort */ }
-  }, []);
+  }, [queryClient]);
 
   const markAllRead = useCallback(async () => {
-    setAlerts((prev) => prev.map((a) => ({ ...a, read: true })));
+    queryClient.setQueryData<Alert[]>(queryKey, (prev = []) =>
+      prev.map((a) => ({ ...a, read: true }))
+    );
     try { await alertsApi.markAllRead(); } catch { /* best-effort */ }
-  }, []);
+  }, [queryClient]);
 
   /** Merge a page of additional REST-fetched alerts without duplicating live ones. */
   const mergeHistorical = useCallback((historical: Alert[]) => {
-    setAlerts((prev) => {
+    queryClient.setQueryData<Alert[]>(queryKey, (prev = []) => {
       const existing = new Set(prev.map((a) => a.id));
       return [...prev, ...historical.filter((a) => !existing.has(a.id))];
     });
-  }, []);
+  }, [queryClient]);
 
+  const alerts = query.data ?? [];
   const unreadCount = alerts.filter((a) => !a.read).length;
 
-  return { alerts, loading, markRead, markAllRead, mergeHistorical, unreadCount };
+  return { alerts, loading: query.isLoading, markRead, markAllRead, mergeHistorical, unreadCount };
 }

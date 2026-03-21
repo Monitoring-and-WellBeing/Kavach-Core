@@ -8,6 +8,7 @@ import com.kavach.goals.repository.GoalProgressRepository;
 import com.kavach.goals.repository.GoalRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,7 +28,8 @@ public class GoalEvaluationService {
     private final ActivityLogRepository activityRepo;
     private final FocusSessionRepository focusRepo;
 
-    @Scheduled(fixedDelay = 900000) // every 15 minutes
+    @Scheduled(fixedDelay = 900000)
+    @SchedulerLock(name = "evaluateAllGoals", lockAtLeastFor = "PT10M", lockAtMostFor = "PT20M")
     @Transactional
     public void evaluateAllGoals() {
         List<Goal> activeGoals = goalRepo.findAll().stream()

@@ -8,6 +8,7 @@ import {
   Target, Calendar, Settings, Bell,
 } from "lucide-react";
 import { BottomNav } from "@/components/layout/BottomNav";
+import { useStudentDashboard } from "@/hooks/useStudentDashboard";
 
 const navItems = [
   { label: "Dashboard",    icon: <Zap size={18} />,        href: "/student" },
@@ -23,6 +24,7 @@ const navItems = [
 export default function StudentLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [notifOpen, setNotifOpen] = useState(false);
+  const { streak } = useStudentDashboard();
 
   return (
     <div className="flex h-screen overflow-hidden">
@@ -78,8 +80,12 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
             <Zap size={14} className="text-purple-200" />
             <span className="text-purple-200 text-xs font-medium">Focus Streak</span>
           </div>
-          <div className="text-white text-2xl font-bold">12 Days</div>
-          <div className="text-purple-200 text-xs mt-1">Keep it up! 🔥</div>
+          <div className="text-white text-2xl font-bold">
+            {streak > 0 ? `${streak} Day${streak === 1 ? "" : "s"}` : "—"}
+          </div>
+          <div className="text-purple-200 text-xs mt-1">
+            {streak > 0 ? "Keep it up!" : "Start your streak today"}
+          </div>
         </div>
       </aside>
 
@@ -89,7 +95,12 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
           <div>
             <h1 className="text-gray-900 font-bold text-lg md:text-xl">Dashboard</h1>
             <p className="text-gray-400 text-sm hidden sm:block">
-              Wednesday, February 18, 2026
+              {new Date().toLocaleDateString("en-US", {
+                weekday: "long",
+                year: "numeric",
+                month: "long",
+                day: "numeric",
+              })}
             </p>
           </div>
           <div className="flex items-center gap-2 md:gap-3">

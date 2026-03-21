@@ -5,13 +5,16 @@ import com.kavach.devices.entity.*;
 import com.kavach.devices.repository.*;
 import com.kavach.subscription.service.SubscriptionService;
 import lombok.RequiredArgsConstructor;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
+import static org.springframework.http.HttpStatus.NOT_FOUND;
 
 @Service
 @RequiredArgsConstructor
@@ -69,6 +72,7 @@ public class DeviceService {
                 .status(DeviceStatus.OFFLINE)
                 .assignedTo(req.getAssignedTo())
                 .active(true)
+                .deviceSecret(UUID.randomUUID().toString()) // GAP-5 FIXED
                 .createdAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())
                 .build();
@@ -85,6 +89,7 @@ public class DeviceService {
     }
 
     // ── List all devices for a tenant ─────────────────────────────────────────
+    @Transactional(readOnly = true)
     public List<DeviceDto> getDevicesByTenant(UUID tenantId) {
         return deviceRepo.findByTenantIdAndActiveTrue(tenantId)
                 .stream()
@@ -93,6 +98,7 @@ public class DeviceService {
     }
 
     // ── Get single device ─────────────────────────────────────────────────────
+    @Transactional(readOnly = true)
     public DeviceDto getDevice(UUID deviceId, UUID tenantId) {
         Device device = deviceRepo.findById(deviceId)
                 .filter(d -> d.getTenantId().equals(tenantId))
@@ -152,7 +158,8 @@ public class DeviceService {
     }
 
     // ── Auto-mark devices OFFLINE if no heartbeat in 2 minutes ───────────────
-    @Scheduled(fixedDelay = 60000) // every 60 seconds
+    @Scheduled(fixedDelay = 60000)
+    @SchedulerLock(name = "markStaleDevicesOffline", lockAtLeastFor = "PT45S", lockAtMostFor = "PT2M")
     @Transactional
     public void markStaleDevicesOffline() {
         LocalDateTime threshold = LocalDateTime.now().minusMinutes(2);
@@ -222,5 +229,16 @@ public class DeviceService {
         long hours = ChronoUnit.HOURS.between(time, LocalDateTime.now());
         if (hours < 24) return hours + "h ago";
         return ChronoUnit.DAYS.between(time, LocalDateTime.now()) + "d ago";
+    }
+
+    public void assertDeviceOwnedByTenant(String deviceId, String tenantId) {
+        // GAP-8 FIXED
+        UUID parsedDeviceId = UUID.fromString(deviceId);
+        UUID parsedTenantId = UUID.fromString(tenantId);
+        Device device = deviceRepo.findById(parsedDeviceId)
+            .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Device not found"));
+        if (!Objects.equals(device.getTenantId(), parsedTenantId)) {
+            throw new ResponseStatusException(NOT_FOUND, "Device not found");
+        }
     }
 }

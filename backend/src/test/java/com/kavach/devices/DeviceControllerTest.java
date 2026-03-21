@@ -70,10 +70,10 @@ class DeviceControllerTest {
     }
 
     @Test
-    @DisplayName("GET /devices without auth returns 403")
-    void getDevices_withoutAuth_returns403() throws Exception {
+    @DisplayName("GET /devices without auth returns 401 (refresh-friendly entry point)")
+    void getDevices_withoutAuth_returns401() throws Exception {
         mockMvc.perform(get("/api/v1/devices"))
-            .andExpect(status().isForbidden());
+            .andExpect(status().isUnauthorized());
     }
 
     @Test

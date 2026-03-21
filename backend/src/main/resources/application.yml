@@ -8,12 +8,24 @@ spring:
     password: ${SPRING_DATASOURCE_PASSWORD:CHANGE_ME_IN_PROD}
     driver-class-name: org.postgresql.Driver
     hikari:
-      maximum-pool-size: 5
-      minimum-idle: 1
-      connection-timeout: 30000
-      idle-timeout: 600000
-      max-lifetime: 1800000
-      keepalive-time: 300000
+      pool-name: KavachHikariPool
+      # Sized for Neon pooler (PgBouncer in transaction mode).
+      # Formula: (core_count × 2) + 1; Railway Starter = 1 vCPU → 3 minimum.
+      # Set to 10 to handle burst traffic while staying within Neon's connection limit.
+      # Raise to 20 when upgrading to Neon Pro (which lifts the connection cap).
+      maximum-pool-size: 10
+      minimum-idle: 2
+      # Fail fast if DB is unreachable at startup — better than queuing forever.
+      connection-timeout: 20000
+      # Release idle connections after 3 min to avoid holding Neon slots during quiet periods.
+      idle-timeout: 180000
+      # Recycle connections before Neon's server-side 5-min idle timeout kills them.
+      max-lifetime: 240000
+      # Send keepalive every 60s so Neon doesn't suspend the compute during low traffic.
+      keepalive-time: 60000
+      # Validate connection health before handing it to the application.
+      connection-test-query: SELECT 1
+      auto-commit: false
 
   jpa:
     hibernate:
@@ -32,6 +44,9 @@ spring:
     validate-on-migrate: true
     # Flyway uses spring.datasource credentials by default.
     # Do NOT set separate flyway.url / flyway.user / flyway.password here.
+  data:
+    redis:
+      url: ${REDIS_URL:redis://localhost:6379} # GAP-1 FIXED
 
   security:
     cors:
@@ -73,19 +88,16 @@ logging:
 
 r2:
   account-id: ${R2_ACCOUNT_ID:}
-  access-key-id: ${R2_ACCESS_KEY_ID:}
+  access-key-id: ${R2_ACCESS_KEY:} # GAP-15 FIXED
   secret-access-key: ${R2_SECRET_ACCESS_KEY:}
-  # WARNING: R2_BUCKET_NAME fallback is a dev default; set R2_BUCKET_NAME in production.
-  bucket-name: ${R2_BUCKET_NAME:kavach-screenshots}
+  bucket-name: ${R2_BUCKET_NAME:}
 
 razorpay:
   key:
-    # WARNING: RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET MUST be overridden in production.
-    id: ${RAZORPAY_KEY_ID:rzp_test_XXXXXXXXXXXXXXXX}
-    secret: ${RAZORPAY_KEY_SECRET:XXXXXXXXXXXXXXXXXXXXXXXX}
+    id: ${RAZORPAY_KEY_ID:} # GAP-15 FIXED
+    secret: ${RAZORPAY_KEY_SECRET:} # GAP-15 FIXED
   webhook:
-    # WARNING: RAZORPAY_WEBHOOK_SECRET MUST be overridden in production.
-    secret: ${RAZORPAY_WEBHOOK_SECRET:CHANGE_ME_IN_PROD}
+    secret: ${RAZORPAY_WEBHOOK_SECRET:}
 
 management:
   endpoints:
@@ -95,3 +107,15 @@ management:
   endpoint:
     health:
       show-details: when-authorized
+
+---
+spring:
+  config:
+    activate:
+      on-profile: prod
+springdoc:
+  swagger-ui:
+    enabled: false
+  api-docs:
+    enabled: false
+# GAP-14 FIXED

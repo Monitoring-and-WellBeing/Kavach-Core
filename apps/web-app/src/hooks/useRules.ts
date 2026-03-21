@@ -1,89 +1,71 @@
-import { useState, useEffect, useCallback } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Rule, RuleStatus } from "@kavach/shared-types";
-import { api } from "@/lib/axios";
 import { useAuth } from "@/context/AuthContext";
 import { useSSE } from "@/hooks/useSSE";
-
-// ── API helpers ──────────────────────────────────────────────────────────────
-
-const rulesApi = {
-  list: (tenantId: string) =>
-    api.get<Rule[]>(`/rules?tenantId=${tenantId}`).then(r => r.data),
-
-  create: (rule: Omit<Rule, "id" | "createdAt">) =>
-    api.post<Rule>("/rules", rule).then(r => r.data),
-
-  update: (id: string, patch: Partial<Rule>) =>
-    api.put<Rule>(`/rules/${id}`, patch).then(r => r.data),
-
-  toggle: (id: string) =>
-    api.put<Rule>(`/rules/${id}/toggle`).then(r => r.data),
-
-  delete: (id: string) =>
-    api.delete(`/rules/${id}`),
-};
+import { rulesQueryApi } from "@/lib/api/rulesApi";
 
 // ── Hook ─────────────────────────────────────────────────────────────────────
 
 export function useRules() {
   const { user } = useAuth();
-  const [rules, setRules]   = useState<Rule[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError]   = useState<string | null>(null);
-
-  const load = useCallback(async () => {
-    if (!user?.tenantId) return;
-    try {
-      setLoading(true);
-      setError(null);
-      const data = await rulesApi.list(user.tenantId);
-      setRules(data);
-    } catch (err: any) {
-      setError(err?.response?.data?.message || "Failed to load rules");
-    } finally {
-      setLoading(false);
-    }
-  }, [user?.tenantId]);
-
-  useEffect(() => { load(); }, [load]);
+  const queryClient = useQueryClient();
+  const queryKey = ["rules", user?.tenantId];
+  const query = useQuery({
+    queryKey,
+    queryFn: () => rulesQueryApi.list(user?.tenantId as string),
+    enabled: Boolean(user?.tenantId),
+    staleTime: 5 * 60 * 1000,
+    // GAP-16 FIXED
+  });
 
   // ── SSE: re-fetch when a rules_updated event arrives ──────────────────────
-  const handleRulesUpdated = useCallback(() => { load(); }, [load]);
+  const handleRulesUpdated = (): void => {
+    void query.refetch();
+  };
   useSSE("/api/v1/sse/tenant", { rules_updated: handleRulesUpdated });
 
   // ── Mutations ─────────────────────────────────────────────────────────────
 
-  const toggleRule = useCallback(async (id: string) => {
-    // Optimistic update
-    setRules(prev =>
-      prev.map(r =>
-        r.id === id
-          ? { ...r, status: r.status === RuleStatus.ACTIVE ? RuleStatus.PAUSED : RuleStatus.ACTIVE }
-          : r
-      )
-    );
-    try {
-      const updated = await rulesApi.toggle(id);
-      setRules(prev => prev.map(r => r.id === id ? updated : r));
-    } catch {
-      // Roll back on error
-      load();
-    }
-  }, [load]);
+  const toggleRule = useMutation({
+    mutationFn: (id: string) => rulesQueryApi.toggle(id),
+    onMutate: async (id) => {
+      await queryClient.cancelQueries({ queryKey });
+      const previous = queryClient.getQueryData<Rule[]>(queryKey) ?? [];
+      queryClient.setQueryData<Rule[]>(queryKey, (prev = []) =>
+        prev.map((r) =>
+          r.id === id
+            ? { ...r, status: r.status === RuleStatus.ACTIVE ? RuleStatus.PAUSED : RuleStatus.ACTIVE }
+            : r
+        )
+      );
+      return { previous };
+    },
+    onError: (_err, _id, context) => {
+      queryClient.setQueryData(queryKey, context?.previous ?? []);
+    },
+    onSuccess: (updated) => {
+      queryClient.setQueryData<Rule[]>(queryKey, (prev = []) =>
+        prev.map((r) => (r.id === updated.id ? updated : r))
+      );
+    },
+  });
 
-  const deleteRule = useCallback(async (id: string) => {
-    setRules(prev => prev.filter(r => r.id !== id));
-    try {
-      await rulesApi.delete(id);
-    } catch {
-      load();
-    }
-  }, [load]);
+  const deleteRule = useMutation({
+    mutationFn: (id: string) => rulesQueryApi.delete(id),
+    onMutate: async (id) => {
+      await queryClient.cancelQueries({ queryKey });
+      const previous = queryClient.getQueryData<Rule[]>(queryKey) ?? [];
+      queryClient.setQueryData<Rule[]>(queryKey, (prev = []) => prev.filter((r) => r.id !== id));
+      return { previous };
+    },
+    onError: (_err, _id, context) => {
+      queryClient.setQueryData(queryKey, context?.previous ?? []);
+    },
+  });
 
-  const addRule = useCallback(async (rule: Rule) => {
-    setRules(prev => [rule, ...prev]);
-    try {
-      const created = await rulesApi.create({
+  const addRule = useMutation({
+    mutationFn: async (rule: Rule) =>
+      rulesQueryApi.create({
         name: rule.name,
         type: rule.type,
         status: rule.status,
@@ -94,12 +76,19 @@ export function useRules() {
         scheduleEnd: rule.scheduleEnd,
         scheduleDays: rule.scheduleDays,
         autoBlock: rule.autoBlock,
-      });
-      setRules(prev => prev.map(r => r.id === rule.id ? created : r));
-    } catch {
-      load();
-    }
-  }, [user?.tenantId, load]);
+      }),
+    onSuccess: (created) => {
+      queryClient.setQueryData<Rule[]>(queryKey, (prev = []) => [created, ...prev]);
+    },
+  });
 
-  return { rules, loading, error, toggleRule, deleteRule, addRule, refetch: load };
+  return {
+    rules: query.data ?? [],
+    loading: query.isLoading,
+    error: query.error instanceof Error ? query.error.message : null,
+    toggleRule: (id: string) => toggleRule.mutateAsync(id),
+    deleteRule: (id: string) => deleteRule.mutateAsync(id),
+    addRule: (rule: Rule) => addRule.mutateAsync(rule),
+    refetch: () => { void query.refetch(); },
+  };
 }

@@ -13,7 +13,6 @@ import com.kavach.focus.repository.FocusSessionRepository;
 import com.kavach.focus.repository.FocusWhitelistRepository;
 import com.kavach.challenges.service.ChallengeService;
 import com.kavach.gamification.service.BadgeEvaluationService;
-import com.kavach.sse.SseRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -22,6 +21,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 
 import java.time.LocalDateTime;
 import java.util.*;
@@ -39,7 +39,7 @@ class FocusServiceTest {
     @Mock DeviceRepository deviceRepo;
     @Mock BadgeEvaluationService badgeEvaluationService;
     @Mock ChallengeService challengeService;
-    @Mock SseRegistry sseRegistry;
+    @Mock ApplicationEventPublisher eventPublisher;
 
     @InjectMocks FocusService focusService;
 
@@ -72,6 +72,15 @@ class FocusServiceTest {
             .startedAt(LocalDateTime.now().minusMinutes(10))
             .endsAt(LocalDateTime.now().plusMinutes(15))
             .build();
+
+        lenient().doNothing().when(eventPublisher).publishEvent(any(Object.class));
+        lenient().when(sessionRepo.save(any(FocusSession.class))).thenAnswer(invocation -> {
+            FocusSession s = invocation.getArgument(0);
+            if (s.getId() == null) {
+                s.setId(UUID.randomUUID());
+            }
+            return s;
+        });
     }
 
     @Test
@@ -80,7 +89,6 @@ class FocusServiceTest {
         // Given: No existing active session
         when(sessionRepo.findByDeviceIdAndStatus(deviceId, "ACTIVE")).thenReturn(Optional.empty());
         when(deviceRepo.findById(deviceId)).thenReturn(Optional.of(mockDevice));
-        when(sessionRepo.save(any(FocusSession.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         StartFocusRequest req = new StartFocusRequest();
         req.setDeviceId(deviceId);
@@ -114,7 +122,6 @@ class FocusServiceTest {
         when(sessionRepo.findByDeviceIdAndStatus(deviceId, "ACTIVE"))
             .thenReturn(Optional.of(existingSession));
         when(deviceRepo.findById(deviceId)).thenReturn(Optional.of(mockDevice));
-        when(sessionRepo.save(any(FocusSession.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         StartFocusRequest req = new StartFocusRequest();
         req.setDeviceId(deviceId);
@@ -138,7 +145,6 @@ class FocusServiceTest {
         when(sessionRepo.findById(existingSession.getId()))
             .thenReturn(Optional.of(existingSession));
         when(deviceRepo.findById(deviceId)).thenReturn(Optional.of(mockDevice));
-        when(sessionRepo.save(any(FocusSession.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         // When
         FocusSessionDto result = focusService.stopSession(existingSession.getId(), tenantId, "PARENT");
@@ -232,7 +238,6 @@ class FocusServiceTest {
         // Given: Student self-starting a session
         when(sessionRepo.findByDeviceIdAndStatus(deviceId, "ACTIVE")).thenReturn(Optional.empty());
         when(deviceRepo.findById(deviceId)).thenReturn(Optional.of(mockDevice));
-        when(sessionRepo.save(any(FocusSession.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         StartFocusRequest req = new StartFocusRequest();
         req.setDeviceId(deviceId);

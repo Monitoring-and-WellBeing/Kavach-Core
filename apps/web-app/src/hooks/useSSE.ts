@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useCallback } from "react";
+import { api } from "@/lib/axios";
 
 const API_BASE =
   (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080").replace(
@@ -28,14 +29,18 @@ export function useSSE(
     handlersRef.current = handlers;
   });
 
-  const connect = useCallback(() => {
+  const connect = useCallback(async () => {
     if (!enabled || typeof window === "undefined") return;
 
-    // EventSource cannot set custom headers, so the JWT is passed as a
-    // query parameter. JwtFilter accepts ?token= as a fallback for SSE.
-    const jwt = localStorage.getItem("kavach_access_token");
-    if (!jwt) return; // not authenticated — skip connecting
-    const url = `${API_BASE}${path}?token=${encodeURIComponent(jwt)}`;
+    let sseToken = "";
+    try {
+      const response = await api.post<{ token: string }>("/auth/sse-token");
+      sseToken = response.data.token;
+      // GAP-4 FIXED
+    } catch {
+      return;
+    }
+    const url = `${API_BASE}${path}?token=${encodeURIComponent(sseToken)}`;
     const es = new EventSource(url);
     esRef.current = es;
 

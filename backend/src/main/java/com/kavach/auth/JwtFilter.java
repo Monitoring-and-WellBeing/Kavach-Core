@@ -9,6 +9,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
@@ -18,7 +19,9 @@ import java.util.List;
 @RequiredArgsConstructor
 public class JwtFilter extends OncePerRequestFilter {
 
+    private static final String TOKEN_PARAM = "token";
     private final JwtService jwtService;
+    private final StringRedisTemplate redisTemplate;
 
     @Override
     protected void doFilterInternal(HttpServletRequest req, HttpServletResponse res, FilterChain chain)
@@ -31,11 +34,25 @@ public class JwtFilter extends OncePerRequestFilter {
         String token;
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
             token = authHeader.substring(7);
-        } else if (req.getParameter("token") != null) {
-            token = req.getParameter("token");
+        } else if (req.getParameter(TOKEN_PARAM) != null) {
+            token = req.getParameter(TOKEN_PARAM);
         } else {
             chain.doFilter(req, res);
             return;
+        }
+
+        if (req.getParameter(TOKEN_PARAM) != null) {
+            String redisValue = redisTemplate.opsForValue().get("sse:token:" + token);
+            if (redisValue != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+                var auth = new UsernamePasswordAuthenticationToken(
+                    "sse-token", null, List.of(new SimpleGrantedAuthority("ROLE_PARENT"))
+                );
+                SecurityContextHolder.getContext().setAuthentication(auth);
+                req.setAttribute("tenantId", redisValue);
+                chain.doFilter(req, res);
+                return;
+            }
+            // GAP-4 FIXED
         }
         if (!jwtService.isTokenValid(token)) {
             // Token was provided but is expired or tampered — return 401 explicitly.

@@ -235,7 +235,7 @@ export default function DevicesPage() {
           <p className="text-gray-400 text-sm mt-0.5">{devices.length} device{devices.length !== 1 ? 's' : ''} registered</p>
         </div>
         <div className="flex items-center gap-2">
-          <button onClick={refetch} className="p-2.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-500 transition-colors">
+          <button type="button" onClick={() => { void refetch(); }} className="p-2.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-500 transition-colors">
             <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
           </button>
           <button onClick={() => setLinkOpen(true)}
@@ -269,7 +269,7 @@ export default function DevicesPage() {
         <div className="flex items-center gap-2 p-4 bg-red-50 border border-red-100 rounded-xl mb-4">
           <AlertCircle size={16} className="text-red-500" />
           <span className="text-red-600 text-sm">{error}</span>
-          <button onClick={refetch} className="ml-auto text-red-500 text-sm underline">Retry</button>
+          <button type="button" onClick={() => { void refetch(); }} className="ml-auto text-red-500 text-sm underline">Retry</button>
         </div>
       )}
 

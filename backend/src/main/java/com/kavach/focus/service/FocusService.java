@@ -7,9 +7,11 @@ import com.kavach.focus.entity.FocusSession;
 import com.kavach.focus.repository.FocusSessionRepository;
 import com.kavach.focus.repository.FocusWhitelistRepository;
 import com.kavach.gamification.service.BadgeEvaluationService;
-import com.kavach.sse.SseRegistry;
+import com.kavach.sse.SseEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,13 +35,12 @@ public class FocusService {
     private final DeviceRepository deviceRepo;
     private final BadgeEvaluationService badgeEvaluationService;
     private final ChallengeService challengeService;
-    private final SseRegistry sseRegistry;
+    private final ApplicationEventPublisher eventPublisher;
 
     // ── Start a focus session ─────────────────────────────────────────────────
     @Transactional
     public FocusSessionDto startSession(UUID tenantId, UUID initiatedBy,
                                         String initiatedRole, StartFocusRequest req) {
-        // Cancel any existing active session for this device
         sessionRepo.findByDeviceIdAndStatus(req.getDeviceId(), "ACTIVE")
                 .ifPresent(s -> {
                     s.setStatus("CANCELLED");
@@ -66,12 +67,13 @@ public class FocusService {
         session = sessionRepo.save(session);
         log.info("[focus] Session started: {} min on device {}", req.getDurationMinutes(), req.getDeviceId());
 
-        // ── Notify desktop agent via SSE ──────────────────────────────────────
-        java.util.Map<String, Object> ssePayload = new java.util.HashMap<>();
-        ssePayload.put("sessionId",       String.valueOf(session.getId()));
-        ssePayload.put("durationMinutes", req.getDurationMinutes());
-        ssePayload.put("endsAt",          endsAt.toString());
-        sseRegistry.sendToDevice(req.getDeviceId().toString(), "focus_start", ssePayload);
+        // Publish SSE event AFTER transaction commits to avoid phantom events on rollback.
+        eventPublisher.publishEvent(new SseEvent.FocusStart(
+            req.getDeviceId().toString(),
+            session.getId().toString(),
+            req.getDurationMinutes(),
+            endsAt.toString()
+        ));
 
         return toDto(session);
     }
@@ -88,14 +90,17 @@ public class FocusService {
         session.setEndedAt(LocalDateTime.now());
         FocusSessionDto dto = toDto(sessionRepo.save(session));
 
-        // ── Notify desktop agent via SSE ──────────────────────────────────────
-        sseRegistry.sendToDevice(session.getDeviceId().toString(), "focus_end",
-                java.util.Map.of("sessionId", sessionId, "reason", "CANCELLED_BY_" + cancelledBy));
+        eventPublisher.publishEvent(new SseEvent.FocusEnd(
+            session.getDeviceId().toString(),
+            sessionId.toString(),
+            "CANCELLED_BY_" + cancelledBy
+        ));
 
         return dto;
     }
 
     // ── Get active session for device ────────────────────────────────────────
+    @Transactional(readOnly = true)
     public FocusSessionDto getActiveSession(UUID deviceId) {
         return sessionRepo.findByDeviceIdAndStatus(deviceId, "ACTIVE")
                 .map(this::toDto)
@@ -103,12 +108,14 @@ public class FocusService {
     }
 
     // ── Session history for a device ──────────────────────────────────────────
+    @Transactional(readOnly = true)
     public List<FocusSessionDto> getSessionHistory(UUID deviceId) {
         return sessionRepo.findByDeviceIdOrderByStartedAtDesc(deviceId)
                 .stream().limit(20).map(this::toDto).toList();
     }
 
     // ── Agent polling endpoint ────────────────────────────────────────────────
+    @Transactional(readOnly = true)
     public AgentFocusStatusDto getAgentStatus(UUID deviceId) {
         var activeSession = sessionRepo.findByDeviceIdAndStatus(deviceId, "ACTIVE");
 
@@ -119,7 +126,6 @@ public class FocusService {
         FocusSession session = activeSession.get();
         long remaining = ChronoUnit.SECONDS.between(LocalDateTime.now(), session.getEndsAt());
 
-        // Get whitelist for tenant
         List<String> whitelist = whitelistRepo
                 .findByTenantId(session.getTenantId())
                 .stream().map(w -> w.getProcessName().toLowerCase()).toList();
@@ -134,6 +140,7 @@ public class FocusService {
     }
 
     // ── Whitelist management ──────────────────────────────────────────────────
+    @Transactional(readOnly = true)
     public List<String> getWhitelist(UUID tenantId) {
         return whitelistRepo.findByTenantId(tenantId)
                 .stream().map(w -> w.getProcessName()).toList();
@@ -153,11 +160,13 @@ public class FocusService {
     }
 
     // ── Stats for student dashboard ───────────────────────────────────────────
+    @Transactional(readOnly = true)
     public long getTodayFocusMinutes(UUID deviceId) {
         return sessionRepo.totalFocusMinutesSince(deviceId,
                 LocalDate.now().atStartOfDay());
     }
 
+    @Transactional(readOnly = true)
     public long getTodaySessionCount(UUID deviceId) {
         return sessionRepo.countCompletedSince(deviceId,
                 LocalDate.now().atStartOfDay());
@@ -165,18 +174,17 @@ public class FocusService {
 
     // ── Scheduled: expire elapsed sessions every 30 seconds ──────────────────
     @Scheduled(fixedDelay = 30000)
+    @SchedulerLock(name = "expireElapsedFocusSessions", lockAtLeastFor = "PT20S", lockAtMostFor = "PT1M")
     @Transactional
     public void expireElapsedSessions() {
         LocalDateTime now = LocalDateTime.now();
-        
-        // Find sessions that should be expired
+
         List<FocusSession> expiredSessions = sessionRepo.findExpiredSessions(now);
-        
+
         if (expiredSessions.isEmpty()) {
             return;
         }
-        
-        // Mark as COMPLETED (for badge purposes) and collect device IDs
+
         Set<UUID> affectedDevices = expiredSessions.stream()
             .map(s -> {
                 s.setStatus("COMPLETED");
@@ -185,11 +193,10 @@ public class FocusService {
                 return s.getDeviceId();
             })
             .collect(Collectors.toSet());
-        
+
         sessionRepo.saveAll(expiredSessions);
         log.info("[focus] Completed {} sessions", expiredSessions.size());
-        
-        // Trigger badge evaluation + challenge progress for affected devices
+
         for (UUID deviceId : affectedDevices) {
             try {
                 FocusSession firstSession = expiredSessions.stream()
@@ -199,14 +206,12 @@ public class FocusService {
                 if (firstSession != null) {
                     badgeEvaluationService.evaluateAndAwardBadges(deviceId, firstSession.getTenantId());
 
-                    // Sum up total focus minutes for all completed sessions in this batch
                     int totalMinutes = expiredSessions.stream()
                         .filter(s -> s.getDeviceId().equals(deviceId))
                         .mapToInt(FocusSession::getDurationMinutes)
                         .sum();
                     challengeService.updateChallengeProgress(deviceId, "FOCUS_MINUTES", totalMinutes);
 
-                    // Check for EARLY_START challenge (started before 10 AM)
                     boolean hadEarlyStart = expiredSessions.stream()
                         .filter(s -> s.getDeviceId().equals(deviceId))
                         .anyMatch(s -> s.getStartedAt().getHour() < 10);
@@ -234,7 +239,7 @@ public class FocusService {
         }
 
         String deviceName = deviceRepo.findById(s.getDeviceId())
-                .map(d -> d.getName()).orElse("Unknown Device");
+                .map(com.kavach.devices.entity.Device::getName).orElse("Unknown Device");
 
         return FocusSessionDto.builder()
                 .id(s.getId()).deviceId(s.getDeviceId()).deviceName(deviceName)

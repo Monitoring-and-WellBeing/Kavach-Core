@@ -4,7 +4,6 @@ import com.kavach.alerts.entity.Alert;
 import com.kavach.alerts.repository.AlertRepository;
 import com.kavach.enforcement.dto.TimeLimitEntryDto;
 import com.kavach.enforcement.dto.TimeLimitStatusDto;
-import com.kavach.enforcement.entity.DailyAppUsage;
 import com.kavach.enforcement.entity.TimeLimitRule;
 import com.kavach.enforcement.repository.DailyAppUsageRepository;
 import com.kavach.enforcement.repository.TimeLimitRuleRepository;
@@ -13,10 +12,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -38,27 +38,13 @@ public class TimeLimitService {
     public void recordUsage(UUID deviceId, UUID tenantId,
                              String appCategory, String packageName,
                              int durationSeconds) {
-
-        DailyAppUsage usage = usageRepository
-            .findByDeviceIdAndDateAndCategoryAndPackage(
-                deviceId, LocalDate.now(), appCategory, packageName)
-            .orElse(DailyAppUsage.builder()
-                .deviceId(deviceId)
-                .tenantId(tenantId)
-                .usageDate(LocalDate.now())
-                .appCategory(appCategory)
-                .packageName(packageName)
-                .durationSeconds(0)
-                .lastUpdated(Instant.now())
-                .build());
-
-        usage.setDurationSeconds(usage.getDurationSeconds() + durationSeconds);
-        usage.setLastUpdated(Instant.now());
-        usageRepository.save(usage);
+        usageRepository.upsertUsage(deviceId, tenantId, appCategory, packageName, durationSeconds);
+        // GAP-9 FIXED
 
         // Check thresholds after updating
+        int totalUsage = usageRepository.getTodayUsage(deviceId, appCategory, packageName);
         checkTimeLimits(deviceId, tenantId, appCategory, packageName,
-                        usage.getDurationSeconds());
+                        totalUsage);
 
         log.debug("[time-limit] Recorded {}s of {} ({}) for device {}",
                   durationSeconds, appCategory, packageName, deviceId);
@@ -76,9 +62,13 @@ public class TimeLimitService {
             .findActiveRulesForDevice(deviceId, tenantId);
 
         List<TimeLimitEntryDto> entries = new ArrayList<>();
+        Map<String, Long> usageByKey = new HashMap<>();
+        usageRepository.getBatchUsageForDevice(deviceId).forEach(s ->
+            usageByKey.put(s.getCategory() + ":" + (s.getPackageName() == null ? "" : s.getPackageName()), s.getTotalDuration())
+        );
         for (TimeLimitRule rule : rules) {
-            int usedSeconds = usageRepository
-                .getTodayUsage(deviceId, rule.getAppCategory(), rule.getPackageName());
+            String key = rule.getAppCategory() + ":" + (rule.getPackageName() == null ? "" : rule.getPackageName());
+            int usedSeconds = usageByKey.getOrDefault(key, 0L).intValue(); // GAP-12 FIXED
 
             int remainingSeconds = Math.max(0,
                 rule.getDailyLimitSeconds() - usedSeconds);

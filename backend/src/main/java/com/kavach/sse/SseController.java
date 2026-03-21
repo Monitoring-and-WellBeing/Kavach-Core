@@ -9,6 +9,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
+import jakarta.servlet.http.HttpServletRequest;
 
 import java.util.Map;
 import java.util.UUID;
@@ -44,11 +45,14 @@ public class SseController {
      *   • device_status  — device came online/offline
      */
     @GetMapping(value = "/tenant", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public SseEmitter tenantStream(@AuthenticationPrincipal String email) {
-        UUID tenantId = userRepo.findByEmail(email)
+    public SseEmitter tenantStream(@AuthenticationPrincipal String email, HttpServletRequest request) {
+        Object tenantIdAttr = request.getAttribute("tenantId");
+        UUID tenantId = tenantIdAttr != null
+            ? UUID.fromString(tenantIdAttr.toString())
+            : userRepo.findByEmail(email)
                 .map(u -> u.getTenantId())
                 .orElseThrow(() -> new RuntimeException("User not found: " + email));
-        log.info("[SSE] Tenant stream opened for {}", email);
+        log.info("[SSE] Tenant stream opened for {}", tenantId);
         return sseRegistry.registerTenant(tenantId);
     }
 

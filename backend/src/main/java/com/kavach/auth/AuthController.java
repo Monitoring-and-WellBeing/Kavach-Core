@@ -5,7 +5,11 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.web.bind.annotation.*;
+import java.time.Duration;
+import java.util.Map;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/auth")
@@ -13,6 +17,7 @@ import org.springframework.web.bind.annotation.*;
 public class AuthController {
 
     private final AuthService authService;
+    private final StringRedisTemplate redisTemplate;
 
     @PostMapping("/login")
     public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest req) {
@@ -38,5 +43,18 @@ public class AuthController {
     @GetMapping("/me")
     public ResponseEntity<AuthResponse.UserDto> me(@AuthenticationPrincipal String email) {
         return ResponseEntity.ok(authService.getCurrentUser(email));
+    }
+
+    @PostMapping("/sse-token")
+    public ResponseEntity<Map<String, String>> createSseToken(@AuthenticationPrincipal String email) {
+        AuthResponse.UserDto user = authService.getCurrentUser(email);
+        String token = UUID.randomUUID().toString();
+        redisTemplate.opsForValue().set(
+            "sse:token:" + token,
+            user.getTenantId(),
+            Duration.ofSeconds(300)
+        );
+        // GAP-4 FIXED
+        return ResponseEntity.ok(Map.of("token", token));
     }
 }
