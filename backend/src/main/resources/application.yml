@@ -1,11 +1,11 @@
 spring:
   datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://ep-silent-rice-a1yu2php-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=require}
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/kavach_db}
     # WARNING: SPRING_DATASOURCE_USERNAME and SPRING_DATASOURCE_PASSWORD MUST be set
     # via environment variables in production. The fallback values below are for local
     # development only and must NEVER be committed or used in production.
-    username: ${SPRING_DATASOURCE_USERNAME:neondb_owner}
-    password: ${SPRING_DATASOURCE_PASSWORD:CHANGE_ME_IN_PROD}
+    username: ${SPRING_DATASOURCE_USERNAME:kavach}
+    password: ${SPRING_DATASOURCE_PASSWORD:kavach123}
     driver-class-name: org.postgresql.Driver
     hikari:
       pool-name: KavachHikariPool
@@ -87,17 +87,17 @@ logging:
     org.springframework.security: INFO
 
 r2:
-  account-id: ${R2_ACCOUNT_ID:}
-  access-key-id: ${R2_ACCESS_KEY:} # GAP-15 FIXED
-  secret-access-key: ${R2_SECRET_ACCESS_KEY:}
-  bucket-name: ${R2_BUCKET_NAME:}
+  account-id: ${R2_ACCOUNT_ID:dev-account}
+  access-key-id: ${R2_ACCESS_KEY:dev-access-key} # GAP-15 FIXED
+  secret-access-key: ${R2_SECRET_ACCESS_KEY:dev-secret-key}
+  bucket-name: ${R2_BUCKET_NAME:kavach-screenshots}
 
 razorpay:
   key:
-    id: ${RAZORPAY_KEY_ID:} # GAP-15 FIXED
-    secret: ${RAZORPAY_KEY_SECRET:} # GAP-15 FIXED
+    id: ${RAZORPAY_KEY_ID:rzp_test_XXXXXXXXXXXXXXXX} # GAP-15 FIXED
+    secret: ${RAZORPAY_KEY_SECRET:dev_razorpay_secret} # GAP-15 FIXED
   webhook:
-    secret: ${RAZORPAY_WEBHOOK_SECRET:}
+    secret: ${RAZORPAY_WEBHOOK_SECRET:dev_webhook_secret}
 
 management:
   endpoints:

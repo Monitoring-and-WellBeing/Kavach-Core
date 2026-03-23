@@ -12,7 +12,7 @@
     "type-check": "turbo run type-check",
     "dev:web": "pnpm --filter web-app dev",
     "dev:desktop": "pnpm --filter desktop-agent dev",
-    "dev:backend": "cd backend && ./mvnw spring-boot:run"
+    "dev:backend": "mvn -f backend/pom.xml spring-boot:run"
   },
   "devDependencies": {
     "@jest/test-sequencer": "29.7.0",
