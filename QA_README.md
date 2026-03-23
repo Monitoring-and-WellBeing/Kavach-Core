@@ -83,3 +83,41 @@ Test Case:
 Test Case:
 - Input: Remove Maven from PATH and run `pnpm dev:backend`.
 - Expected Output: Command fails with `mvn` not found.
+
+---
+
+## Entry 003 - Desktop Agent Test Date Determinism
+
+### Feature / Change Summary
+- Test timestamp creation was made deterministic and parsing-safe in offline buffer tests.
+
+### What was implemented
+- In `apps/desktop-agent/src/__tests__/offlineBuffer.test.ts`, replaced template-string date parsing with explicit UTC construction:
+  - From `new Date(\`2024-01-01T${10 + i}:00:00Z\`).toISOString()`
+  - To `new Date(Date.UTC(2024, 0, 1, 10 + i, 0, 0)).toISOString()`
+
+### Files changed
+- `apps/desktop-agent/src/__tests__/offlineBuffer.test.ts`
+
+### How it works
+- `Date.UTC` builds timestamps without relying on string parsing behavior, reducing test flakiness across runtimes/locales.
+
+### How to test it
+- Run `pnpm --filter desktop-agent test -- offlineBuffer.test.ts`.
+- Confirm suite passes with all tests green.
+
+### Known limitations
+- This change improves test reliability only; production runtime logic is unchanged.
+
+### Test cases
+Test Case:
+- Input: Run offline buffer test suite on current local machine.
+- Expected Output: 1 suite passes with all existing tests.
+
+Test Case:
+- Input: Run same test in a different timezone/CI runner.
+- Expected Output: Same assertions pass consistently (no date parsing drift).
+
+Test Case:
+- Input: Set `i` to boundary values used by buffer fixtures.
+- Expected Output: Generated ISO timestamps remain valid and ordered.
