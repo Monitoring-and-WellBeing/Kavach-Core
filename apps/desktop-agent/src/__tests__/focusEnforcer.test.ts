@@ -3,16 +3,14 @@ import { loadConfig } from '../auth/config'
 
 // Mock dependencies
 jest.mock('../auth/config')
-jest.mock('node-fetch', () => ({
-  __esModule: true,
-  default: jest.fn(),
-}))
 
 const mockLoadConfig = loadConfig as jest.MockedFunction<typeof loadConfig>
+let fetchSpy: jest.SpiedFunction<typeof fetch>
 
 describe('Focus Enforcer', () => {
   beforeEach(() => {
     jest.clearAllMocks()
+    fetchSpy = jest.spyOn(global, 'fetch')
     mockLoadConfig.mockResolvedValue({
       deviceLinked: true,
       deviceId: 'device-001',
@@ -22,11 +20,14 @@ describe('Focus Enforcer', () => {
     })
   })
 
+  afterEach(() => {
+    fetchSpy.mockRestore()
+  })
+
   describe('isFocusBlocked', () => {
     it('non-whitelisted app during focus → blocked=true', () => {
       // Mock focus status as active with whitelist
-      const fetch = require('node-fetch').default
-      fetch.mockResolvedValueOnce({
+      fetchSpy.mockResolvedValueOnce({
         ok: true,
         json: async () => ({
           focusActive: true,
@@ -35,7 +36,7 @@ describe('Focus Enforcer', () => {
           remainingSeconds: 1800,
           whitelistedProcesses: ['code.exe', 'chrome.exe'],
         }),
-      })
+      } as Response)
 
       // After polling, isFocusBlocked should check against whitelist
       // For this test, we'll test the logic directly
@@ -87,7 +88,6 @@ describe('Focus Enforcer', () => {
 
   describe('pollFocusStatus', () => {
     it('fetches focus status from backend', async () => {
-      const fetch = require('node-fetch').default
       const mockStatus = {
         focusActive: true,
         sessionId: 'session-1',
@@ -96,14 +96,14 @@ describe('Focus Enforcer', () => {
         whitelistedProcesses: ['code.exe'],
       }
 
-      fetch.mockResolvedValueOnce({
+      fetchSpy.mockResolvedValueOnce({
         ok: true,
         json: async () => mockStatus,
-      })
+      } as Response)
 
       const status = await pollFocusStatus()
 
-      expect(fetch).toHaveBeenCalledWith(
+      expect(fetchSpy).toHaveBeenCalledWith(
         expect.stringContaining('/api/v1/focus/agent/device-001/status'),
         expect.objectContaining({ signal: expect.any(AbortSignal) })
       )
@@ -112,8 +112,7 @@ describe('Focus Enforcer', () => {
     })
 
     it('handles network failure gracefully', async () => {
-      const fetch = require('node-fetch').default
-      fetch.mockRejectedValueOnce(new Error('Network error'))
+      fetchSpy.mockRejectedValueOnce(new Error('Network error'))
 
       // Should return previous status or default
       const status = await pollFocusStatus()
