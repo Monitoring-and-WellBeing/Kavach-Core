@@ -1,5 +1,6 @@
-import { app, BrowserWindow, ipcMain, Tray, Menu } from "electron";
+import fs from "fs"; 
 import path from "path";
+import { app, BrowserWindow, ipcMain, Tray, Menu } from "electron";
 import { startTrackingLoop, stopTrackingLoop, isTrackingActive, TrackingLoopOptions } from "./tracking/trackingLoop";
 import { loadConfig, saveConfig } from "./auth/config";
 import { EnforcementEngine } from "./enforcement/EnforcementEngine";
@@ -89,6 +90,12 @@ function stopEnforcement(): void {
 }
 
 // After device is confirmed linked, start tracking + enforcement:
+function safeHideMainWindow(): void {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.hide();
+  }
+}
+
 async function initializeAgent() {
   const config = await loadConfig();
 
@@ -99,7 +106,7 @@ async function initializeAgent() {
     // and duplicate usage reports.
     startTrackingLoop({ skipLegacyEnforcement: true });
     await startEnforcement(config.deviceId);
-    mainWindow?.hide(); // hide window — runs in tray
+    safeHideMainWindow(); // hide window — runs in tray
   } else {
     console.log('[main] Device not linked, showing link screen');
     mainWindow?.show();
@@ -161,12 +168,12 @@ app.whenReady().then(async () => {
       const { code, expiresInMinutes } = await generateLinkCode();
 
       // Start background polling — when linked, notify renderer and start enforcement
-      pollForLink(code).then(async (deviceId) => {
+          pollForLink(code).then(async (deviceId) => {
         if (deviceId) {
           startTrackingLoop({ skipLegacyEnforcement: true });
           await startEnforcement(deviceId);
           mainWindow?.webContents.send("link-success");
-          setTimeout(() => mainWindow?.hide(), 3500);
+          setTimeout(() => safeHideMainWindow(), 3500);
         }
       }).catch((err) => {
         console.error('[main] pollForLink failed:', err);
@@ -186,7 +193,7 @@ app.whenReady().then(async () => {
     if (linkedConfig.deviceId) {
       await startEnforcement(linkedConfig.deviceId);
     }
-    mainWindow?.hide();
+    safeHideMainWindow();
     return { success: true };
   });
 

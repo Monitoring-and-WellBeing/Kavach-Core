@@ -6,22 +6,36 @@ const CONFIG_PATH = path.join(process.env.APPDATA || ".", "kavach-config.json");
 
 export interface AgentConfig {
   deviceLinked: boolean;
-  deviceId?: string;          // UUID from backend after linking
-  deviceCode?: string;        // the 6-char code shown to user
-  authToken?: string;         // not used for agent — device uses deviceId
+  deviceId?: string;
+  deviceCode?: string;
+  authToken?: string;
   tenantId?: string;
+  /**
+   * Base API URL. May be either:
+   * - http://host:port          (no suffix)
+   * - http://host:port/api/v1   (with suffix)
+   * Callers normalize by stripping a trailing /api/v1 and re‑adding it.
+   */
   apiUrl: string;
   agentVersion: string;
   hostname: string;
 }
 
-// API_URL is baked into the build via electron-builder's extraMetadata / env injection.
-// In production builds this env var is set to the Railway backend URL.
-// The localhost fallback is for local development ONLY — never ships in production.
+const DEFAULT_API_URL = "http://localhost:8080/api/v1";
+
+const apiUrlFromEnv = process.env.API_URL || DEFAULT_API_URL;
+
+if (!process.env.API_URL) {
+  console.warn(
+    "[config] API_URL not set for desktop agent, defaulting to",
+    DEFAULT_API_URL
+  );
+}
+
 const defaultConfig: AgentConfig = {
   deviceLinked: false,
-  apiUrl: process.env.API_URL || 'https://kavach-core-production.up.railway.app',
-  agentVersion: '1.2.4',
+  apiUrl: apiUrlFromEnv,
+  agentVersion: "1.2.4",
   hostname: os.hostname(),
 };
 

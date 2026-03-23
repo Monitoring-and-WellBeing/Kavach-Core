@@ -19,17 +19,10 @@ CREATE TABLE IF NOT EXISTS daily_app_usage (
     last_updated    TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-<<<<<<< HEAD
-CREATE UNIQUE INDEX IF NOT EXISTS idx_daily_app_usage_unique
-    ON daily_app_usage (device_id, usage_date, app_category, COALESCE(package_name, ''));
-
-CREATE INDEX idx_daily_usage_device_date
-=======
 CREATE UNIQUE INDEX IF NOT EXISTS uidx_daily_app_usage
     ON daily_app_usage (device_id, usage_date, app_category, COALESCE(package_name, ''));
 
 CREATE INDEX IF NOT EXISTS idx_daily_usage_device_date
->>>>>>> e079fd8a0318fe869bea64e66d3391aa881c4b8a
     ON daily_app_usage(device_id, usage_date DESC);
 
 CREATE INDEX IF NOT EXISTS idx_daily_usage_tenant_date
