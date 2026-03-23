@@ -27,6 +27,9 @@ export const blockingApi = {
   toggleRule: (id: string) =>
     api.patch<BlockRule>(`/blocking/rules/${id}/toggle`).then(r => r.data),
 
+  updateRule: (id: string, patch: Partial<BlockRule>) =>
+    api.put<BlockRule>(`/blocking/rules/${id}`, patch).then(r => r.data),
+
   deleteRule: (id: string) =>
     api.delete(`/blocking/rules/${id}`),
 }

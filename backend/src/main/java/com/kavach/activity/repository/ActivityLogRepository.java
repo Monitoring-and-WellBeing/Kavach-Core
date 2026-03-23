@@ -2,6 +2,7 @@ package com.kavach.activity.repository;
 
 import com.kavach.activity.entity.ActivityLog;
 import com.kavach.activity.entity.AppCategory;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -42,4 +43,19 @@ public interface ActivityLogRepository extends JpaRepository<ActivityLog, UUID> 
            "WHERE a.deviceId = :deviceId AND a.startedAt >= :since " +
            "GROUP BY a.category")
     List<Object[]> categoryBreakdown(@Param("deviceId") UUID deviceId, @Param("since") LocalDateTime since);
+
+    // Paginated logs for a tenant (all devices)
+    @Query("SELECT a FROM ActivityLog a WHERE a.tenantId = :tenantId AND a.startedAt >= :since ORDER BY a.startedAt DESC")
+    List<ActivityLog> findRecentByTenantId(
+        @Param("tenantId") UUID tenantId,
+        @Param("since") LocalDateTime since,
+        Pageable pageable);
+
+    // Paginated logs for a specific device within a tenant
+    @Query("SELECT a FROM ActivityLog a WHERE a.deviceId = :deviceId AND a.tenantId = :tenantId AND a.startedAt >= :since ORDER BY a.startedAt DESC")
+    List<ActivityLog> findRecentByDeviceIdAndTenantId(
+        @Param("deviceId") UUID deviceId,
+        @Param("tenantId") UUID tenantId,
+        @Param("since") LocalDateTime since,
+        Pageable pageable);
 }

@@ -1,8 +1,8 @@
 'use client'
 import { useState, useEffect, useCallback } from 'react'
-import { Monitor, Wifi, WifiOff, Target, Shield, Bell,
+import { Wifi, Target, Shield, Bell,
          RefreshCw, ChevronDown, CheckSquare, Square,
-         Pause, Play, TrendingUp, AlertTriangle } from 'lucide-react'
+         Pause, Play } from 'lucide-react'
 import Link from 'next/link'
 import { instituteDashboardApi, type InstituteDashboard, type InstituteDevice } from '@/lib/instituteDashboard'
 import { Toast, useToast } from '@/components/ui/Toast'
@@ -130,6 +130,7 @@ function DeviceRow({
 export default function InstituteDashboard() {
   const [data, setData] = useState<InstituteDashboard | null>(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [filter, setFilter] = useState<Filter>('ALL')
   const [sort, setSort] = useState<SortKey>('status')
@@ -138,11 +139,25 @@ export default function InstituteDashboard() {
 
   const load = useCallback(async () => {
     try {
+      setError(null)
       setData(await instituteDashboardApi.get())
+    } catch (err: unknown) {
+      const status = (err as { response?: { status?: number } })?.response?.status
+      if (status === 401) {
+        setError('Session expired. Please log out and log back in.')
+      } else {
+        setError('Failed to load dashboard data. Please try refreshing.')
+      }
+      showToast(
+        status === 401
+          ? 'Session expired — please log in again'
+          : 'Failed to load dashboard',
+        'error'
+      )
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [showToast])
 
   useEffect(() => {
     load()
@@ -153,7 +168,7 @@ export default function InstituteDashboard() {
   const toggleSelect = (id: string) => {
     setSelected(prev => {
       const next = new Set(prev)
-      next.has(id) ? next.delete(id) : next.add(id)
+      if (next.has(id)) { next.delete(id) } else { next.add(id) }
       return next
     })
   }
@@ -180,6 +195,20 @@ export default function InstituteDashboard() {
           {[1,2,3,4,5].map(i => <div key={i} className="h-24 bg-white rounded-2xl shadow-sm" />)}
         </div>
         <div className="h-96 bg-white rounded-2xl shadow-sm" />
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="p-6 flex flex-col items-center justify-center min-h-[60vh] gap-4">
+        {toast && <Toast message={toast.message} type={toast.type} onClose={hideToast} />}
+        <div className="text-red-500 text-4xl">⚠️</div>
+        <p className="text-gray-700 font-medium text-center">{error}</p>
+        <button onClick={load}
+          className="px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700 transition-colors">
+          Retry
+        </button>
       </div>
     )
   }
@@ -221,17 +250,17 @@ export default function InstituteDashboard() {
 
       {/* ── Header ── */}
       <div className="flex items-center justify-between gap-3">
-        <div>
+            <div>
           <h1 className="text-gray-900 font-bold text-lg md:text-xl">Institute Overview</h1>
           <p className="text-gray-400 text-sm mt-0.5">
             {stats.totalDevices} devices · {stats.onlineDevices} online now
           </p>
-        </div>
+            </div>
         <button onClick={load}
           className="p-2.5 bg-gray-100 hover:bg-gray-200 rounded-xl text-gray-500 transition-colors flex-shrink-0">
           <RefreshCw size={16} />
         </button>
-      </div>
+          </div>
 
       {/* ── Top row: compliance + stat cards ── */}
       <div className="grid grid-cols-2 lg:grid-cols-6 gap-3 md:gap-4">

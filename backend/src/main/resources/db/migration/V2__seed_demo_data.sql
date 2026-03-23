@@ -1,6 +1,6 @@
--- ═══════════════════════════════════════════════════════════════
--- KAVACH AI — Demo Seed Data
--- ═══════════════════════════════════════════════════════════════
+-- ================================================================
+-- KAVACH AI -- Demo Seed Data
+-- ================================================================
 
 -- Demo Tenant
 INSERT INTO tenants (id, name, type, city, state, admin_email, local_server_enabled)
@@ -67,6 +67,8 @@ VALUES
 ON CONFLICT DO NOTHING;
 
 -- Demo Subscription
+-- ON CONFLICT DO NOTHING guards against duplicate-key failure on re-run
+-- (subscriptions.tenant_id has a UNIQUE constraint from V1)
 INSERT INTO subscriptions (tenant_id, plan, device_limit, price_per_device, billing_cycle, start_date, end_date, status)
 VALUES (
     'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
@@ -77,4 +79,5 @@ VALUES (
     CURRENT_DATE,
     CURRENT_DATE + INTERVAL '14 days',
     'TRIAL'
-);
+)
+ON CONFLICT (tenant_id) DO NOTHING;

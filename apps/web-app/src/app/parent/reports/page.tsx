@@ -22,21 +22,6 @@ const CAT_COLORS: Record<string, string> = {
   OTHER: 'bg-gray-100 text-gray-600',
 }
 
-function SkeletonCard({ height = 'h-48' }: { height?: string }) {
-  return (
-    <div className={`bg-white rounded-2xl shadow-sm ${height} animate-pulse`}>
-      <div className="p-5">
-        <div className="h-4 bg-gray-100 rounded w-1/3 mb-3" />
-        <div className="h-3 bg-gray-100 rounded w-1/4 mb-6" />
-        <div className="space-y-2">
-          <div className="h-3 bg-gray-100 rounded" />
-          <div className="h-3 bg-gray-100 rounded w-4/5" />
-          <div className="h-3 bg-gray-100 rounded w-3/5" />
-        </div>
-      </div>
-    </div>
-  )
-}
 
 export default function ReportsPage() {
   const { devices } = useDevices()
@@ -56,8 +41,42 @@ export default function ReportsPage() {
 
   const selectedDevice = devices.find(d => d.id === selectedDeviceId)
 
-  const handleExport = () => {
-    showToast('Report exported successfully! Check your downloads.', 'success')
+  const handleExport = async () => {
+    if (!selectedDeviceId) {
+      showToast('Please select a device first', 'error')
+      return
+    }
+
+    try {
+      const token = localStorage.getItem('kavach_access_token')
+      const url = `/api/v1/reports/device/${selectedDeviceId}/export?format=csv&period=${period}`
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'
+      
+      const response = await fetch(`${apiUrl}${url}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+
+      if (!response.ok) {
+        if (response.status === 501) {
+          const data = await response.json()
+          showToast(data.error || 'PDF export not available yet', 'info')
+          return
+        }
+        throw new Error('Export failed')
+      }
+
+      const blob = await response.blob()
+      const link = document.createElement('a')
+      link.href = URL.createObjectURL(blob)
+      link.download = `kavach-report-${selectedDeviceId}-${period}-${new Date().toISOString().split('T')[0]}.csv`
+      link.click()
+      URL.revokeObjectURL(link.href)
+      
+      showToast('Report exported successfully! Check your downloads.', 'success')
+    } catch (err) {
+      console.error('Export error:', err)
+      showToast('Failed to export report. Please try again.', 'error')
+    }
   }
 
   return (
@@ -101,7 +120,7 @@ export default function ReportsPage() {
             </button>
           </div>
 
-          <button onClick={refetch} disabled={loading}
+          <button type="button" onClick={() => { void refetch(); }} disabled={loading}
             className="p-2.5 bg-gray-100 hover:bg-gray-200 rounded-xl text-gray-500 transition-colors">
             <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
           </button>
@@ -119,7 +138,7 @@ export default function ReportsPage() {
         <div className="flex items-center gap-2 p-4 bg-red-50 border border-red-100 rounded-xl mb-5">
           <AlertCircle size={16} className="text-red-500" />
           <span className="text-red-600 text-sm">{error}</span>
-          <button onClick={refetch} className="ml-auto text-sm text-red-500 underline">Retry</button>
+          <button type="button" onClick={() => { void refetch(); }} className="ml-auto text-sm text-red-500 underline">Retry</button>
         </div>
       )}
 

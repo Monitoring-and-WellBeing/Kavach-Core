@@ -1,0 +1,13 @@
+[variables]
+SPRING_PROFILES_ACTIVE = "prod"
+
+[phases.setup]
+nixPkgs = ["jdk17", "maven"]
+
+[phases.build]
+cmds = ["mvn clean package -DskipTests"]
+
+# Do NOT pass -Dspring.profiles.active= here: it overrides SPRING_PROFILES_ACTIVE from the platform.
+# Railway/Render should set SPRING_PROFILES_ACTIVE=prod (or pass --spring.profiles.active=prod before -jar).
+[start]
+cmd = "java -jar target/*.jar"

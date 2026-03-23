@@ -1,12 +1,16 @@
 package com.kavach.activity;
 
+import com.kavach.activity.dto.ActivityLogResponse;
 import com.kavach.activity.dto.SyncActivityRequest;
 import com.kavach.activity.service.ActivityService;
+import com.kavach.users.UserRepository;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -16,6 +20,7 @@ import java.util.UUID;
 public class ActivityController {
 
     private final ActivityService activityService;
+    private final UserRepository userRepo;
 
     // ── POST /api/v1/activity
     // Called by desktop agent every 30 seconds
@@ -46,6 +51,23 @@ public class ActivityController {
                 "durationSeconds", row[2]
             )).toList()
         ));
+    }
+
+    // ── GET /api/v1/activity/logs
+    // JWT-protected. Returns screen activity logs for the authenticated tenant.
+    // Optional: deviceId filter, hours (lookback window), limit (max rows)
+    @GetMapping("/logs")
+    public ResponseEntity<List<ActivityLogResponse>> getLogs(
+            @AuthenticationPrincipal String email,
+            @RequestParam(required = false) UUID deviceId,
+            @RequestParam(defaultValue = "24") int hours,
+            @RequestParam(defaultValue = "200") int limit
+    ) {
+        UUID tenantId = userRepo.findByEmail(email)
+                .map(u -> u.getTenantId())
+                .orElseThrow(() -> new RuntimeException("User not found: " + email));
+
+        return ResponseEntity.ok(activityService.getLogs(tenantId, deviceId, hours, limit));
     }
 
     private String formatSeconds(long seconds) {

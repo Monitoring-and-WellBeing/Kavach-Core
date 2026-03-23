@@ -1,26 +1,29 @@
 package com.kavach.security;
 
 import com.kavach.auth.JwtFilter;
+import com.kavach.config.RequestIdFilter;
 import lombok.RequiredArgsConstructor;
+import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.AuthenticationProvider;
-import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
-import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.config.annotation.web.configurers.HeadersConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import java.util.Arrays;
 import java.util.List;
 
 @Configuration
@@ -30,17 +33,41 @@ import java.util.List;
 public class SecurityConfig {
 
     private final JwtFilter jwtFilter;
+    private final DeviceAuthFilter deviceAuthFilter;
+    private final RequestIdFilter requestIdFilter;
+
+    /**
+     * Comma-separated list of allowed CORS origins.
+     * Set CORS_ORIGINS env var in Railway/Vercel to include your frontend domain.
+     * Example: https://kavach.vercel.app,http://localhost:3000
+     */
+    @Value("${spring.security.cors.allowed-origins:http://localhost:3000,http://localhost:3001}")
+    private String corsOriginsRaw;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         return http
                 .csrf(AbstractHttpConfigurer::disable)
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+                .headers(headers -> headers
+                        .frameOptions(HeadersConfigurer.FrameOptionsConfig::deny)
+                        .contentTypeOptions(HeadersConfigurer.ContentTypeOptionsConfig::disable)
+                        .httpStrictTransportSecurity(hsts -> hsts
+                                .maxAgeInSeconds(31536000)
+                                .includeSubDomains(true))
+                        .referrerPolicy(referrer -> referrer
+                                .policy(ReferrerPolicyHeaderWriter.ReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN))
+                        .contentSecurityPolicy(csp -> csp
+                                .policyDirectives("default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'"))
+                )
                 .authorizeHttpRequests(auth -> auth
+                        // Explicitly permit ALL OPTIONS preflight requests so Spring Security
+                        // never blocks them before the CORS filter can respond.
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers(
                                 "/api/v1/auth/**",
                                 "/api/v1/activity",
-                                "/api/v1/subscriptions/plans",
+                                "/api/v1/subscription/plans", // GAP-7 FIXED
                                 "/api/v1/subscription/webhook",
                                 "/api/v1/devices/generate-code",
                                 "/api/v1/devices/check-linked",
@@ -48,33 +75,64 @@ public class SecurityConfig {
                                 "/api/v1/blocking/rules/*/agent",
                                 "/api/v1/blocking/violations",
                                 "/api/v1/focus/agent/**",
-                                "/swagger-ui/**",
-                                "/swagger-ui.html",
-                                "/api-docs/**",
-                                "/v3/api-docs/**",
-                                "/actuator/health"
+                                // Enforcement engine endpoints (desktop + Android — no JWT)
+                                "/api/v1/enforcement/events",
+                                "/api/v1/enforcement/state/*",
+                                "/api/v1/enforcement/version/*",
+                                "/api/v1/enforcement/usage",
+                                // Mobile agent endpoints (no JWT — device authenticates by deviceId)
+                                "/api/v1/location/update",
+                                "/api/v1/location/batch",
+                                "/api/v1/location/geofences",
+                                "/api/v1/location/geofence-event",
+                                "/api/v1/activity/mobile-usage",
+                                "/api/v1/health/time",
+                                // Screenshot endpoints (desktop agent — no JWT)
+                                "/api/v1/screenshots/upload",
+                                "/api/v1/screenshots/settings/*/mark-notified",
+                                "/api/v1/screenshots/settings/*",
+                                // SSE endpoint for desktop agent (device-auth, no JWT)
+                                "/api/v1/sse/device/**",
+                                "/api/v1/sse/health",
+                                "/actuator/health",
+                                "/actuator/health/**"
                         ).permitAll()
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
+                // Belt-and-suspenders: if a request reaches Spring Security without auth
+                // context (e.g. no token sent at all), return 401 — not 403 — so the
+                // frontend axios interceptor knows to attempt a token refresh.
+                .exceptionHandling(ex -> ex
+                        .authenticationEntryPoint((request, response, authException) -> {
+                            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                            response.setContentType("application/json");
+                            response.getWriter().write(
+                                    "{\"error\":\"Authentication required\",\"code\":\"UNAUTHENTICATED\"}");
+                        })
+                )
+                .addFilterBefore(requestIdFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterBefore(deviceAuthFilter, JwtFilter.class)
                 .build();
     }
 
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
+        // Parse comma-separated origins from env var (trimmed, no blanks)
+        List<String> allowedOrigins = Arrays.stream(corsOriginsRaw.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .toList();
+
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(List.of(
-            "http://localhost:3000",
-            "http://localhost:3001",
-            "capacitor://localhost",
-            "ionic://localhost"
-        ));
-        config.setAllowedMethods(List.of("GET","POST","PUT","DELETE","PATCH","OPTIONS"));
+        config.setAllowedOrigins(allowedOrigins);
+        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
         config.setAllowCredentials(true);
+        config.setMaxAge(3600L); // Cache preflight for 1 hour
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);

@@ -1,23 +1,57 @@
 spring:
   datasource:
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/kavach_db}
+    # WARNING: SPRING_DATASOURCE_USERNAME and SPRING_DATASOURCE_PASSWORD MUST be set
+    # via environment variables in production. The fallback values below are for local
+    # development only and must NEVER be committed or used in production.
     username: ${SPRING_DATASOURCE_USERNAME:kavach}
     password: ${SPRING_DATASOURCE_PASSWORD:kavach123}
     driver-class-name: org.postgresql.Driver
+    hikari:
+      pool-name: KavachHikariPool
+      # Sized for Neon pooler (PgBouncer in transaction mode).
+      # Formula: (core_count × 2) + 1; Railway Starter = 1 vCPU → 3 minimum.
+      # Set to 10 to handle burst traffic while staying within Neon's connection limit.
+      # Raise to 20 when upgrading to Neon Pro (which lifts the connection cap).
+      maximum-pool-size: 10
+      minimum-idle: 2
+      # Fail fast if DB is unreachable at startup — better than queuing forever.
+      connection-timeout: 20000
+      # Release idle connections after 3 min to avoid holding Neon slots during quiet periods.
+      idle-timeout: 180000
+      # Recycle connections before Neon's server-side 5-min idle timeout kills them.
+      max-lifetime: 240000
+      # Send keepalive every 60s so Neon doesn't suspend the compute during low traffic.
+      keepalive-time: 60000
+      # Validate connection health before handing it to the application.
+      connection-test-query: SELECT 1
+      auto-commit: false
+
   jpa:
     hibernate:
-      ddl-auto: validate
+      ddl-auto: none
     show-sql: false
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
         format_sql: false
+
   flyway:
     enabled: true
     locations: classpath:db/migration
     baseline-on-migrate: true
+    out-of-order: false
+    validate-on-migrate: true
+    # Flyway uses spring.datasource credentials by default.
+    # Do NOT set separate flyway.url / flyway.user / flyway.password here.
+  data:
+    redis:
+      url: ${REDIS_URL:redis://localhost:6379} # GAP-1 FIXED
+
   security:
     cors:
+      # CORS_ORIGINS must be set in Railway/Vercel in production; localhost fallback is dev-only.
+      # Format: comma-separated list, e.g. https://kavach.vercel.app,http://localhost:3000
       allowed-origins: ${CORS_ORIGINS:http://localhost:3000,http://localhost:3001}
 
 server:
@@ -25,15 +59,25 @@ server:
 
 kavach:
   jwt:
+    # WARNING: JWT_SECRET MUST be overridden in production with a strong 256-bit+ secret.
+    # The fallback below is for local development only.
     secret: ${JWT_SECRET:kavach-jwt-secret-key-minimum-256-bits-long-change-in-production-2024}
     access-token-expiry: ${JWT_ACCESS_EXPIRY:900000}        # 15 minutes in ms
     refresh-token-expiry: ${JWT_REFRESH_EXPIRY:604800000}    # 7 days in ms
+  ai:
+    provider: gemini
+    gemini:
+      # GEMINI_API_KEY must be set in production; no fallback is intentional
+      api-key: ${GEMINI_API_KEY:}
+      model: gemini-1.5-flash
 
 springdoc:
   api-docs:
     path: /api-docs
+    enabled: true
   swagger-ui:
     path: /swagger-ui.html
+    enabled: true
     operationsSorter: alpha
     tagsSorter: alpha
 
@@ -42,13 +86,41 @@ logging:
     com.kavach: DEBUG
     org.springframework.security: INFO
 
-anthropic:
-  api:
-    key: ${ANTHROPIC_API_KEY:}
+r2:
+  account-id: ${R2_ACCOUNT_ID:dev-account}
+  access-key-id: ${R2_ACCESS_KEY:dev-access-key} # GAP-15 FIXED
+  secret-access-key: ${R2_SECRET_ACCESS_KEY:dev-secret-key}
+  bucket-name: ${R2_BUCKET_NAME:kavach-screenshots}
 
 razorpay:
   key:
-    id: ${RAZORPAY_KEY_ID:rzp_test_XXXXXXXXXXXXXXXX}
-    secret: ${RAZORPAY_KEY_SECRET:XXXXXXXXXXXXXXXXXXXXXXXX}
+    id: ${RAZORPAY_KEY_ID:rzp_test_XXXXXXXXXXXXXXXX} # GAP-15 FIXED
+    secret: ${RAZORPAY_KEY_SECRET:dev_razorpay_secret} # GAP-15 FIXED
   webhook:
-    secret: ${RAZORPAY_WEBHOOK_SECRET:YOUR_WEBHOOK_SECRET_HERE}
+    secret: ${RAZORPAY_WEBHOOK_SECRET:dev_webhook_secret}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      # Exposes /actuator/health/liveness and /actuator/health/readiness for platforms
+      # (Railway, K8s) so probes do not 503 when optional infra (e.g. Redis) is DOWN
+      # while the JVM is still running. Aggregate /actuator/health remains strict.
+      probes:
+        enabled: true
+      show-details: when-authorized
+
+---
+spring:
+  config:
+    activate:
+      on-profile: prod
+springdoc:
+  swagger-ui:
+    enabled: false
+  api-docs:
+    enabled: false
+# GAP-14 FIXED

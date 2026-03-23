@@ -32,7 +32,7 @@ const RULE_TYPE_CONFIG: Record<RuleType, { label: string; icon: React.ReactNode;
 
 // ── 3-step rule creation wizard ───────────────────────────────────────────────
 function CreateRuleWizard({
-  onSave, onClose, devices
+  onSave, onClose: _onClose, devices
 }: {
   onSave: (rule: any) => Promise<void>
   onClose: () => void
@@ -310,7 +310,7 @@ export default function AlertsRulesPage() {
       setUnread(alertsData.unreadCount)
       setRules(rulesData)
       setDevices(devicesData)
-    } catch (err) {
+    } catch (_err) {
       showToast('Failed to load alerts', 'error')
     } finally {
       setLoading(false)

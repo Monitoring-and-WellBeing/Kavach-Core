@@ -1,0 +1,10 @@
+[build]
+builder = "NIXPACKS"
+
+[deploy]
+startCommand = "java -Dspring.profiles.active=dev -Xmx300m -XX:+ExitOnOutOfMemoryError -jar target/*.jar"
+# Liveness only — avoids 503 when aggregate health includes Redis/DB readiness
+healthcheckPath = "/actuator/health/liveness"
+healthcheckTimeout = 300
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 3

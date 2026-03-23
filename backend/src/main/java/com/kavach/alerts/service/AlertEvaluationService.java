@@ -8,8 +8,10 @@ import com.kavach.alerts.repository.AlertRepository;
 import com.kavach.alerts.repository.AlertRuleRepository;
 import com.kavach.devices.entity.Device;
 import com.kavach.devices.repository.DeviceRepository;
+import com.kavach.sse.SseRegistry;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,9 +31,11 @@ public class AlertEvaluationService {
     private final AlertRepository alertRepo;
     private final ActivityLogRepository activityRepo;
     private final DeviceRepository deviceRepo;
+    private final SseRegistry sseRegistry;
 
     // ── Run every 5 minutes ───────────────────────────────────────────────────
     @Scheduled(fixedDelay = 300000)
+    @SchedulerLock(name = "evaluateAlertRules", lockAtLeastFor = "PT4M", lockAtMostFor = "PT9M")
     @Transactional
     public void evaluateAllRules() {
         List<AlertRule> activeRules = ruleRepo.findAll().stream()
@@ -168,10 +172,46 @@ public class AlertEvaluationService {
         rule.setLastTriggered(LocalDateTime.now());
         ruleRepo.save(rule);
 
+        // ── Push real-time alert to parent dashboard via SSE ──────────────────
+        Map<String, Object> sseAlert = new java.util.HashMap<>();
+        sseAlert.put("id",         String.valueOf(alert.getId()));
+        sseAlert.put("title",      alert.getTitle());
+        sseAlert.put("message",    alert.getMessage());
+        sseAlert.put("severity",   alert.getSeverity());
+        sseAlert.put("ruleType",   alert.getRuleType());
+        sseAlert.put("deviceId",   String.valueOf(device.getId()));
+        sseAlert.put("deviceName", device.getName());
+        sseRegistry.sendToTenant(rule.getTenantId(), "alert", sseAlert);
+
         log.info("[alerts] Alert fired: {} for device {}", title, device.getName());
     }
 
     // ── Manual trigger from agent (blocked app attempt) ───────────────────────
+    @Transactional
+    public void triggerKillToolAlert(UUID tenantId, UUID deviceId, String toolName, String deviceName) {
+        Alert alert = Alert.builder()
+            .tenantId(tenantId)
+            .deviceId(deviceId)
+            .ruleType("KILL_TOOL_DETECTED")
+            .severity("HIGH")
+            .title("Bypass attempt on " + deviceName)
+            .message(String.format(
+                "'%s' was opened on %s — possible attempt to bypass KAVACH monitoring.",
+                toolName, deviceName))
+            .metadata(Map.of("toolName", toolName, "deviceName", deviceName))
+            .build();
+        alertRepo.save(alert);
+        Map<String, Object> killPayload = new java.util.HashMap<>();
+        killPayload.put("id", String.valueOf(alert.getId()));
+        killPayload.put("title", alert.getTitle());
+        killPayload.put("message", alert.getMessage());
+        killPayload.put("severity", "HIGH");
+        killPayload.put("ruleType", "KILL_TOOL_DETECTED");
+        killPayload.put("deviceId", String.valueOf(deviceId));
+        sseRegistry.sendToTenant(tenantId, "alert", killPayload);
+        log.warn("[alerts] Kill-tool alert: {} on {}", toolName, deviceName);
+    }
+
     @Transactional
     public void triggerBlockedAppAlert(UUID tenantId, UUID deviceId, String appName, String deviceName) {
         Alert alert = Alert.builder()
@@ -184,6 +224,39 @@ public class AlertEvaluationService {
             .metadata(Map.of("appName", appName, "deviceName", deviceName))
             .build();
         alertRepo.save(alert);
+        Map<String, Object> blockedPayload = new java.util.HashMap<>();
+        blockedPayload.put("id", String.valueOf(alert.getId()));
+        blockedPayload.put("title", alert.getTitle());
+        blockedPayload.put("message", alert.getMessage());
+        blockedPayload.put("severity", "MEDIUM");
+        blockedPayload.put("ruleType", "BLOCKED_APP_ATTEMPT");
+        blockedPayload.put("deviceId", String.valueOf(deviceId));
+        sseRegistry.sendToTenant(tenantId, "alert", blockedPayload);
+    }
+
+    @Transactional
+    public void triggerGeoFenceAlert(UUID tenantId, UUID deviceId, String regionName,
+                                      String eventType, String deviceName) {
+        boolean exited = "EXITED".equalsIgnoreCase(eventType);
+        String title = exited
+            ? deviceName + " left " + regionName
+            : deviceName + " entered " + regionName;
+        String message = exited
+            ? String.format("%s has left the '%s' zone.", deviceName, regionName)
+            : String.format("%s has entered the '%s' zone.", deviceName, regionName);
+
+        Alert alert = Alert.builder()
+            .tenantId(tenantId)
+            .deviceId(deviceId)
+            .ruleType("GEOFENCE_EVENT")
+            .severity("MEDIUM")
+            .title(title)
+            .message(message)
+            .metadata(Map.of("regionName", regionName, "eventType", eventType,
+                             "deviceName", deviceName))
+            .build();
+        alertRepo.save(alert);
+        log.info("[alerts] Geo-fence alert: {} {} {}", deviceName, eventType, regionName);
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────

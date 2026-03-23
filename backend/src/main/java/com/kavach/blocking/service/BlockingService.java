@@ -7,14 +7,18 @@ import com.kavach.blocking.entity.BlockingViolation;
 import com.kavach.blocking.repository.BlockRuleRepository;
 import com.kavach.blocking.repository.BlockingViolationRepository;
 import com.kavach.devices.repository.DeviceRepository;
+import com.kavach.enforcement.repository.EnforcementStateRepository;
+import com.kavach.sse.SseEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.UUID;
 
@@ -23,21 +27,39 @@ import java.util.UUID;
 @Slf4j
 public class BlockingService {
 
-    private final BlockRuleRepository ruleRepo;
+    private final BlockRuleRepository         ruleRepo;
     private final BlockingViolationRepository violationRepo;
-    private final DeviceRepository deviceRepo;
-    private final AlertEvaluationService alertEvaluationService;
+    private final DeviceRepository            deviceRepo;
+    private final AlertEvaluationService      alertEvaluationService;
+    private final EnforcementStateRepository  enforcementStateRepository;
+    private final ApplicationEventPublisher   eventPublisher;
 
     // ── Rules CRUD ────────────────────────────────────────────────────────────
 
+    @Transactional(readOnly = true)
     public List<BlockRuleDto> getRules(UUID tenantId) {
         return ruleRepo.findByTenantId(tenantId).stream().map(this::toDto).toList();
     }
 
-    // Lightweight rules list for desktop agent
+    @Transactional(readOnly = true)
     public List<AgentBlockRuleDto> getAgentRules(UUID tenantId, UUID deviceId) {
         return ruleRepo.findActiveRulesForDevice(tenantId, deviceId)
                 .stream().map(this::toAgentDto).toList();
+    }
+
+    @Transactional(readOnly = true)
+    public Map<String, Object> getAgentRulesWithMetadata(UUID tenantId, UUID deviceId) {
+        var device = deviceRepo.findById(deviceId)
+                .orElseThrow(() -> new IllegalArgumentException("Device not found"));
+
+        List<AgentBlockRuleDto> rules = ruleRepo.findActiveRulesForDevice(tenantId, deviceId)
+                .stream().map(this::toAgentDto).toList();
+
+        return Map.of(
+            "rules",       rules,
+            "lastUpdated", device.getRulesUpdatedAt(),
+            "serverTime",  LocalDateTime.now()
+        );
     }
 
     @Transactional
@@ -57,7 +79,13 @@ public class BlockingService {
                 .showMessage(req.isShowMessage())
                 .blockMessage(req.getBlockMessage())
                 .build();
-        return toDto(ruleRepo.save(rule));
+        rule = ruleRepo.save(rule);
+
+        updateDeviceRulesTimestamp(req.getDeviceId(), tenantId);
+
+        // Event published AFTER_COMMIT via SseEventListener — no phantom pushes on rollback.
+        publishRulesUpdated(tenantId, req.getDeviceId());
+        return toDto(rule);
     }
 
     @Transactional
@@ -67,7 +95,11 @@ public class BlockingService {
                 .orElseThrow(() -> new NoSuchElementException("Rule not found"));
         rule.setActive(!rule.isActive());
         rule.setUpdatedAt(LocalDateTime.now());
-        return toDto(ruleRepo.save(rule));
+        rule = ruleRepo.save(rule);
+
+        updateDeviceRulesTimestamp(rule.getDeviceId(), rule.getTenantId());
+        publishRulesUpdated(tenantId, rule.getDeviceId());
+        return toDto(rule);
     }
 
     @Transactional
@@ -75,13 +107,41 @@ public class BlockingService {
         BlockRule rule = ruleRepo.findById(ruleId)
                 .filter(r -> r.getTenantId().equals(tenantId))
                 .orElseThrow(() -> new NoSuchElementException("Rule not found"));
+
+        UUID deviceId = rule.getDeviceId();
         ruleRepo.delete(rule);
+
+        updateDeviceRulesTimestamp(deviceId, tenantId);
+        publishRulesUpdated(tenantId, deviceId);
+    }
+
+    /** Publishes a RulesUpdated domain event; SSE delivery happens AFTER_COMMIT. */
+    private void publishRulesUpdated(UUID tenantId, UUID deviceId) {
+        eventPublisher.publishEvent(new SseEvent.RulesUpdated(
+            tenantId.toString(),
+            deviceId != null ? deviceId.toString() : null
+        ));
+    }
+
+    private void updateDeviceRulesTimestamp(UUID deviceId, UUID tenantId) {
+        if (deviceId != null) {
+            deviceRepo.findById(deviceId).ifPresent(d -> {
+                d.setRulesUpdatedAt(LocalDateTime.now());
+                deviceRepo.save(d);
+            });
+            enforcementStateRepository.incrementVersion(deviceId);
+        } else {
+            deviceRepo.findByTenantIdAndActiveTrue(tenantId).forEach(d -> {
+                d.setRulesUpdatedAt(LocalDateTime.now());
+                deviceRepo.save(d);
+            });
+            enforcementStateRepository.incrementVersionForTenant(tenantId);
+        }
     }
 
     // ── Violation logging (called by desktop agent) ───────────────────────────
     @Transactional
     public void logViolation(ViolationRequest req) {
-        // Find device to get tenantId
         var device = deviceRepo.findById(req.getDeviceId())
                 .orElseThrow(() -> new IllegalArgumentException("Device not found"));
 
@@ -97,7 +157,6 @@ public class BlockingService {
 
         violationRepo.save(violation);
 
-        // Fire alert to parent
         alertEvaluationService.triggerBlockedAppAlert(
                 device.getTenantId(),
                 device.getId(),
@@ -109,6 +168,7 @@ public class BlockingService {
     }
 
     // ── Stats ─────────────────────────────────────────────────────────────────
+    @Transactional(readOnly = true)
     public long getViolationCountToday(UUID deviceId) {
         LocalDateTime startOfDay = LocalDateTime.now().toLocalDate().atStartOfDay();
         return violationRepo.countByDeviceIdAndAttemptedAtAfter(deviceId, startOfDay);

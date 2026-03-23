@@ -1,26 +1,32 @@
--- ═══════════════════════════════════════════════════════════════
--- KAVACH AI — V6 Migration: Activity Logs Schema
--- ═══════════════════════════════════════════════════════════════
+-- ================================================================
+-- KAVACH AI -- V6 Migration: Activity Logs Schema
+-- ================================================================
 
 -- Drop old tables from V1 so this migration can rebuild them with new schema
 DROP TABLE IF EXISTS activity_logs CASCADE;
 
--- ─── APP CATEGORY ENUM ───────────────────────────────────────────────────────
-CREATE TYPE app_category AS ENUM (
-  'EDUCATION',
-  'SOCIAL_MEDIA',
-  'GAMING',
-  'ENTERTAINMENT',
-  'PRODUCTIVITY',
-  'COMMUNICATION',
-  'NEWS',
-  'OTHER'
-);
+-- APP CATEGORY ENUM --------------------------------------------------------
+-- Guard against "type already exists" error on partial re-run
+DO $$
+BEGIN
+  CREATE TYPE app_category AS ENUM (
+    'EDUCATION',
+    'SOCIAL_MEDIA',
+    'GAMING',
+    'ENTERTAINMENT',
+    'PRODUCTIVITY',
+    'COMMUNICATION',
+    'NEWS',
+    'OTHER'
+  );
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
 
--- ─── ACTIVITY LOGS ───────────────────────────────────────────────────────────
+-- ACTIVITY LOGS ------------------------------------------------------------
 -- One row = one continuous app usage session
--- e.g. Chrome open from 10:00–10:23 = 1 row, duration_seconds = 1380
-CREATE TABLE activity_logs (
+-- e.g. Chrome open from 10:00-10:23 = 1 row, duration_seconds = 1380
+CREATE TABLE IF NOT EXISTS activity_logs (
     id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     device_id        UUID NOT NULL REFERENCES devices(id) ON DELETE CASCADE,
     tenant_id        UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
@@ -35,10 +41,10 @@ CREATE TABLE activity_logs (
     synced_at        TIMESTAMP DEFAULT NOW()
 );
 
--- ─── APP CATEGORY MAPPINGS ────────────────────────────────────────────────────
+-- APP CATEGORY MAPPINGS ----------------------------------------------------
 -- Maps process names to categories
 -- Agent uses this to tag logs before sending
-CREATE TABLE app_category_map (
+CREATE TABLE IF NOT EXISTS app_category_map (
     id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     process_name VARCHAR(255) UNIQUE NOT NULL,
     app_name     VARCHAR(255) NOT NULL,
@@ -46,15 +52,15 @@ CREATE TABLE app_category_map (
     is_default   BOOLEAN DEFAULT TRUE   -- system default vs custom
 );
 
--- ─── INDEXES ─────────────────────────────────────────────────────────────────
-CREATE INDEX idx_activity_device      ON activity_logs(device_id);
-CREATE INDEX idx_activity_tenant     ON activity_logs(tenant_id);
-CREATE INDEX idx_activity_started_at ON activity_logs(started_at DESC);
-CREATE INDEX idx_activity_category   ON activity_logs(category);
-CREATE INDEX idx_activity_device_day ON activity_logs(device_id, started_at);
-CREATE INDEX idx_category_map_process ON app_category_map(process_name);
+-- INDEXES ------------------------------------------------------------------
+CREATE INDEX IF NOT EXISTS idx_activity_device      ON activity_logs(device_id);
+CREATE INDEX IF NOT EXISTS idx_activity_tenant      ON activity_logs(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_activity_started_at  ON activity_logs(started_at DESC);
+CREATE INDEX IF NOT EXISTS idx_activity_category    ON activity_logs(category);
+CREATE INDEX IF NOT EXISTS idx_activity_device_day  ON activity_logs(device_id, started_at);
+CREATE INDEX IF NOT EXISTS idx_category_map_process ON app_category_map(process_name);
 
--- ─── DEFAULT APP CATEGORY MAPPINGS ───────────────────────────────────────────
+-- DEFAULT APP CATEGORY MAPPINGS --------------------------------------------
 INSERT INTO app_category_map (process_name, app_name, category) VALUES
   -- Browsers (PRODUCTIVITY by default, overridden by window title analysis)
   ('chrome.exe',            'Google Chrome',       'PRODUCTIVITY'),

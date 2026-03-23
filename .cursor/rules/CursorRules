@@ -1,0 +1,657 @@
+---
+alwaysApply: false
+description: KAVACH AI master Cursor prompt for deep, end-to-end architecture and flow exploration of this monorepo.
+globs: *
+---
+
+# KAVACH AI — 
+## End-to-End System Understanding: Theory → Architecture → Implementation Flow
+
+
+---
+
+
+
+---
+
+You are a senior full-stack architect working inside this monorepo codebase. Your task is to produce a **complete, grounded, end-to-end technical and conceptual walkthrough** of this system called **KAVACH AI** — a cross-platform parental monitoring and digital wellness platform.
+
+Read **every relevant file** in this monorepo before responding. Do not hallucinate structure — only describe what actually exists in the code.
+
+---
+
+## MONOREPO STRUCTURE — READ ALL OF THESE
+
+Start by scanning and reading the following directory tree and understanding each app's role:
+
+```
+/apps
+  /web-app          → Parent-facing React/Next.js web dashboard
+  /desktop-agent    → Electron app that runs silently on the student's Windows PC
+  /mobile           → React Native / Expo Android app for student's phone
+  /backend          → Node.js / Express (or NestJS) REST API server
+
+/packages
+  /shared           → Shared types, constants, utilities used across apps
+  /ui               → Shared UI component library (if present)
+  /config           → Shared ESLint, TypeScript, environment config
+
+/prisma (or /db)    → Database schema (Prisma ORM or equivalent)
+```
+
+For each app folder, read:
+- `package.json` — dependencies, scripts, app identity
+- `src/` or `app/` — all source files, especially entry points
+- Any `.env.example` — to understand environment variables
+- `README.md` if present
+
+---
+
+## PART 1 — THEORETICAL OVERVIEW (Plain English, No Code)
+
+After reading the codebase, explain the following in plain English as if briefing a new engineering team member who has never seen this product:
+
+### 1.1 What is KAVACH AI?
+- What problem does it solve?
+- Who are the three key actors (personas) and what is each one's role?
+- What is the core value loop — what happens when the system is working correctly?
+
+### 1.2 The Three Personas — Detailed Behavioural Description
+
+**Persona A — The Device Owner / Administrator / Parent**
+Describe everything this person can do in the system:
+- What they see when they first open the web app
+- How they create an account and what gets created in the database
+- How they link a physical device to their account
+- How they set rules (app blocking, category blocking, time limits, schedules)
+- How they configure alerts and notifications
+- How they initiate Focus Mode remotely
+- How they view reports and AI-generated insights
+- How they manage multiple devices from one dashboard
+- What happens in the background every time they save a setting
+
+**Persona B — The Student / Child / End User (Desktop)**
+Describe what the student experiences on their Windows PC:
+- What they see (or don't see) after the desktop agent is installed
+- What happens when they try to open a blocked app
+- What Focus Mode feels like from their perspective
+- What the system tray icon shows them
+- How the one-time disclosure screen works
+- What happens if they try to tamper with the agent
+
+**Persona C — The Student / Child / End User (Mobile)**
+Describe what the student experiences on their Android phone:
+- What the KAVACH mobile app looks like and what they can do in it
+- What the red/blue/amber overlays are and when they appear
+- How the background watcher operates without them knowing
+- The mood check-in feature and why it exists
+- Their own positive dashboard (focus score, streaks, achievements)
+- How they can initiate their own Focus Mode (Pomodoro)
+
+### 1.3 The Core Data Loop — Conceptual
+Explain in plain English (no code yet):
+- How does a rule created by a parent on the web app reach a student's phone within seconds?
+- How does usage data flow from the device back to the parent's dashboard?
+- How do the three apps stay in sync without a persistent connection?
+- What is the role of `rules_version` / enforcement versioning?
+- What is the role of silent push notifications?
+
+---
+
+## PART 2 — SYSTEM ARCHITECTURE (HLD + LLD Mix)
+
+### 2.1 High-Level Architecture Diagram
+Produce a **Mermaid diagram** showing the full system:
+- All three client apps (web-app, desktop-agent, mobile)
+- The backend API
+- The database
+- Any push notification service (FCM, APNs, etc.)
+- Any AI/ML service
+- Show the direction of data flow with arrows and labels
+
+Example format:
+```mermaid
+graph TD
+  Parent[Parent Web App\nNext.js] -->|REST API / JWT| Backend[Backend API\nNode.js]
+  Desktop[Desktop Agent\nElectron] -->|Poll every 30s| Backend
+  Mobile[Mobile App\nReact Native] -->|Background sync| Backend
+  Backend -->|Read/Write| DB[(PostgreSQL\nPrisma ORM)]
+  Backend -->|Silent Push| FCM[Firebase FCM]
+  FCM -->|Push Notification| Mobile
+```
+
+Expand this with every service, queue, or third-party integration you find in the actual codebase.
+
+### 2.2 Database Schema — Entity Relationship Diagram
+Produce a **Mermaid ER diagram** for the core tables. Read the Prisma schema (or raw SQL migrations) and include:
+- `User` (fields: id, email, role, tenantId, ...)
+- `Tenant` (fields: id, name, ...)
+- `Device` (fields: id, tenantId, deviceCode, linkedAt, status, ...)
+- `BlockingRule` (fields: id, deviceId, type, value, schedule, ...)
+- `FocusSession` (fields: id, deviceId, startedAt, endsAt, whitelist, ...)
+- `UsageRecord` (fields: id, deviceId, packageName, durationSeconds, platform, ...)
+- `EnforcementEvent` (fields: id, deviceId, action, processName, ...)
+- `AlertRule` (fields: id, deviceId, alertType, threshold, notifyMethod, ...)
+- `EnforcementState` (fields: id, deviceId, rulesVersion, focusModeActive, ...)
+- Any additional tables you find
+
+Show all foreign key relationships.
+
+### 2.3 API Layer Architecture
+List every route group and what each one does. Read the actual route files and produce:
+
+```
+AUTH
+  POST   /api/v1/auth/signup         → what it does, what it creates, what it returns
+  POST   /api/v1/auth/login          → ...
+  GET    /api/v1/auth/me             → ...
+
+DEVICES
+  GET    /api/v1/devices/generate-code  → ...
+  POST   /api/v1/devices/link           → ...
+  GET    /api/v1/devices/check-linked   → ...
+  ...
+
+ENFORCEMENT
+  GET    /api/v1/enforcement/version/:deviceId  → ...
+  GET    /api/v1/enforcement/state/:deviceId    → ...
+  POST   /api/v1/enforcement/usage              → ...
+  POST   /api/v1/enforcement/events             → ...
+
+BLOCKING
+  POST   /api/v1/blocking/rules    → ...
+  ...
+
+FOCUS
+  POST   /api/v1/focus/start       → ...
+  ...
+
+REPORTS / INSIGHTS
+  GET    /api/v1/reports/usage     → ...
+  GET    /api/v1/insights/ai       → ...
+```
+
+For each route, describe: input shape, auth requirement, what DB operations happen, output shape.
+
+### 2.4 Authentication & Authorisation Architecture
+- What JWT strategy is used? (RS256, HS256, etc.)
+- What is stored in the token payload? (userId, tenantId, role, etc.)
+- How is multi-tenancy enforced? (middleware, Prisma scoping, etc.)
+- How are refresh tokens handled?
+- What roles exist and what can each role access?
+
+### 2.5 Real-Time / Near-Real-Time Sync Architecture
+- How does the desktop agent poll for rule changes? (interval, endpoint, version diffing)
+- How does the mobile app receive instant updates? (silent push → FCM/APNs)
+- What is the fallback if push notifications fail?
+- What is the maximum time lag between a rule being saved and it being enforced?
+
+---
+
+## PART 3 — FEATURE IMPLEMENTATION FLOWS (Internal Technical Walkthrough)
+
+For each feature below, walk through what happens internally from the moment a user triggers the action to the moment the result is visible. Be specific about:
+- Which file/component handles the UI event
+- Which API call is made (method + endpoint + payload)
+- Which backend controller/service receives it
+- What database operations happen (read, create, update — with table names)
+- What side effects occur (version increment, push notification, etc.)
+- What the response looks like and how the frontend handles it
+
+### 3.1 FLOW: Parent Signs Up
+```
+User Action: Parent fills signup form and clicks "Create Account"
+↓
+[Trace every step from button click → DB → JWT → redirect]
+```
+
+### 3.2 FLOW: Device Linking (The Handshake)
+```
+User Action: Parent clicks "Add Device" on /parent/devices
+Simultaneously: Desktop agent is already running and showing a code
+↓
+[Trace both sides of this handshake in parallel — web app side AND desktop agent side]
+Include: code generation, polling mechanism, how the link is confirmed, 
+what gets saved to DB, what the agent does once it receives { linked: true }
+```
+
+### 3.3 FLOW: Parent Creates a Blocking Rule
+```
+User Action: Parent selects an app (e.g. "valorant.exe") and clicks Save on /parent/control
+↓
+[Trace: UI event → API call → DB write → rules_version increment → 
+how desktop agent detects the change → how it enforces it → 
+how the enforcement event is reported back → how the parent sees the alert]
+```
+
+### 3.4 FLOW: Focus Mode — Parent Initiates
+```
+User Action: Parent selects a device, sets duration to 25 min, adds VS Code + Chrome 
+to whitelist, clicks Start
+↓
+[Trace: API call → DB → version bump → desktop agent enforcement → 
+mobile overlay activation → live timer on parent dashboard → session end]
+```
+
+### 3.5 FLOW: Student Opens a Blocked App (Desktop)
+```
+User Action (Student): Student double-clicks Valorant on their PC
+↓
+[Trace: process appears in OS → EnforcementEngine detects it within 2s → 
+kill signal → Windows notification shown → event POSTed to backend → 
+parent alert triggered]
+Include: the exact file and function responsible for process scanning
+```
+
+### 3.6 FLOW: Student Opens a Blocked App (Mobile / Android)
+```
+User Action (Student): Student opens Instagram on their phone
+↓
+[Trace: AppWatcherTask background job → UsageStatsManager query → 
+RuleSync check → overlay rendered → violation reported → 
+rules re-fetched if stale]
+Include: how the background task stays alive, what permissions are needed
+```
+
+### 3.7 FLOW: Rule Update via Silent Push (Near Real-Time Sync)
+```
+Trigger: Parent saves a new blocking rule
+↓
+[Trace: backend increments rules_version → sends FCM silent push → 
+mobile app receives it in background → RuleSync.triggerSync() → 
+new state fetched → enforcement updated]
+Show the exact push payload structure and how the app handles it
+```
+
+### 3.8 FLOW: Student Logs In and Visits Their Dashboard
+```
+User Action: Student opens web app or mobile app and logs in
+↓
+[Trace: login → JWT → /auth/me → role detection → redirect to /student → 
+dashboard data fetched (which endpoints?) → focus score calculated (how?) → 
+streak logic → app usage chart data source]
+```
+
+### 3.9 FLOW: Parent Views AI Insights
+```
+User Action: Parent opens /parent/insights
+↓
+[Trace: which endpoints are called → what data is aggregated → 
+how AI insight cards are generated (rule-based? LLM? ML model?) → 
+risk level calculation → mood trend data source → 
+how the alerts feed is populated in real time]
+```
+
+### 3.10 FLOW: Student Initiates Own Focus Mode (Pomodoro)
+```
+User Action: Student clicks "Start Focus — 25 min" on their dashboard
+↓
+[Trace: API call → session created → how desktop agent picks it up → 
+how mobile enforces it → how the countdown timer works → 
+what happens at session end]
+```
+
+---
+
+## PART 4 — DESKTOP AGENT DEEP DIVE (Electron)
+
+Read all files in `/apps/desktop-agent/src/` and answer:
+
+### 4.1 Startup & Initialisation Sequence
+List every module that is initialised on app launch, in order. For each:
+- What file is it in?
+- What does it do on init?
+- What ongoing process does it start?
+
+### 4.2 The 2-Second Enforcement Loop
+- Which file contains the main enforcement loop?
+- How is it implemented? (`setInterval`? Worker thread? IPC?)
+- What exactly does each iteration do — step by step?
+- How does it get the list of running processes? (which OS API / npm package?)
+- How does it kill a process? (which method?)
+
+### 4.3 Rule Sync Implementation
+- Which file handles rule syncing?
+- How is version diffing implemented?
+- What is the exact data shape of the enforcement state response?
+- How are rules stored locally between syncs?
+
+### 4.4 Self-Protection Implementation
+- How does the agent detect Task Manager being opened?
+- How does it prevent itself from being killed?
+- How does it register for Windows startup?
+- What happens on crash / uncaught exception?
+
+### 4.5 Screenshot Capture
+- Which library is used for screenshots?
+- What is the capture interval?
+- Where are screenshots stored or sent?
+- What is the one-time disclosure flow?
+
+---
+
+## PART 5 — MOBILE APP DEEP DIVE (React Native / Expo)
+
+Read all files in `/apps/mobile/src/` and answer:
+
+### 5.1 App Initialisation on Login
+- Which file is the entry point?
+- How is the JWT stored? (AsyncStorage? SecureStore?)
+- How is the deviceId obtained and stored?
+- What background tasks are registered on login?
+
+### 5.2 Background Watcher Implementation
+- Which library is used for background tasks? (`expo-task-manager`? `react-native-background-fetch`?)
+- How does it read the currently active app? (UsageStatsManager? which package?)
+- What Android permissions are required?
+- How does it survive app closure or device sleep?
+- What is the exact overlay implementation? (Modal? Native module? Full-screen Activity?)
+
+### 5.3 Rule Sync on Mobile
+- Where is `RuleSync` implemented?
+- How are rules cached locally? (AsyncStorage? SQLite?)
+- How does the silent push notification wake the app and trigger a sync?
+
+---
+
+## PART 6 — WEB APP DEEP DIVE (React / Next.js)
+
+Read all files in `/apps/web-app/src/` and answer:
+
+### 6.1 Routing & Auth Guard Architecture
+- What is the folder structure of the pages/routes?
+- How is authentication enforced on protected routes?
+- How does role-based routing work? (parent → /parent, student → /student)
+- What is the AuthContext and what state does it hold?
+
+### 6.2 Parent Dashboard — Data Fetching
+- Which library is used for data fetching? (React Query? SWR? RTK Query?)
+- What endpoints are called on the parent dashboard mount?
+- How is real-time data (online/offline status, live alerts) handled?
+
+### 6.3 Device Linking UI Flow
+- Which component renders the "Add Device" modal?
+- How does the parent-side polling work (to confirm the device is linked)?
+- How is the device list updated after successful linking?
+
+### 6.4 Blocking Rules UI
+- How is the App Control page structured?
+- How are "quick add" buttons for common games implemented?
+- How does the schedule picker work?
+
+---
+
+## PART 7 — SHARED PACKAGES & CROSS-CUTTING CONCERNS
+
+### 7.1 Shared Types (`/packages/shared`)
+List the core TypeScript interfaces/types shared across apps. In particular:
+- `User`, `Tenant`, `Device`, `BlockingRule`, `FocusSession`, `EnforcementState`
+- Any enums: `DeviceStatus`, `BlockType`, `AlertType`, `Platform`, `UserRole`
+
+### 7.2 Environment Configuration
+List all environment variables across all apps and what each one controls.
+
+### 7.3 Error Handling Strategy
+- How are errors handled on the backend? (global error handler? middleware?)
+- How are API errors surfaced in the web app and mobile app?
+
+### 7.4 Logging & Observability
+- What logging is in place on the backend?
+- What does the desktop agent log and where?
+- Is there any analytics or crash reporting?
+
+---
+
+## PART 8 — SECURITY ARCHITECTURE
+
+### 8.1 Multi-Tenancy Isolation
+- How is data isolation enforced between different parent accounts (tenants)?
+- Are there any Prisma middleware or row-level security patterns in use?
+
+### 8.2 JWT Security
+- Token expiry times for access token and refresh token
+- How is token refresh handled?
+- What happens when a token is expired or invalid?
+
+### 8.3 Device Trust
+- How does the backend know a device report (usage, events) is authentic?
+- Is the deviceId verified against the tenant on every enforcement API call?
+
+### 8.4 Agent Tamper Resistance
+- Summary of all self-protection mechanisms on the desktop agent
+
+---
+
+## PART 9 — COMPLETE SYSTEM SEQUENCE DIAGRAMS
+
+Produce **Mermaid sequence diagrams** for the following critical flows:
+
+### 9.1 Device Linking Handshake (Both Sides Simultaneously)
+```mermaid
+sequenceDiagram
+  participant P as Parent (Web App)
+  participant B as Backend API
+  participant D as Desktop Agent
+  
+  D->>B: GET /devices/generate-code
+  B-->>D: { code: "KV3X9A" }
+  D->>D: Display code in UI
+  P->>B: POST /devices/link { code: "KV3X9A" }
+  B->>B: Mark code used, create Device record
+  B-->>P: { deviceId, success: true }
+  loop Every 10 seconds
+    D->>B: GET /devices/check-linked?code=KV3X9A
+    B-->>D: { linked: true, deviceId: "uuid" }
+  end
+  D->>D: Save deviceId, start enforcement stack
+```
+Expand this with the actual field names and response shapes from the code.
+
+### 9.2 Rule Creation → Enforcement (Full Loop)
+Show the complete sequence from parent saving a rule to the app being killed on the student's PC and the alert appearing in the parent's dashboard.
+
+### 9.3 Focus Mode — Start to Finish
+Show the complete sequence from parent clicking Start to both devices enforcing it, and the session ending.
+
+### 9.4 Mobile Background Watcher — Blocked App Detection
+Show the complete sequence of the 15-second background task detecting and blocking an app on Android.
+
+---
+
+## PART 10 — FOLDER STRUCTURE MAP WITH ANNOTATIONS
+
+After reading all files, produce a fully annotated folder structure for the entire monorepo. For every significant file, add a one-line comment explaining its role:
+
+```
+kavach-ai/
+├── apps/
+│   ├── web-app/
+│   │   ├── src/
+│   │   │   ├── app/                          ← Next.js app router root
+│   │   │   │   ├── (auth)/
+│   │   │   │   │   ├── login/page.tsx        ← Login page component
+│   │   │   │   │   └── signup/page.tsx       ← Signup page component
+│   │   │   │   ├── parent/
+│   │   │   │   │   ├── devices/page.tsx      ← Device list + Add Device modal
+│   │   │   │   │   ├── control/page.tsx      ← App/Category/Schedule blocking UI
+│   │   │   │   │   ├── focus/page.tsx        ← Focus Mode control panel
+│   │   │   │   │   ├── reports/page.tsx      ← Usage reports + CSV export
+│   │   │   │   │   ├── insights/page.tsx     ← AI insights feed + alerts
+│   │   │   │   │   └── rules/page.tsx        ← Alert rule wizard
+│   │   │   │   └── student/
+│   │   │   │       └── ...                   ← Student portal pages
+│   │   │   ├── components/                   ← Shared React components
+│   │   │   ├── contexts/
+│   │   │   │   └── AuthContext.tsx           ← JWT session state management
+│   │   │   ├── hooks/                        ← Data fetching hooks
+│   │   │   └── lib/
+│   │   │       └── api.ts                    ← Axios/fetch wrapper with auth headers
+│   ├── desktop-agent/
+│   │   ├── src/
+│   │   │   ├── main.ts                       ← Electron main process entry
+│   │   │   ├── EnforcementEngine.ts          ← 2-second kill loop
+│   │   │   ├── RuleSync.ts                   ← 30s version polling + usage reporting
+│   │   │   ├── UsageTracker.ts               ← Per-app time accumulation
+│   │   │   ├── BrowserMonitor.ts             ← Chrome URL watcher
+│   │   │   ├── ScreenshotCapture.ts          ← Periodic screenshot capture
+│   │   │   ├── SelfProtection.ts             ← Tamper detection + startup registry
+│   │   │   └── TimeSync.ts                   ← Clock manipulation prevention
+│   ├── mobile/
+│   │   ├── src/
+│   │   │   ├── App.tsx                       ← Root component + background task registration
+│   │   │   ├── tasks/
+│   │   │   │   └── AppWatcherTask.ts         ← 15s background enforcement task
+│   │   │   ├── services/
+│   │   │   │   └── RuleSync.ts               ← Rule caching + sync logic
+│   │   │   ├── screens/
+│   │   │   │   ├── student/                  ← Student dashboard screens
+│   │   │   │   └── overlays/                 ← Red/Blue/Amber enforcement overlays
+│   │   │   └── notifications/
+│   │   │       └── PushHandler.ts            ← Silent push → triggerSync()
+│   ├── backend/
+│   │   ├── src/
+│   │   │   ├── main.ts                       ← Server entry point
+│   │   │   ├── auth/                         ← JWT strategy, guards, signup/login
+│   │   │   ├── devices/                      ← Device linking, code generation
+│   │   │   ├── enforcement/                  ← State, version, usage, events
+│   │   │   ├── blocking/                     ← Rule CRUD
+│   │   │   ├── focus/                        ← Focus session management
+│   │   │   ├── reports/                      ← Usage aggregation queries
+│   │   │   ├── insights/                     ← AI insight generation
+│   │   │   └── alerts/                       ← Alert rule CRUD + triggering
+├── packages/
+│   ├── shared/
+│   │   ├── types/                            ← Shared TS interfaces + enums
+│   │   └── constants/                        ← Shared config values
+│   └── config/                               ← ESLint, TS, env shared config
+├── prisma/
+│   └── schema.prisma                         ← Full DB schema (read this first)
+└── package.json                              ← Monorepo root (Turborepo / nx config)
+```
+
+Expand this with the actual files you find. Do not fabricate files.
+
+---
+
+## INSTRUCTIONS FOR YOUR RESPONSE
+
+Structure your response in exactly these 10 parts with these headings. Do not skip any part. Where you cannot find implementation details in the code, say explicitly: **\"[NOT FOUND IN CODEBASE — implementation pending]\"** rather than guessing.
+
+Be specific. Reference actual file paths. Quote actual function names. Show actual field names from the schema. Show actual endpoint paths from the route files.
+
+The goal is that after reading your response, a new engineer joining this project can understand:
+1. What the system does and why
+2. How every actor experiences it
+3. How the code is organised
+4. What happens internally for every major user action
+5. How the three apps stay in sync
+6. Where to find anything in the codebase
+
+---
+
+## FOLLOW-UP DRILL-DOWN PROMPTS
+(Use these after the main prompt to go deeper on specific areas)
+
+---
+
+### DRILL-DOWN A — Device Linking Deep Dive
+```
+Read /apps/desktop-agent/src/ and /apps/backend/src/devices/ and /apps/web-app/src/app/parent/devices/
+Trace the complete device linking flow at the code level:
+- Show the exact function in the desktop agent that calls generate-code
+- Show the exact polling implementation (setInterval? recursive setTimeout?)
+- Show the backend controller that handles /devices/link
+- Show what Prisma queries run when a device is linked
+- Show how the web app updates the device list in state after linking succeeds
+- Show the exact shape of every request and response payload
+```
+
+---
+
+### DRILL-DOWN B — Enforcement Engine Deep Dive
+```
+Read /apps/desktop-agent/src/EnforcementEngine.ts (and related files)
+Explain:
+- The exact implementation of the 2-second loop
+- Which npm package or native API is used to list running processes
+- Which method is used to kill a process (process.kill? taskkill?)
+- How the app determines if a process matches a blocking rule (exact string match? regex? case-insensitive?)
+- How time limits are tracked in memory between loop iterations
+- How focus mode whitelist checking works
+- What a complete iteration of the loop looks like step by step
+```
+
+---
+
+### DRILL-DOWN C — Mobile Background Task Deep Dive
+```
+Read /apps/mobile/src/tasks/ and /apps/mobile/src/services/RuleSync.ts
+Explain:
+- Which React Native library handles background execution
+- What Android permissions are declared in AndroidManifest.xml
+- How UsageStatsManager (or equivalent) is queried for the active app
+- How the overlay is rendered — is it a React Native Modal, a native Android Activity, or a floating window?
+- What happens when the device is in Doze mode or the app is force-stopped
+- The exact cache structure for locally stored rules (AsyncStorage keys)
+```
+
+---
+
+### DRILL-DOWN D — Backend Enforcement State Machine
+```
+Read /apps/backend/src/enforcement/ and /prisma/schema.prisma
+Explain:
+- The exact EnforcementState table schema
+- When and how rules_version is incremented (which service, which function)
+- How the /enforcement/state/:deviceId endpoint aggregates data from multiple tables
+- The exact shape of the enforcement state JSON returned to agents
+- How concurrent rule updates are handled (race conditions, transactions)
+- How the backend triggers FCM push notifications when rules change
+```
+
+---
+
+### DRILL-DOWN E — AI Insights Generation
+```
+Read /apps/backend/src/insights/
+Explain:
+- How insight cards (SPIKE, WARNING, POSITIVE, TIP) are generated
+- Is this rule-based logic, an LLM API call, or a trained model?
+- If LLM: what is the prompt structure and which model is called?
+- How risk levels (LOW → CRITICAL) are calculated
+- How the focus score (0–100) is computed from raw usage data
+- How the mood trend data flows from mobile check-in to parent dashboard
+```
+
+---
+
+### DRILL-DOWN F — Auth & Multi-Tenancy Security Audit
+```
+Read /apps/backend/src/auth/ and all Prisma queries across the backend
+Answer:
+- Show every place where tenantId is used to scope a database query
+- Are there any endpoints where tenantId is NOT checked? (potential data leak)
+- How is the deviceId verified to belong to the authenticated tenant on enforcement API calls?
+- Show the JWT payload structure (exact fields)
+- Show the refresh token implementation
+- Is there any rate limiting on auth endpoints?
+```
+
+---
+
+### DRILL-DOWN G — Student Dashboard Data Architecture
+```
+Read /apps/web-app/src/app/student/ and /apps/mobile/src/screens/student/
+Explain:
+- Every API endpoint called when the student dashboard mounts
+- How the Focus Score (0-100) is calculated — formula and data source
+- How the daily streak is tracked and persisted
+- How app usage categories are determined (hardcoded map? backend classification?)
+- How the achievement/badge system works
+- How the self-initiated Pomodoro differs from parent-initiated Focus Mode in the backend
+```
+
+---
+
+*End of Cursor Prompt*
+

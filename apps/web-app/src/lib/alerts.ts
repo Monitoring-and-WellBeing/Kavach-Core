@@ -61,6 +61,9 @@ export const alertsApi = {
   toggleRule: (id: string) =>
     api.patch<AlertRule>(`/alerts/rules/${id}/toggle`).then(r => r.data),
 
+  updateRule: (id: string, patch: Partial<AlertRule>) =>
+    api.put<AlertRule>(`/alerts/rules/${id}`, patch).then(r => r.data),
+
   deleteRule: (id: string) =>
     api.delete(`/alerts/rules/${id}`),
 

@@ -23,7 +23,7 @@ const parentItems = [
   { label: "Settings", href: "/parent/settings", icon: <Settings className="w-5 h-5" /> },
 ];
 
-export function MobileNav({ role }: MobileNavProps) {
+export function MobileNav({ role: _role }: MobileNavProps) {
   const pathname = usePathname();
   const items = parentItems; // expand for other roles as needed
 

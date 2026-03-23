@@ -34,8 +34,6 @@ public class UserService implements UserDetailsService {
     }
 
     public List<User> findByTenantId(UUID tenantId) {
-        return userRepository.findAll().stream()
-                .filter(u -> tenantId.equals(u.getTenantId()))
-                .toList();
+        return userRepository.findByTenantId(tenantId);
     }
 }

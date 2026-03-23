@@ -44,12 +44,21 @@ public class Device {
     @Column(name = "assigned_to")
     private String assignedTo;
 
+    @Column(name = "device_secret", nullable = false, length = 36)
+    private String deviceSecret; // GAP-5 FIXED
+
+    @Builder.Default
     @Column(name = "is_active")
     private boolean active = true;
 
+    @Builder.Default
     @Column(name = "created_at")
     private LocalDateTime createdAt = LocalDateTime.now();
 
+    @Builder.Default
     @Column(name = "updated_at")
     private LocalDateTime updatedAt = LocalDateTime.now();
+
+    @Column(name = "rules_updated_at")
+    private LocalDateTime rulesUpdatedAt;
 }

@@ -1,5 +1,6 @@
 import { loadConfig } from '../auth/config'
 import { AgentBlockRule } from './blockingEngine'
+import { logger } from '../logger'
 
 export async function reportViolation(
   appName: string,
@@ -27,6 +28,6 @@ export async function reportViolation(
     })
   } catch {
     // Non-critical — violation reporting failure shouldn't affect blocking
-    console.warn(`[blocker] Failed to report violation for ${appName}`)
+    logger.warn(`[blocker] Failed to report violation for ${appName}`)
   }
 }

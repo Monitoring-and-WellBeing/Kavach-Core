@@ -4,20 +4,26 @@ import com.kavach.gamification.dto.BadgeDto;
 import com.kavach.gamification.dto.BadgeProgressDto;
 import com.kavach.gamification.entity.Badge;
 import com.kavach.gamification.entity.StudentBadge;
+import com.kavach.gamification.entity.XpTransaction;
 import com.kavach.gamification.repository.BadgeRepository;
 import com.kavach.gamification.repository.StudentBadgeRepository;
+import com.kavach.gamification.repository.XpTransactionRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class BadgeService {
 
     private final BadgeRepository badgeRepo;
     private final StudentBadgeRepository studentBadgeRepo;
+    private final XpTransactionRepository xpTransactionRepo;
     private final BadgeEvaluationService evaluationService;
 
     public BadgeProgressDto getBadgeProgress(UUID deviceId, UUID tenantId) {
@@ -33,7 +39,9 @@ public class BadgeService {
         Map<UUID, java.time.LocalDateTime> earnedAtMap = earned.stream()
             .collect(Collectors.toMap(StudentBadge::getBadgeId, StudentBadge::getEarnedAt));
 
-        long totalXp = studentBadgeRepo.totalXpByDevice(deviceId);
+        // Total XP = badge XP + challenge/manual XP transactions
+        long totalXp = studentBadgeRepo.totalXpByDevice(deviceId)
+                     + xpTransactionRepo.totalXpByDevice(deviceId);
 
         // Build badge DTOs
         List<BadgeDto> badges = allBadges.stream()
@@ -77,6 +85,19 @@ public class BadgeService {
             .recentlyEarned(recent)
             .byCategory(byCategory)
             .build();
+    }
+
+    // ── Award bonus XP (from challenges, manual grants, etc.) ────────────────
+    @Transactional
+    public void addXp(UUID deviceId, UUID tenantId, int amount, String reason) {
+        XpTransaction tx = XpTransaction.builder()
+            .deviceId(deviceId)
+            .tenantId(tenantId)
+            .amount(amount)
+            .reason(reason)
+            .build();
+        xpTransactionRepo.save(tx);
+        log.info("[xp] +{} XP to device {} — {}", amount, deviceId, reason);
     }
 
     private String getLevel(long xp) {

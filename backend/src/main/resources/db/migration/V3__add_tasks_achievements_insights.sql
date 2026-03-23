@@ -1,9 +1,9 @@
--- ═══════════════════════════════════════════════════════════════
--- KAVACH AI — V3 Migration: Tasks, Achievements, AI Insights
--- ═══════════════════════════════════════════════════════════════
+-- ================================================================
+-- KAVACH AI -- V3 Migration: Tasks, Achievements, AI Insights
+-- ================================================================
 
 -- Tasks table
-CREATE TABLE tasks (
+CREATE TABLE IF NOT EXISTS tasks (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     student_id UUID NOT NULL,
     label VARCHAR(255) NOT NULL,
@@ -15,7 +15,7 @@ CREATE TABLE tasks (
 );
 
 -- Achievements table
-CREATE TABLE achievements (
+CREATE TABLE IF NOT EXISTS achievements (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     student_id UUID NOT NULL,
     type VARCHAR(50) NOT NULL,
@@ -28,7 +28,7 @@ CREATE TABLE achievements (
 );
 
 -- AI Insights table
-CREATE TABLE ai_insights (
+CREATE TABLE IF NOT EXISTS ai_insights (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     device_id UUID NOT NULL REFERENCES devices(id),
     type VARCHAR(50) NOT NULL,
@@ -42,8 +42,8 @@ CREATE TABLE ai_insights (
 );
 
 -- Indexes
-CREATE INDEX idx_tasks_student ON tasks(student_id);
-CREATE INDEX idx_tasks_completed ON tasks(completed);
-CREATE INDEX idx_achievements_student ON achievements(student_id);
-CREATE INDEX idx_insights_device ON ai_insights(device_id);
-CREATE INDEX idx_insights_dismissed ON ai_insights(dismissed);
+CREATE INDEX IF NOT EXISTS idx_tasks_student ON tasks(student_id);
+CREATE INDEX IF NOT EXISTS idx_tasks_completed ON tasks(completed);
+CREATE INDEX IF NOT EXISTS idx_achievements_student ON achievements(student_id);
+CREATE INDEX IF NOT EXISTS idx_insights_device ON ai_insights(device_id);
+CREATE INDEX IF NOT EXISTS idx_insights_dismissed ON ai_insights(dismissed);

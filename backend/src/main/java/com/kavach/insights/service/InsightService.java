@@ -1,6 +1,7 @@
 package com.kavach.insights.service;
 
 import com.kavach.activity.repository.ActivityLogRepository;
+import com.kavach.ai.service.MoodService;
 import com.kavach.devices.repository.DeviceRepository;
 import com.kavach.focus.repository.FocusSessionRepository;
 import com.kavach.insights.dto.InsightDto;
@@ -25,7 +26,8 @@ public class InsightService {
     private final ActivityLogRepository activityRepo;
     private final FocusSessionRepository focusRepo;
     private final DeviceRepository deviceRepo;
-    private final ClaudeApiService claudeApi;
+    private final GeminiService geminiService;
+    private final MoodService moodService;
 
     private static final int CACHE_HOURS = 4;
 
@@ -62,17 +64,20 @@ public class InsightService {
         LocalDateTime dataTo   = LocalDateTime.now();
         LocalDateTime dataFrom = dataTo.minusDays(7);
 
-        // Build activity summary string for Claude
+        // Build activity summary string for AI analysis
         String summary = buildActivitySummary(deviceId, dataFrom);
 
         String studentName = device.getAssignedTo() != null
             ? device.getAssignedTo() : "Student";
 
+        // Build mood summary for richer parent digest
+        String moodSummary = buildMoodSummary(deviceId, studentName);
+
         log.info("[insights] Generating insights for device {} ({})", deviceId, studentName);
 
-        // Call Claude
-        Map<String, Object> aiResponse = claudeApi.analyzeStudentActivity(
-            summary, studentName, device.getName());
+        // Call Gemini AI service with enhanced context including mood
+        Map<String, Object> aiResponse = geminiService.analyzeStudentActivity(
+            summary, moodSummary, studentName, device.getName());
 
         // Parse and save
         AiInsight insight = AiInsight.builder()
@@ -92,7 +97,16 @@ public class InsightService {
         return toDto(insight, true);
     }
 
-    // ── Build activity summary text for Claude prompt ─────────────────────────
+    // ── Build mood summary for AI prompt ──────────────────────────────────────
+    private String buildMoodSummary(UUID deviceId, String studentName) {
+        try {
+            return moodService.getWeeklyMoodSummaryByDevice(deviceId);
+        } catch (Exception e) {
+            return "No mood data available.";
+        }
+    }
+
+    // ── Build activity summary text for AI prompt ───────────────────────────
     private String buildActivitySummary(UUID deviceId, LocalDateTime from) {
         StringBuilder sb = new StringBuilder();
 

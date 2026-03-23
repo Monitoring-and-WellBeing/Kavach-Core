@@ -73,7 +73,7 @@ public class DeviceController {
     public ResponseEntity<DeviceDto> updateDevice(
             @AuthenticationPrincipal String email,
             @PathVariable UUID id,
-            @RequestBody UpdateDeviceRequest req) {
+            @Valid @RequestBody UpdateDeviceRequest req) {
         UUID tenantId = getTenantId(email);
         return ResponseEntity.ok(deviceService.updateDevice(id, tenantId, req));
     }
