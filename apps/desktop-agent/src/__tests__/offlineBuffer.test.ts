@@ -152,7 +152,7 @@ describe('Offline Buffer', () => {
       const existingBuffer: BufferedLog[] = Array.from({ length: MAX_BUFFER_SIZE }, (_, i) => ({
         deviceId: mockDeviceId,
         session: { ...mockSession, processName: `old${i}.exe` },
-        bufferedAt: new Date(`2024-01-01T${10 + i}:00:00Z`).toISOString(),
+        bufferedAt: new Date(Date.UTC(2024, 0, 1, 10 + i, 0, 0)).toISOString(),
       }))
 
       mockFs.readFile.mockResolvedValueOnce(JSON.stringify(existingBuffer))

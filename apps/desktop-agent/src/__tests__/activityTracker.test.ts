@@ -1,23 +1,32 @@
-import { getActiveWindow, recordWindow, flushCurrentSession, stopTracking } from '../tracking/tracker'
-import { exec } from 'child_process'
-import { promisify } from 'util'
+const mockExecAsync = jest.fn()
 
-// Mock child_process
-jest.mock('child_process')
+jest.mock('util', () => {
+  const actual = jest.requireActual('util')
+  return {
+    ...actual,
+    promisify: jest.fn(() => mockExecAsync),
+  }
+})
+
 jest.mock('../tracking/categoryClassifier', () => ({
-  classifyApp: jest.fn((processName: string, windowTitle: string) => ({
+  classifyApp: jest.fn(() => ({
     category: 'EDUCATION',
     friendlyName: 'VS Code',
   })),
 }))
 
-const execAsync = promisify(exec)
-const mockExecAsync = execAsync as jest.MockedFunction<typeof execAsync>
+import { getActiveWindow, recordWindow, flushCurrentSession, stopTracking } from '../tracking/tracker'
 
 describe('Activity Tracker', () => {
   beforeEach(() => {
+    jest.useFakeTimers()
+    jest.setSystemTime(new Date('2024-01-01T10:00:00Z'))
     jest.clearAllMocks()
     stopTracking() // Reset state
+  })
+
+  afterEach(() => {
+    jest.useRealTimers()
   })
 
   describe('getActiveWindow', () => {
@@ -26,7 +35,7 @@ describe('Activity Tracker', () => {
       mockExecAsync.mockResolvedValueOnce({
         stdout: 'code.exe|VS Code - test.ts',
         stderr: '',
-      } as any)
+      } as never)
 
       // Mock platform
       Object.defineProperty(process, 'platform', {

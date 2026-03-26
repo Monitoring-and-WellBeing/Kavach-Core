@@ -3,16 +3,14 @@ import { loadConfig } from '../auth/config'
 
 // Mock dependencies
 jest.mock('../auth/config')
-jest.mock('node-fetch', () => ({
-  __esModule: true,
-  default: jest.fn(),
-}))
 
 const mockLoadConfig = loadConfig as jest.MockedFunction<typeof loadConfig>
+let fetchSpy: jest.SpiedFunction<typeof fetch>
 
 describe('Blocking Engine', () => {
   beforeEach(() => {
     jest.clearAllMocks()
+    fetchSpy = jest.spyOn(global, 'fetch')
     mockLoadConfig.mockResolvedValue({
       deviceLinked: true,
       deviceId: 'device-001',
@@ -20,6 +18,10 @@ describe('Blocking Engine', () => {
       agentVersion: '1.0.0',
       hostname: 'test-host',
     })
+  })
+
+  afterEach(() => {
+    fetchSpy.mockRestore()
   })
 
   describe('shouldBlock', () => {
@@ -101,8 +103,7 @@ describe('Blocking Engine', () => {
 
   describe('refreshBlockRules', () => {
     it('fetches and caches rules from backend', async () => {
-      const fetch = require('node-fetch').default
-      fetch.mockResolvedValueOnce({
+      fetchSpy.mockResolvedValueOnce({
         ok: true,
         json: async () => [
           {
@@ -114,19 +115,18 @@ describe('Blocking Engine', () => {
             blockMessage: 'Blocked',
           },
         ],
-      })
+      } as Response)
 
       await refreshBlockRules()
       
-      expect(fetch).toHaveBeenCalledWith(
+      expect(fetchSpy).toHaveBeenCalledWith(
         expect.stringContaining('/api/v1/blocking/rules/device-001/agent'),
         expect.objectContaining({ signal: expect.any(AbortSignal) })
       )
     })
 
     it('handles network failure gracefully', async () => {
-      const fetch = require('node-fetch').default
-      fetch.mockRejectedValueOnce(new Error('Network error'))
+      fetchSpy.mockRejectedValueOnce(new Error('Network error'))
 
       // Should not throw
       await expect(refreshBlockRules()).resolves.not.toThrow()
